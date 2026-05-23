@@ -1,0 +1,6 @@
+@MATCHOP.API_HostAddress = http://localhost:5208
+
+GET {{MATCHOP.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

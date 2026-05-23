@@ -1,0 +1,501 @@
+﻿using MATCHOP.API.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace MATCHOP.API;
+
+public class ApplicationDbContext : DbContext
+{
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options)
+    {
+    }
+
+    public DbSet<User> Users => Set<User>();
+    public DbSet<Sport> Sports => Set<Sport>();
+    public DbSet<Venue> Venues => Set<Venue>();
+    public DbSet<Court> Courts => Set<Court>();
+    public DbSet<CourtImage> CourtImages => Set<CourtImage>();
+    public DbSet<PriceRule> PriceRules => Set<PriceRule>();
+    public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<BookingSlot> BookingSlots => Set<BookingSlot>();
+    public DbSet<CourtBlock> CourtBlocks => Set<CourtBlock>();
+    public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<Review> Reviews => Set<Review>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // ── User ──────────────────────────────────────────────────────
+        modelBuilder.Entity<User>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.FullName)
+             .IsRequired()
+             .HasMaxLength(200);
+
+            e.Property(x => x.Email)
+             .IsRequired()
+             .HasMaxLength(200);
+
+            e.Property(x => x.Phone)
+             .HasMaxLength(20);
+
+            e.Property(x => x.PasswordHash)
+             .IsRequired(false);
+
+            e.Property(x => x.Avatar)
+             .HasMaxLength(500);
+
+            e.Property(x => x.Role)
+             .HasConversion<int>();
+
+            e.Property(x => x.Status)
+             .HasConversion<int>();
+
+            e.Property(x => x.EmailConfirmed)
+             .HasDefaultValue(false);
+
+            e.Property(x => x.EmailVerificationTokenHash)
+             .HasMaxLength(500);
+
+            e.Property(x => x.GoogleId)
+             .HasMaxLength(200);
+
+            e.Property(x => x.AuthProvider)
+             .IsRequired()
+             .HasMaxLength(50)
+             .HasDefaultValue("LOCAL");
+
+            e.HasIndex(x => x.Email)
+             .IsUnique()
+             .HasDatabaseName("ux_users_email");
+
+            e.HasIndex(x => x.GoogleId)
+             .HasDatabaseName("ix_users_google_id");
+
+            e.HasIndex(x => x.EmailVerificationTokenHash)
+             .HasDatabaseName("ix_users_email_verification_token_hash");
+
+            // Phone nullable nhưng unique khi có giá trị
+            e.HasIndex(x => x.Phone)
+             .IsUnique()
+             .HasFilter("\"Phone\" IS NOT NULL")
+             .HasDatabaseName("ux_users_phone");
+        });
+
+        // ── Sport ─────────────────────────────────────────────────────
+        modelBuilder.Entity<Sport>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.Name)
+             .IsRequired()
+             .HasMaxLength(100);
+
+            e.Property(x => x.Icon)
+             .HasMaxLength(500);
+
+            e.Property(x => x.Status)
+             .HasConversion<int>();
+
+            e.HasIndex(x => x.Name)
+             .IsUnique()
+             .HasDatabaseName("ux_sports_name");
+        });
+
+        // ── Venue ─────────────────────────────────────────────────────
+        modelBuilder.Entity<Venue>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.Name)
+             .IsRequired()
+             .HasMaxLength(200);
+
+            e.Property(x => x.Address)
+             .IsRequired()
+             .HasMaxLength(500);
+
+            e.Property(x => x.City)
+             .IsRequired()
+             .HasMaxLength(100);
+
+            e.Property(x => x.District)
+             .IsRequired()
+             .HasMaxLength(100);
+
+            e.Property(x => x.Ward)
+             .HasMaxLength(100);
+
+            e.Property(x => x.Latitude)
+             .HasPrecision(10, 7);
+
+            e.Property(x => x.Longitude)
+             .HasPrecision(10, 7);
+
+            e.Property(x => x.Description)
+             .HasMaxLength(2000);
+
+            e.Property(x => x.CoverImageUrl)
+             .HasMaxLength(1000);
+
+            e.Property(x => x.Status)
+             .HasConversion<int>();
+
+            e.HasOne(x => x.Owner)
+             .WithMany(u => u.OwnedVenues)
+             .HasForeignKey(x => x.OwnerId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(x => x.OwnerId)
+             .HasDatabaseName("ix_venues_owner_id");
+
+            e.HasIndex(x => x.Status)
+             .HasDatabaseName("ix_venues_status");
+        });
+
+        // ── Court ─────────────────────────────────────────────────────
+        // ── Court ─────────────────────────────────────────────────────
+        modelBuilder.Entity<Court>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.Name)
+             .IsRequired()
+             .HasMaxLength(200);
+
+            e.Property(x => x.Type)
+             .HasMaxLength(100);
+
+            e.Property(x => x.Capacity);
+
+            e.Property(x => x.LocationNote)
+             .HasMaxLength(300);
+
+            e.Property(x => x.Description)
+             .HasMaxLength(2000);
+
+            e.Property(x => x.ImageUrl)
+             .HasMaxLength(1000);
+
+            e.Property(x => x.ImagePublicId)
+             .HasMaxLength(500);
+
+            e.Property(x => x.Status)
+             .HasConversion<int>();
+
+            e.HasOne(x => x.Venue)
+             .WithMany(v => v.Courts)
+             .HasForeignKey(x => x.VenueId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(x => x.Sport)
+             .WithMany(s => s.Courts)
+             .HasForeignKey(x => x.SportId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(x => x.VenueId)
+             .HasDatabaseName("ix_courts_venue_id");
+
+            e.HasIndex(x => x.SportId)
+             .HasDatabaseName("ix_courts_sport_id");
+
+            e.HasIndex(x => x.Status)
+             .HasDatabaseName("ix_courts_status");
+
+            e.HasIndex(x => new { x.VenueId, x.Name })
+             .HasDatabaseName("ix_courts_venue_name");
+        });
+
+        // ── CourtImage ─────────────────────────────────────────────────
+        modelBuilder.Entity<CourtImage>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.CourtId)
+             .IsRequired();
+
+            e.Property(x => x.ImageUrl)
+             .IsRequired()
+             .HasMaxLength(1000);
+
+            e.Property(x => x.PublicId)
+             .IsRequired()
+             .HasMaxLength(500);
+
+            e.Property(x => x.IsPrimary)
+             .HasDefaultValue(false);
+
+            e.Property(x => x.SortOrder)
+             .HasDefaultValue(0);
+
+            e.Property(x => x.CreatedAt)
+             .HasDefaultValueSql("NOW()");
+
+            e.HasOne(x => x.Court)
+             .WithMany(c => c.Images)
+             .HasForeignKey(x => x.CourtId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.CourtId)
+             .HasDatabaseName("ix_court_images_court_id");
+
+            e.HasIndex(x => new { x.CourtId, x.SortOrder })
+             .HasDatabaseName("ix_court_images_court_sort_order");
+
+            e.HasIndex(x => new { x.CourtId, x.IsPrimary })
+             .HasDatabaseName("ix_court_images_court_primary");
+        });
+
+        // ── PriceRule ─────────────────────────────────────────────────
+        modelBuilder.Entity<PriceRule>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.PricePerHour)
+             .HasPrecision(18, 2)
+             .IsRequired();
+
+            e.Property(x => x.DayType)
+             .HasConversion<int>();
+
+            e.Property(x => x.Status)
+             .HasConversion<int>();
+
+            e.HasOne(x => x.Court)
+             .WithMany(c => c.PriceRules)
+             .HasForeignKey(x => x.CourtId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(x => x.CourtId)
+             .HasDatabaseName("ix_price_rules_court_id");
+
+            e.HasIndex(x => new { x.CourtId, x.DayType, x.StartTime, x.EndTime })
+             .HasDatabaseName("ix_price_rules_court_day_time");
+
+            e.HasIndex(x => x.Status)
+             .HasDatabaseName("ix_price_rules_status");
+        });
+
+        // ── Booking ───────────────────────────────────────────────────
+        modelBuilder.Entity<Booking>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.TotalPrice)
+             .HasPrecision(18, 2)
+             .IsRequired();
+
+            e.Property(x => x.Status)
+             .HasConversion<int>();
+
+            e.Property(x => x.PaymentStatus)
+             .HasConversion<int>();
+
+            e.Property(x => x.BookingType)
+             .HasConversion<int>();
+
+            e.Property(x => x.CustomerName)
+             .HasMaxLength(200);
+
+            e.Property(x => x.CustomerPhone)
+             .HasMaxLength(20);
+
+            e.Property(x => x.Note)
+             .HasMaxLength(1000);
+
+            // UserId → người đặt sân online
+            e.HasOne(x => x.User)
+             .WithMany(u => u.Bookings)
+             .HasForeignKey(x => x.UserId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            // OwnerId → owner tạo booking offline
+            e.HasOne(x => x.Owner)
+             .WithMany()
+             .HasForeignKey(x => x.OwnerId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(x => x.Venue)
+             .WithMany(v => v.Bookings)
+             .HasForeignKey(x => x.VenueId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(x => x.Court)
+             .WithMany(c => c.Bookings)
+             .HasForeignKey(x => x.CourtId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(x => x.Sport)
+             .WithMany(s => s.Bookings)
+             .HasForeignKey(x => x.SportId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(x => new { x.CourtId, x.BookingDate })
+             .HasDatabaseName("ix_bookings_court_date");
+
+            e.HasIndex(x => x.UserId)
+             .HasDatabaseName("ix_bookings_user");
+
+            e.HasIndex(x => x.Status)
+             .HasDatabaseName("ix_bookings_status");
+        });
+
+        // ── BookingSlot ───────────────────────────────────────────────
+        modelBuilder.Entity<BookingSlot>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.Status)
+             .HasConversion<int>();
+
+            e.HasOne(x => x.Booking)
+             .WithMany(b => b.BookingSlots)
+             .HasForeignKey(x => x.BookingId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(x => x.Court)
+             .WithMany(c => c.BookingSlots)
+             .HasForeignKey(x => x.CourtId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            // Index thường để query nhanh theo sân + ngày
+            e.HasIndex(x => new { x.CourtId, x.SlotDate, x.SlotStartTime })
+             .HasDatabaseName("ix_booking_slots_court_date_time");
+
+            // Partial unique index — chống double-booking tại DB level
+            // Status: HOLDING=1, BOOKED=2, BLOCKED=3
+            e.HasIndex(x => new { x.CourtId, x.SlotDate, x.SlotStartTime })
+             .IsUnique()
+             .HasDatabaseName("ux_booking_slots_active")
+             .HasFilter("\"Status\" IN (1, 2, 3)");
+        });
+
+        // ── CourtBlock ────────────────────────────────────────────────
+        modelBuilder.Entity<CourtBlock>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.Reason)
+             .HasMaxLength(500);
+
+            e.Property(x => x.Status)
+             .HasConversion<int>();
+
+            e.HasOne(x => x.Owner)
+             .WithMany(u => u.CourtBlocks)
+             .HasForeignKey(x => x.OwnerId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(x => x.Venue)
+             .WithMany(v => v.CourtBlocks)
+             .HasForeignKey(x => x.VenueId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(x => x.Court)
+             .WithMany(c => c.CourtBlocks)
+             .HasForeignKey(x => x.CourtId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── Payment ───────────────────────────────────────────────────
+        modelBuilder.Entity<Payment>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.Amount)
+             .HasPrecision(18, 2)
+             .IsRequired();
+
+            e.Property(x => x.Method)
+             .HasConversion<int>();
+
+            e.Property(x => x.Status)
+             .HasConversion<int>();
+
+            e.Property(x => x.TransactionCode)
+             .HasMaxLength(100);
+
+            e.HasOne(x => x.Booking)
+             .WithMany(b => b.Payments)
+             .HasForeignKey(x => x.BookingId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(x => x.User)
+             .WithMany(u => u.Payments)
+             .HasForeignKey(x => x.UserId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── Review ────────────────────────────────────────────────────
+        modelBuilder.Entity<Review>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.Rating)
+             .IsRequired();
+
+            e.Property(x => x.Comment)
+             .HasMaxLength(1000);
+
+            e.HasOne(x => x.User)
+             .WithMany(u => u.Reviews)
+             .HasForeignKey(x => x.UserId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(x => x.Venue)
+             .WithMany(v => v.Reviews)
+             .HasForeignKey(x => x.VenueId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(x => x.Booking)
+             .WithMany()
+             .HasForeignKey(x => x.BookingId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            // Mỗi booking chỉ được review đúng một lần
+            e.HasIndex(x => x.BookingId)
+             .IsUnique()
+             .HasDatabaseName("ux_reviews_booking");
+        });
+    }
+}
