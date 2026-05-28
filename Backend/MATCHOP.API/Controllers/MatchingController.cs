@@ -93,6 +93,12 @@ namespace MATCHOP.API.Controllers
         {
             var userId = _currentUserService.UserId ?? throw new AppException(ErrorCodes.UNAUTHORIZED, "Unauthorized");
             var result = await _matchQueueService.GetUserQueueStatusAsync(userId, sportId);
+            
+            if (result == null)
+            {
+                return Ok(ApiResponse<MatchQueueResponseDto>.Ok(null!, "User is not in queue"));
+            }
+
             return Ok(ApiResponse<MatchQueueResponseDto>.Ok(result));
         }
 

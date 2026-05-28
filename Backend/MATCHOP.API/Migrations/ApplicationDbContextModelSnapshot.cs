@@ -794,6 +794,11 @@ namespace MATCHOP.API.Migrations
                         .HasColumnType("uuid")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
                     b.Property<int>("Level")
                         .HasColumnType("integer");
 
@@ -807,6 +812,9 @@ namespace MATCHOP.API.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Level")
+                        .HasDatabaseName("ix_user_skills_level");
 
                     b.HasIndex("SportId");
 
@@ -1170,9 +1178,9 @@ namespace MATCHOP.API.Migrations
             modelBuilder.Entity("MATCHOP.API.Entities.UserSkill", b =>
                 {
                     b.HasOne("MATCHOP.API.Entities.Sport", "Sport")
-                        .WithMany()
+                        .WithMany("UserSkills")
                         .HasForeignKey("SportId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("MATCHOP.API.Entities.User", "User")
@@ -1232,6 +1240,8 @@ namespace MATCHOP.API.Migrations
                     b.Navigation("Bookings");
 
                     b.Navigation("Courts");
+
+                    b.Navigation("UserSkills");
                 });
 
             modelBuilder.Entity("MATCHOP.API.Entities.User", b =>

@@ -1,6 +1,6 @@
 using MATCHOP.API.Entities;
 using Microsoft.EntityFrameworkCore;
-
+using MATCHOP.API.Enums;
 namespace MATCHOP.API;
 
 public class ApplicationDbContext : DbContext
@@ -503,18 +503,38 @@ public class ApplicationDbContext : DbContext
              .IsUnique()
              .HasDatabaseName("ux_reviews_booking");
         });
-
-        // ── UserSkill ─────────────────────────────────────────────────
+        //-- UserSkill
+        // ── UserSkill ───────────────────────────────────
         modelBuilder.Entity<UserSkill>(e =>
         {
             e.HasKey(x => x.Id);
-            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
-            e.Property(x => x.Level).HasConversion<int>();
 
-            e.HasOne(x => x.User).WithMany(u => u.UserSkills).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne(x => x.Sport).WithMany().HasForeignKey(x => x.SportId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
 
-            e.HasIndex(x => new { x.UserId, x.SportId }).IsUnique().HasDatabaseName("ux_user_skills_user_sport");
+            e.Property(x => x.Level)
+             .HasConversion<int>();
+
+            e.Property(x => x.CreatedAt)
+             .HasDefaultValueSql("NOW()");
+
+            e.HasOne(x => x.User)
+             .WithMany(u => u.UserSkills)
+             .HasForeignKey(x => x.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Sport)
+             .WithMany(s => s.UserSkills)
+             .HasForeignKey(x => x.SportId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            // 1 user chỉ có 1 skill level cho 1 môn
+            e.HasIndex(x => new { x.UserId, x.SportId })
+             .IsUnique()
+             .HasDatabaseName("ux_user_skills_user_sport");
+
+            e.HasIndex(x => x.Level)
+             .HasDatabaseName("ix_user_skills_level");
         });
 
         // ── MatchPost ─────────────────────────────────────────────────

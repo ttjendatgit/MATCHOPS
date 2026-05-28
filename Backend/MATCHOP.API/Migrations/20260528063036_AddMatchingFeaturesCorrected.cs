@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MATCHOP.API.Migrations
 {
     /// <inheritdoc />
-    public partial class AddMatchingFeatures : Migration
+    public partial class AddMatchingFeaturesCorrected : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -120,6 +120,7 @@ namespace MATCHOP.API.Migrations
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     SportId = table.Column<Guid>(type: "uuid", nullable: false),
                     Level = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -130,7 +131,7 @@ namespace MATCHOP.API.Migrations
                         column: x => x.SportId,
                         principalTable: "Sports",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_UserSkills_Users_UserId",
                         column: x => x.UserId,
@@ -262,6 +263,11 @@ namespace MATCHOP.API.Migrations
                 table: "MatchSuggestions",
                 columns: new[] { "UserId", "SuggestedUserId", "SportId" },
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_user_skills_level",
+                table: "UserSkills",
+                column: "Level");
 
             migrationBuilder.CreateIndex(
                 name: "IX_UserSkills_SportId",
