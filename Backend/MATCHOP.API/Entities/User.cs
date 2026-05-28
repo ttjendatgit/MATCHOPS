@@ -1,4 +1,4 @@
-﻿using MATCHOP.API.Enums;
+using MATCHOP.API.Enums;
 
 namespace MATCHOP.API.Entities
 {
@@ -45,5 +45,9 @@ namespace MATCHOP.API.Entities
         public ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
         public ICollection<Review> Reviews { get; set; } = new List<Review>();
+
+        public ICollection<UserSkill> UserSkills { get; set; } = new List<UserSkill>();
+        public ICollection<MatchPost> MatchPosts { get; set; } = new List<MatchPost>();
+        public ICollection<MatchRoomPlayer> MatchRooms { get; set; } = new List<MatchRoomPlayer>();
     }
 }

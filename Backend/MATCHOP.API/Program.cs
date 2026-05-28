@@ -1,4 +1,4 @@
-﻿using MATCHOP.API;
+using MATCHOP.API;
 using MATCHOP.API.Middlewares;
 using MATCHOP.API.Services;
 using Microsoft.EntityFrameworkCore;
@@ -104,6 +104,18 @@ builder.Services.AddScoped<IBookingSlotRepository, BookingSlotRepository>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<ICourtAvailabilityService, CourtAvailabilityService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
+
+// Matching Features
+builder.Services.AddScoped<IUserSkillRepository, UserSkillRepository>();
+builder.Services.AddScoped<IMatchPostRepository, MatchPostRepository>();
+builder.Services.AddScoped<IMatchQueueRepository, MatchQueueRepository>();
+builder.Services.AddScoped<IMatchRoomRepository, MatchRoomRepository>();
+
+builder.Services.AddScoped<IUserSkillService, UserSkillService>();
+builder.Services.AddScoped<IMatchPostService, MatchPostService>();
+builder.Services.AddScoped<IMatchQueueService, MatchQueueService>();
+builder.Services.AddScoped<IMatchRoomService, MatchRoomService>();
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

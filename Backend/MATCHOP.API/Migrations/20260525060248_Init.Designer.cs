@@ -3,6 +3,7 @@ using System;
 using MATCHOP.API;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MATCHOP.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260525060248_Init")]
+    partial class Init
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -315,219 +318,6 @@ namespace MATCHOP.API.Migrations
                     b.ToTable("CourtImages");
                 });
 
-            modelBuilder.Entity("MATCHOP.API.Entities.MatchPost", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<string>("City")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CreatorId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("District")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<int>("MaxSkillLevel")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("MinSkillLevel")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<DateTime>("PreferredTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("SlotsFilled")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("SlotsNeeded")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("SportId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatorId")
-                        .HasDatabaseName("ix_match_posts_creator");
-
-                    b.HasIndex("SportId")
-                        .HasDatabaseName("ix_match_posts_sport");
-
-                    b.HasIndex("Status")
-                        .HasDatabaseName("ix_match_posts_status");
-
-                    b.HasIndex("City", "District")
-                        .HasDatabaseName("ix_match_posts_location");
-
-                    b.ToTable("MatchPosts");
-                });
-
-            modelBuilder.Entity("MATCHOP.API.Entities.MatchQueue", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<string>("City")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("District")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime>("JoinedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("PreferredTimeEnd")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("PreferredTimeStart")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("SkillLevel")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("SportId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SportId");
-
-                    b.HasIndex("UserId", "SportId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_match_queue_user_sport");
-
-                    b.ToTable("MatchQueues");
-                });
-
-            modelBuilder.Entity("MATCHOP.API.Entities.MatchRoom", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("MatchPostId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("SportId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MatchPostId");
-
-                    b.HasIndex("SportId");
-
-                    b.ToTable("MatchRooms");
-                });
-
-            modelBuilder.Entity("MATCHOP.API.Entities.MatchRoomPlayer", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<bool>("IsHost")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("JoinedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("RoomId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("RoomId", "UserId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_match_room_players_room_user");
-
-                    b.ToTable("MatchRoomPlayers");
-                });
-
-            modelBuilder.Entity("MATCHOP.API.Entities.MatchSuggestion", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<double>("Score")
-                        .HasColumnType("double precision");
-
-                    b.Property<Guid>("SportId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("SuggestedUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SportId");
-
-                    b.HasIndex("SuggestedUserId");
-
-                    b.HasIndex("UserId", "SuggestedUserId", "SportId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_match_suggestions_unique");
-
-                    b.ToTable("MatchSuggestions");
-                });
-
             modelBuilder.Entity("MATCHOP.API.Entities.Payment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -787,36 +577,6 @@ namespace MATCHOP.API.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("MATCHOP.API.Entities.UserSkill", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<int>("Level")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("SportId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SportId");
-
-                    b.HasIndex("UserId", "SportId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_user_skills_user_sport");
-
-                    b.ToTable("UserSkills");
-                });
-
             modelBuilder.Entity("MATCHOP.API.Entities.Venue", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1009,108 +769,6 @@ namespace MATCHOP.API.Migrations
                     b.Navigation("Court");
                 });
 
-            modelBuilder.Entity("MATCHOP.API.Entities.MatchPost", b =>
-                {
-                    b.HasOne("MATCHOP.API.Entities.User", "Creator")
-                        .WithMany("MatchPosts")
-                        .HasForeignKey("CreatorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("MATCHOP.API.Entities.Sport", "Sport")
-                        .WithMany()
-                        .HasForeignKey("SportId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Creator");
-
-                    b.Navigation("Sport");
-                });
-
-            modelBuilder.Entity("MATCHOP.API.Entities.MatchQueue", b =>
-                {
-                    b.HasOne("MATCHOP.API.Entities.Sport", "Sport")
-                        .WithMany()
-                        .HasForeignKey("SportId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("MATCHOP.API.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Sport");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("MATCHOP.API.Entities.MatchRoom", b =>
-                {
-                    b.HasOne("MATCHOP.API.Entities.MatchPost", "MatchPost")
-                        .WithMany("MatchRooms")
-                        .HasForeignKey("MatchPostId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("MATCHOP.API.Entities.Sport", "Sport")
-                        .WithMany()
-                        .HasForeignKey("SportId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("MatchPost");
-
-                    b.Navigation("Sport");
-                });
-
-            modelBuilder.Entity("MATCHOP.API.Entities.MatchRoomPlayer", b =>
-                {
-                    b.HasOne("MATCHOP.API.Entities.MatchRoom", "Room")
-                        .WithMany("Players")
-                        .HasForeignKey("RoomId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MATCHOP.API.Entities.User", "User")
-                        .WithMany("MatchRooms")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Room");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("MATCHOP.API.Entities.MatchSuggestion", b =>
-                {
-                    b.HasOne("MATCHOP.API.Entities.Sport", "Sport")
-                        .WithMany()
-                        .HasForeignKey("SportId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("MATCHOP.API.Entities.User", "SuggestedUser")
-                        .WithMany()
-                        .HasForeignKey("SuggestedUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MATCHOP.API.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Sport");
-
-                    b.Navigation("SuggestedUser");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("MATCHOP.API.Entities.Payment", b =>
                 {
                     b.HasOne("MATCHOP.API.Entities.Booking", "Booking")
@@ -1167,25 +825,6 @@ namespace MATCHOP.API.Migrations
                     b.Navigation("Venue");
                 });
 
-            modelBuilder.Entity("MATCHOP.API.Entities.UserSkill", b =>
-                {
-                    b.HasOne("MATCHOP.API.Entities.Sport", "Sport")
-                        .WithMany()
-                        .HasForeignKey("SportId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("MATCHOP.API.Entities.User", "User")
-                        .WithMany("UserSkills")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Sport");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("MATCHOP.API.Entities.Venue", b =>
                 {
                     b.HasOne("MATCHOP.API.Entities.User", "Owner")
@@ -1217,16 +856,6 @@ namespace MATCHOP.API.Migrations
                     b.Navigation("PriceRules");
                 });
 
-            modelBuilder.Entity("MATCHOP.API.Entities.MatchPost", b =>
-                {
-                    b.Navigation("MatchRooms");
-                });
-
-            modelBuilder.Entity("MATCHOP.API.Entities.MatchRoom", b =>
-                {
-                    b.Navigation("Players");
-                });
-
             modelBuilder.Entity("MATCHOP.API.Entities.Sport", b =>
                 {
                     b.Navigation("Bookings");
@@ -1240,17 +869,11 @@ namespace MATCHOP.API.Migrations
 
                     b.Navigation("CourtBlocks");
 
-                    b.Navigation("MatchPosts");
-
-                    b.Navigation("MatchRooms");
-
                     b.Navigation("OwnedVenues");
 
                     b.Navigation("Payments");
 
                     b.Navigation("Reviews");
-
-                    b.Navigation("UserSkills");
                 });
 
             modelBuilder.Entity("MATCHOP.API.Entities.Venue", b =>
