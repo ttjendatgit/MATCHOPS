@@ -49,5 +49,6 @@ namespace MATCHOP.API.Entities
         public ICollection<UserSkill> UserSkills { get; set; } = new List<UserSkill>();
         public ICollection<MatchPost> MatchPosts { get; set; } = new List<MatchPost>();
         public ICollection<MatchRoomPlayer> MatchRooms { get; set; } = new List<MatchRoomPlayer>();
+        public ICollection<AIChatMessage> AIChatMessages { get; set; } = new List<AIChatMessage>();
     }
 }

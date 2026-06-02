@@ -116,6 +116,11 @@ builder.Services.AddScoped<IMatchPostService, MatchPostService>();
 builder.Services.AddScoped<IMatchQueueService, MatchQueueService>();
 builder.Services.AddScoped<IMatchRoomService, MatchRoomService>();
 
+// AI Assistant
+builder.Services.AddHttpClient<IGroqService, GroqService>();
+builder.Services.AddScoped<IAIChatRepository, AIChatRepository>();
+builder.Services.AddScoped<IAIService, AIService>();
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

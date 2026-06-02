@@ -27,6 +27,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<MatchRoom> MatchRooms => Set<MatchRoom>();
     public DbSet<MatchRoomPlayer> MatchRoomPlayers => Set<MatchRoomPlayer>();
     public DbSet<MatchSuggestion> MatchSuggestions => Set<MatchSuggestion>();
+    public DbSet<AIChatMessage> AIChatMessages => Set<AIChatMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -608,6 +609,20 @@ public class ApplicationDbContext : DbContext
             e.HasOne(x => x.Sport).WithMany().HasForeignKey(x => x.SportId).OnDelete(DeleteBehavior.Restrict);
 
             e.HasIndex(x => new { x.UserId, x.SuggestedUserId, x.SportId }).IsUnique().HasDatabaseName("ux_match_suggestions_unique");
+        });
+
+        // ── AIChatMessage ─────────────────────────────────────────────
+        modelBuilder.Entity<AIChatMessage>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.Property(x => x.Role).IsRequired().HasMaxLength(20);
+            e.Property(x => x.Content).IsRequired();
+            e.Property(x => x.CreatedAt).HasDefaultValueSql("NOW()");
+
+            e.HasOne(x => x.User).WithMany(u => u.AIChatMessages).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.UserId).HasDatabaseName("ix_ai_chat_messages_user");
         });
     }
 }
