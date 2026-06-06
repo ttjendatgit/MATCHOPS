@@ -49,6 +49,7 @@ public class ApplicationDbContext : DbContext
              .IsRequired(false);
 
             e.Property(x => x.Avatar)
+             .HasColumnName("AvatarUrl")
              .HasMaxLength(500);
 
             e.Property(x => x.Role)

@@ -8,6 +8,7 @@
         public const string UserNotFound = "USER_NOT_FOUND";
         public const string VenueNotFound = "VENUE_NOT_FOUND";
         public const string CourtNotFound = "COURT_NOT_FOUND";
+        public const string CourtBlockNotFound = "COURT_BLOCK_NOT_FOUND";
         public const string SportNotFound = "SPORT_NOT_FOUND";
         public const string SportNameAlreadyExists = "SPORT_NAME_ALREADY_EXISTS";
 

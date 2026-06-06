@@ -1,0 +1,301 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Autofill override ──────────────────────────────────────────────────────
+   Chrome/Edge forcibly paint :-webkit-autofill with a yellow or blue fill.
+   The box-shadow inset trick (previous approach) suppressed it but created a
+   visible dark rectangle. Instead:
+   1. Set background-color transparent directly — Chrome 80+ respects this.
+   2. Use an extremely long transition so Chrome's deferred autofill colour
+      never visibly kicks in during a normal session (600 000 s ≈ 166 hours).
+   Placed outside @layer so it is not de-prioritised by the Tailwind cascade.
+   ─────────────────────────────────────────────────────────────────────────── */
+.lf-input:autofill,
+.lf-input:-webkit-autofill,
+.lf-input:-webkit-autofill:hover,
+.lf-input:-webkit-autofill:focus,
+.lf-input:-webkit-autofill:active {
+  background-color: transparent !important;
+  -webkit-text-fill-color: #ffffff !important;
+  color: #ffffff !important;
+  transition: background-color 600000s 0s, color 600000s 0s !important;
+  caret-color: #ffffff;
+}
+
+@layer utilities {
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  .animate-float-delayed {
+    animation: float 6s ease-in-out infinite 1.5s;
+  }
+  .animate-float-slow {
+    animation: float 8s ease-in-out infinite 3s;
+  }
+  .animate-fade-up {
+    animation: fade-up 0.7s ease-out both;
+  }
+  .animate-glow-pulse {
+    animation: glow-pulse 4s ease-in-out infinite;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50% { opacity: 0.25; transform: scale(1.08); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 172 100% 48%;
+    --primary-foreground: 220 40% 12%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 172 100% 48%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 172 100% 48%;
+    --primary-foreground: 220 40% 12%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 172 100% 48%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1, h2, h3 {
+    @apply font-heading;
+  }
+}
+
+/* ── Hero Intro Overlay ────────────────────────────────────────────────────────
+   All classes prefixed mi- to avoid collision with Tailwind or shadcn/ui.
+   Active only during the ~2.8s intro animation; overlay is removed via
+   display:none after the timeline completes.
+   Dev replay: append ?intro=1 to any page URL to force replay.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.mi-intro-root {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.mi-split-panel {
+  position: fixed;
+  top: 0;
+  width: 50vw;
+  height: 100vh;
+  overflow: hidden;
+  will-change: transform;
+}
+
+.mi-split-left  { left: 0; }
+.mi-split-right { right: 0; }
+
+/* Full-stage spans 100vw inside a 50vw panel; overflow:hidden clips to half.
+   Left stage anchors left:0, right stage anchors right:0 — both center at 50vw. */
+.mi-full-stage {
+  position: absolute;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.mi-split-left  .mi-full-stage { left: 0; }
+.mi-split-right .mi-full-stage { right: 0; }
+
+/* Layer stacking (front-to-back) */
+.mi-layer-1-left, .mi-layer-1-right { z-index: 60; }
+.mi-layer-2-left, .mi-layer-2-right { z-index: 50; }
+.mi-layer-3-left, .mi-layer-3-right { z-index: 40; }
+
+/* ── Stage 1 — front, near-black navy + teal center glow (hosts M + wordmark) */
+.mi-stage-one {
+  background:
+    radial-gradient(circle at 50% 48%, rgba(0, 245, 212, 0.38) 0%, rgba(0, 201, 134, 0.10) 32%, transparent 56%),
+    #020617;
+}
+
+/* M logo mark — GSAP controls transform; no CSS transform set here */
+.mi-intro-logo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 116px;
+  height: auto;
+  opacity: 0; /* hidden before GSAP initialises; GSAP animates in via autoAlpha */
+  filter:
+    drop-shadow(0 0 7px  rgba(0, 245, 212, 1.00))
+    drop-shadow(0 0 22px rgba(0,  201, 134, 0.80))
+    drop-shadow(0 0 56px rgba(0,  169, 143, 0.45));
+  will-change: transform, opacity;
+}
+
+/* MATCHOPS wordmark — sits below M logo, splits with panels for dramatic rip effect */
+.mi-intro-wordmark {
+  position: absolute;
+  top: calc(50% + 68px);
+  left: 50%;
+  /* transform managed by GSAP (xPercent: -50); no CSS transform */
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.44em;
+  color: rgba(0, 245, 212, 0.78);
+  text-transform: uppercase;
+  opacity: 0; /* hidden before GSAP initialises; GSAP animates in via autoAlpha */
+  will-change: transform, opacity;
+}
+
+/* ── Stage 2 — mid, SPORT TEAL (clearly distinct from stage 1's near-black) */
+.mi-stage-two {
+  background: linear-gradient(158deg, #061e1c 0%, #082d2a 45%, #0a3935 100%);
+}
+
+.mi-stage-two::before {
+  content: "";
+  position: absolute;
+  top: -20vh;
+  left: 22vw;
+  width: 56vw;
+  height: 155vh;
+  background: linear-gradient(180deg, #00c986 0%, #00a98f 55%, #007a69 100%);
+  transform: skewX(-13deg);
+  opacity: 0.45;
+}
+
+/* ── Stage 3 — back, OCEAN CYAN-BLUE (clearly distinct from stages 1 and 2) */
+.mi-stage-three {
+  background: linear-gradient(158deg, #041520 0%, #063450 45%, #075985 100%);
+}
+
+.mi-stage-three::before {
+  content: "";
+  position: absolute;
+  top: -22vh;
+  left: 14vw;
+  width: 72vw;
+  height: 155vh;
+  background: linear-gradient(180deg, #22d3ee 0%, #0284c7 55%, #0369a1 100%);
+  transform: skewX(-13deg);
+  opacity: 0.48;
+}
+
+/* ── Emerald-cyan beam — sharp sword of light at the split seam */
+.mi-center-beam {
+  position: fixed;
+  top: -22vh;
+  left: 50%;
+  z-index: 90;
+  width: 5vw;
+  height: 155vh;
+  pointer-events: none;
+  opacity: 0; /* hidden before GSAP initialises; GSAP animates in during split phase */
+  transform: translateX(-50%) skewX(-13deg);
+  background: linear-gradient(
+    180deg,
+    rgba(0, 245, 212, 0.08) 0%,
+    rgba(34, 211, 238, 0.95) 38%,
+    rgba(0,  201, 134, 0.88) 58%,
+    rgba(0,  169, 143, 0.72) 100%
+  );
+  box-shadow:
+    0 0 28px rgba(34, 211, 238, 0.70),
+    0 0 70px rgba(0,  201, 134, 0.52),
+    0 0 120px rgba(0, 169, 143, 0.28);
+}
+
+/* ── Speed lines — camera-motion burst during split */
+.mi-speed-lines {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.mi-speed-line {
+  position: absolute;
+  top: -35vh;
+  width: 1px;
+  height: 160vh;
+  transform: skewX(-13deg);
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(34, 211, 238, 0.58) 38%,
+    rgba(0, 245, 212, 0.38) 62%,
+    transparent 100%
+  );
+  opacity: 0;
+}
+
+.mi-speed-line:nth-child(1) { left: 36%; }
+.mi-speed-line:nth-child(2) { left: 43%; }
+.mi-speed-line:nth-child(3) { left: 51%; }
+.mi-speed-line:nth-child(4) { left: 59%; }
+.mi-speed-line:nth-child(5) { left: 66%; }
+
+@media (max-width: 768px) {
+  .mi-intro-logo      { width: 80px; }
+  .mi-intro-wordmark  { font-size: 9px; letter-spacing: 0.36em; top: calc(50% + 52px); }
+  .mi-center-beam     { width: 12vw; }
+  /* Widen slabs on narrow viewports so both halves look balanced */
+  .mi-stage-two::before   { left: 10vw; width: 70vw; }
+  .mi-stage-three::before { left: 8vw;  width: 78vw; }
+}
+
+/* CSS-level fallback: hide intro immediately if reduced-motion is preferred. */
+@media (prefers-reduced-motion: reduce) {
+  .mi-intro-root { display: none !important; }
+}

@@ -35,14 +35,9 @@ public class CourtAvailabilityService : ICourtAvailabilityService
                 "Không tìm thấy sân đang hoạt động.",
                 StatusCodes.Status404NotFound);
 
-        // ── 2. Load price rules và booking slots song song ────────────────────
-        var priceRulesTask = _priceRuleRepository.GetPublicCourtPriceRulesAsync(courtId);
-        var existingSlotsTask = _bookingSlotRepository.GetSlotsByCourtAndDateAsync(courtId, date);
-
-        await Task.WhenAll(priceRulesTask, existingSlotsTask);
-
-        var priceRules = priceRulesTask.Result;
-        var existingSlots = existingSlotsTask.Result;
+        // ── 2. Load price rules then booking slots (sequential — shared DbContext is not thread-safe)
+        var priceRules = await _priceRuleRepository.GetPublicCourtPriceRulesAsync(courtId);
+        var existingSlots = await _bookingSlotRepository.GetSlotsByCourtAndDateAsync(courtId, date);
 
         // ── 3. Build lookup: startTime → status ───────────────────────────────
         // Nếu 1 slot có nhiều bản ghi (không nên xảy ra nhưng phòng thủ)

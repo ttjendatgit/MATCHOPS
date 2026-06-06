@@ -84,23 +84,23 @@ public class CourtsController : ControllerBase
     }
 
     /// <summary>GET /api/courts/{id}/availability?date=yyyy-MM-dd</summary>
-[HttpGet("api/courts/{id:guid}/availability")]
-[AllowAnonymous]
-public async Task<IActionResult> GetAvailability(
-    Guid id,
-    [FromQuery] string date)
-{
-    if (!DateOnly.TryParseExact(
-            date, "yyyy-MM-dd",
-            System.Globalization.CultureInfo.InvariantCulture,
-            System.Globalization.DateTimeStyles.None,
-            out var parsedDate))
+    [HttpGet("courts/{id:guid}/availability")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAvailability(
+        Guid id,
+        [FromQuery] string date)
     {
-        return BadRequest(ApiResponse<object>.Fail(
-            "Định dạng ngày không hợp lệ. Vui lòng dùng yyyy-MM-dd."));
-    }
+        if (!DateOnly.TryParseExact(
+                date, "yyyy-MM-dd",
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None,
+                out var parsedDate))
+        {
+            return BadRequest(ApiResponse<object>.Fail(
+                "Định dạng ngày không hợp lệ. Vui lòng dùng yyyy-MM-dd."));
+        }
 
-    var result = await _availabilityService.GetAvailabilityAsync(id, parsedDate);
-    return Ok(ApiResponse<CourtAvailabilityResponseDto>.Ok(result));
-}
+        var result = await _availabilityService.GetAvailabilityAsync(id, parsedDate);
+        return Ok(ApiResponse<CourtAvailabilityResponseDto>.Ok(result));
+    }
 }

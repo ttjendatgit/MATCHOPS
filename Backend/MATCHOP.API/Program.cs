@@ -12,10 +12,25 @@ using MATCHOP.API.Validators;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Mvc;
-
+using Microsoft.AspNetCore.RateLimiting;
 using MATCHOP.API.Repositories.Interfaces;
 using MATCHOP.API.Services.Interfaces;
+using System.Threading.RateLimiting;
+
 var builder = WebApplication.CreateBuilder(args);
+
+var configuredOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? [];
+
+if (configuredOrigins.Length == 0)
+{
+    var frontendBaseUrl = builder.Configuration["Frontend:BaseUrl"];
+    configuredOrigins = string.IsNullOrWhiteSpace(frontendBaseUrl)
+        ? []
+        : [frontendBaseUrl];
+}
+
 builder.Services.AddControllers()
     .ConfigureApiBehaviorOptions(options =>
     {
@@ -49,6 +64,53 @@ builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestDtoValidator
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+    {
+        if (configuredOrigins.Length == 0 || configuredOrigins.Contains("*"))
+        {
+            policy.AllowAnyOrigin()
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+            return;
+        }
+
+        policy.WithOrigins(configuredOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("database");
+
+builder.Services.AddRateLimiter(options =>
+{
+    var permitLimit = builder.Configuration.GetValue("RateLimiting:PermitLimit", 100);
+    var windowSeconds = builder.Configuration.GetValue("RateLimiting:WindowSeconds", 60);
+    var queueLimit = builder.Configuration.GetValue("RateLimiting:QueueLimit", 0);
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+    {
+        var key = context.User.Identity?.IsAuthenticated == true
+            ? context.User.Identity.Name ?? context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "authenticated"
+            : context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            key,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromSeconds(windowSeconds),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = queueLimit,
+                AutoReplenishment = true
+            });
+    });
+});
 
 builder.Services.AddEndpointsApiExplorer();
 
@@ -104,6 +166,9 @@ builder.Services.AddScoped<IBookingSlotRepository, BookingSlotRepository>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<ICourtAvailabilityService, CourtAvailabilityService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
+builder.Services.AddScoped<ICourtBlockService, CourtBlockService>();
+builder.Services.AddHostedService<BookingExpirationHostedService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -137,12 +202,20 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    app.UseHsts();
+}
 
 app.UseHttpsRedirection();
+app.UseRouting();
 
+app.UseCors("Frontend");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapHealthChecks("/health").AllowAnonymous();
 app.MapControllers();
 
 app.Run();

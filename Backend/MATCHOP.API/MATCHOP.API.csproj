@@ -35,4 +35,10 @@
     <Folder Include="Migrations\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="MATCHOP.API.Tests\**\*.cs" />
+    <Content Remove="MATCHOP.API.Tests\**\*" />
+    <None Remove="MATCHOP.API.Tests\**\*" />
+  </ItemGroup>
+
 </Project>

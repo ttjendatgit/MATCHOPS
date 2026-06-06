@@ -18,7 +18,12 @@ public class BookingSlotRepository : IBookingSlotRepository
     {
         return await _context.BookingSlots
             .AsNoTracking()
-            .Where(s => s.CourtId == courtId && s.SlotDate == date)
+            .Where(s =>
+                s.CourtId == courtId &&
+                s.SlotDate == date &&
+                (s.Status == BookingSlotStatus.HOLDING ||
+                 s.Status == BookingSlotStatus.BOOKED ||
+                 s.Status == BookingSlotStatus.BLOCKED))
             .ToListAsync();
     }
 
@@ -34,5 +39,21 @@ public class BookingSlotRepository : IBookingSlotRepository
             (s.Status == BookingSlotStatus.HOLDING ||
              s.Status == BookingSlotStatus.BOOKED ||
              s.Status == BookingSlotStatus.BLOCKED));
+    }
+
+    public async Task<List<BookingSlot>> GetActiveSlotsAsync(
+        Guid courtId,
+        DateOnly date,
+        List<TimeOnly> slotStartTimes)
+    {
+        return await _context.BookingSlots
+            .Where(s =>
+                s.CourtId == courtId &&
+                s.SlotDate == date &&
+                slotStartTimes.Contains(s.SlotStartTime) &&
+                (s.Status == BookingSlotStatus.HOLDING ||
+                 s.Status == BookingSlotStatus.BOOKED ||
+                 s.Status == BookingSlotStatus.BLOCKED))
+            .ToListAsync();
     }
 }

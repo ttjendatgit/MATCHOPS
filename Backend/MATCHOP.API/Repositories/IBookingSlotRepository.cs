@@ -11,4 +11,9 @@ public interface IBookingSlotRepository
         Guid courtId,
         DateOnly date,
         List<TimeOnly> slotStartTimes);
+
+    Task<List<BookingSlot>> GetActiveSlotsAsync(
+        Guid courtId,
+        DateOnly date,
+        List<TimeOnly> slotStartTimes);
 }
