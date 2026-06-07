@@ -12,11 +12,11 @@ appsettings.Development.json
 appsettings.Production.json
 appsettings.Local.json
 
+_build_tmp*/
 TestResults/
 coverage/
 
 .DS_Store
 Thumbs.db
-
 
 Backend/MATCHOP.API/appsettings.json
