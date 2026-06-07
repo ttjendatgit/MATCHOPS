@@ -97,7 +97,7 @@ namespace MATCHOP.API.Services
                 Id = post.Id,
                 CreatorId = post.CreatorId,
                 CreatorName = post.Creator?.FullName ?? "Unknown",
-                CreatorAvatar = post.Creator?.Avatar,
+                CreatorAvatar = post.Creator?.AvatarUrl,
                 SportId = post.SportId,
                 SportName = post.Sport?.Name ?? "Unknown",
                 MinSkillLevel = post.MinSkillLevel.ToString(),

@@ -75,7 +75,7 @@ namespace MATCHOP.API.Services
                 {
                     UserId = p.UserId,
                     FullName = p.User?.FullName ?? "Unknown",
-                    Avatar = p.User?.Avatar,
+                    Avatar = p.User?.AvatarUrl,
                     IsHost = p.IsHost,
                     Status = p.Status.ToString(),
                     JoinedAt = p.JoinedAt

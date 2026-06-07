@@ -1,4 +1,4 @@
-﻿namespace MATCHOP.API.Enums;
+namespace MATCHOP.API.Enums;
 
 public enum UserRole
 {
@@ -111,7 +111,15 @@ public enum SkillLevel
     Beginner = 1,
     Intermediate = 2,
     Advanced = 3,
-    Competitive = 4
+    Professional = 4,
+    Competitive = Professional
+}
+
+public enum SportType
+{
+    Badminton = 1,
+    Pickleball = 2,
+    TableTennis = 3
 }
 
 public enum MatchPostStatus
@@ -136,4 +144,21 @@ public enum MatchRoomPlayerStatus
     ACCEPTED = 2,
     REJECTED = 3,
     LEFT = 4
+}
+
+public enum ConversationType
+{
+    PRIVATE = 1,
+    GROUP = 2,
+    VENUE = 3
+}
+
+public enum NotificationType
+{
+    BOOKING_CREATED = 1,
+    BOOKING_CANCELLED = 2,
+    MATCH_JOINED = 3,
+    MATCH_INVITATION = 4,
+    NEW_MESSAGE = 5,
+    PAYMENT_SUCCESS = 6
 }
