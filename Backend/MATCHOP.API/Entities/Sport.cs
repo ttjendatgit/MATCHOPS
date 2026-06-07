@@ -15,4 +15,5 @@ public class Sport
     // Navigation properties
     public ICollection<Court> Courts { get; set; } = new List<Court>();
     public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+    public ICollection<UserSkill> UserSkills { get; set; } = new List<UserSkill>();
 }

@@ -1,4 +1,4 @@
-﻿using BCrypt.Net;
+using BCrypt.Net;
 using MATCHOP.API.DTOs.Auth;
 using MATCHOP.API.Entities;
 using MATCHOP.API.Enums;
@@ -39,7 +39,7 @@ namespace MATCHOP.API.Services
 
             if (!string.IsNullOrWhiteSpace(dto.Phone))
             {
-                var phoneExists = await _context.Users.AnyAsync(x => x.Phone == dto.Phone);
+                var phoneExists = await _context.Users.AnyAsync(x => x.PhoneNumber == dto.Phone);
                 if (phoneExists)
                 {
                     throw new AppException("PHONE_ALREADY_EXISTS", "Số điện thoại đã được sử dụng.");
@@ -54,7 +54,7 @@ namespace MATCHOP.API.Services
                 Id = Guid.NewGuid(),
                 FullName = dto.FullName.Trim(),
                 Email = email,
-                Phone = string.IsNullOrWhiteSpace(dto.Phone) ? null : dto.Phone.Trim(),
+                PhoneNumber = string.IsNullOrWhiteSpace(dto.Phone) ? null : dto.Phone.Trim(),
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
                 Role = UserRole.USER,
                 Status = UserStatus.ACTIVE,
@@ -231,7 +231,7 @@ namespace MATCHOP.API.Services
                     Id = Guid.NewGuid(),
                     FullName = payload.Name ?? email,
                     Email = email,
-                    Avatar = payload.Picture,
+                    AvatarUrl = payload.Picture,
                     GoogleId = payload.Subject,
                     PasswordHash = null,
                     Role = UserRole.USER,
@@ -253,7 +253,7 @@ namespace MATCHOP.API.Services
                 }
 
                 user.GoogleId ??= payload.Subject;
-                user.Avatar ??= payload.Picture;
+                user.AvatarUrl ??= payload.Picture;
                 user.EmailConfirmed = true;
                 user.LastLoginAt = DateTime.UtcNow;
                 user.UpdatedAt = DateTime.UtcNow;

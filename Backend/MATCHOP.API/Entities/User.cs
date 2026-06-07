@@ -1,4 +1,4 @@
-﻿using MATCHOP.API.Enums;
+using MATCHOP.API.Enums;
 
 namespace MATCHOP.API.Entities
 {
@@ -10,11 +10,15 @@ namespace MATCHOP.API.Entities
 
         public string Email { get; set; } = string.Empty;
 
-        public string? Phone { get; set; }
+        public string? PhoneNumber { get; set; }
 
         public string? PasswordHash { get; set; }
 
-        public string? Avatar { get; set; }
+        public string? AvatarUrl { get; set; }
+
+        public SkillLevel SkillLevel { get; set; } = SkillLevel.Beginner;
+
+        public string? PreferredPlayingArea { get; set; }
 
         public UserRole Role { get; set; }
 
@@ -45,5 +49,14 @@ namespace MATCHOP.API.Entities
         public ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
         public ICollection<Review> Reviews { get; set; } = new List<Review>();
+
+        public ICollection<UserSkill> UserSkills { get; set; } = new List<UserSkill>();
+        public ICollection<MatchPost> MatchPosts { get; set; } = new List<MatchPost>();
+        public ICollection<MatchRoomPlayer> MatchRooms { get; set; } = new List<MatchRoomPlayer>();
+        public ICollection<AIChatMessage> AIChatMessages { get; set; } = new List<AIChatMessage>();
+        public ICollection<ConversationParticipant> Conversations { get; set; } = new List<ConversationParticipant>();
+        public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+        public ICollection<UserConnection> Connections { get; set; } = new List<UserConnection>();
+        public ICollection<FavoriteSport> FavoriteSports { get; set; } = new List<FavoriteSport>();
     }
 }

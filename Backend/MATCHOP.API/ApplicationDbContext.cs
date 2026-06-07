@@ -1,6 +1,6 @@
-﻿using MATCHOP.API.Entities;
+using MATCHOP.API.Entities;
 using Microsoft.EntityFrameworkCore;
-
+using MATCHOP.API.Enums;
 namespace MATCHOP.API;
 
 public class ApplicationDbContext : DbContext
@@ -11,6 +11,7 @@ public class ApplicationDbContext : DbContext
     }
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<FavoriteSport> FavoriteSports => Set<FavoriteSport>();
     public DbSet<Sport> Sports => Set<Sport>();
     public DbSet<Venue> Venues => Set<Venue>();
     public DbSet<Court> Courts => Set<Court>();
@@ -21,6 +22,18 @@ public class ApplicationDbContext : DbContext
     public DbSet<CourtBlock> CourtBlocks => Set<CourtBlock>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Review> Reviews => Set<Review>();
+    public DbSet<UserSkill> UserSkills => Set<UserSkill>();
+    public DbSet<MatchPost> MatchPosts => Set<MatchPost>();
+    public DbSet<MatchQueue> MatchQueues => Set<MatchQueue>();
+    public DbSet<MatchRoom> MatchRooms => Set<MatchRoom>();
+    public DbSet<MatchRoomPlayer> MatchRoomPlayers => Set<MatchRoomPlayer>();
+    public DbSet<MatchSuggestion> MatchSuggestions => Set<MatchSuggestion>();
+    public DbSet<AIChatMessage> AIChatMessages => Set<AIChatMessage>();
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<ConversationParticipant> ConversationParticipants => Set<ConversationParticipant>();
+    public DbSet<Message> Messages => Set<Message>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<UserConnection> UserConnections => Set<UserConnection>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -42,15 +55,22 @@ public class ApplicationDbContext : DbContext
              .IsRequired()
              .HasMaxLength(200);
 
-            e.Property(x => x.Phone)
+            e.Property(x => x.PhoneNumber)
              .HasMaxLength(20);
 
             e.Property(x => x.PasswordHash)
              .IsRequired(false);
 
-            e.Property(x => x.Avatar)
-             .HasColumnName("AvatarUrl")
+            e.Property(x => x.AvatarUrl)
              .HasMaxLength(500);
+
+            e.Property(x => x.SkillLevel)
+             .HasConversion<int>()
+             .HasDefaultValue(SkillLevel.Beginner)
+             .HasSentinel((SkillLevel)0);
+
+            e.Property(x => x.PreferredPlayingArea)
+             .HasMaxLength(200);
 
             e.Property(x => x.Role)
              .HasConversion<int>();
@@ -82,11 +102,33 @@ public class ApplicationDbContext : DbContext
             e.HasIndex(x => x.EmailVerificationTokenHash)
              .HasDatabaseName("ix_users_email_verification_token_hash");
 
-            // Phone nullable nhưng unique khi có giá trị
-            e.HasIndex(x => x.Phone)
+            e.HasIndex(x => x.PhoneNumber)
              .IsUnique()
-             .HasFilter("\"Phone\" IS NOT NULL")
-             .HasDatabaseName("ux_users_phone");
+             .HasFilter("\"PhoneNumber\" IS NOT NULL")
+             .HasDatabaseName("ux_users_phone_number");
+        });
+
+        modelBuilder.Entity<FavoriteSport>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.SportType)
+             .HasConversion<int>();
+
+            e.HasOne(x => x.User)
+             .WithMany(u => u.FavoriteSports)
+             .HasForeignKey(x => x.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.UserId)
+             .HasDatabaseName("ix_favorite_sports_user_id");
+
+            e.HasIndex(x => new { x.UserId, x.SportType })
+             .IsUnique()
+             .HasDatabaseName("ux_favorite_sports_user_sport_type");
         });
 
         // ── Sport ─────────────────────────────────────────────────────
@@ -497,6 +539,166 @@ public class ApplicationDbContext : DbContext
             e.HasIndex(x => x.BookingId)
              .IsUnique()
              .HasDatabaseName("ux_reviews_booking");
+        });
+        //-- UserSkill
+        // ── UserSkill ───────────────────────────────────
+        modelBuilder.Entity<UserSkill>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.Level)
+             .HasConversion<int>();
+
+            e.Property(x => x.CreatedAt)
+             .HasDefaultValueSql("NOW()");
+
+            e.HasOne(x => x.User)
+             .WithMany(u => u.UserSkills)
+             .HasForeignKey(x => x.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Sport)
+             .WithMany(s => s.UserSkills)
+             .HasForeignKey(x => x.SportId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            // 1 user chỉ có 1 skill level cho 1 môn
+            e.HasIndex(x => new { x.UserId, x.SportId })
+             .IsUnique()
+             .HasDatabaseName("ux_user_skills_user_sport");
+
+            e.HasIndex(x => x.Level)
+             .HasDatabaseName("ix_user_skills_level");
+        });
+
+        // ── MatchPost ─────────────────────────────────────────────────
+        modelBuilder.Entity<MatchPost>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.Property(x => x.MinSkillLevel).HasConversion<int>();
+            e.Property(x => x.MaxSkillLevel).HasConversion<int>();
+            e.Property(x => x.Status).HasConversion<int>();
+            e.Property(x => x.City).IsRequired().HasMaxLength(100);
+            e.Property(x => x.District).IsRequired().HasMaxLength(100);
+            e.Property(x => x.Note).HasMaxLength(1000);
+
+            e.HasOne(x => x.Creator).WithMany(u => u.MatchPosts).HasForeignKey(x => x.CreatorId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Sport).WithMany().HasForeignKey(x => x.SportId).OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(x => x.CreatorId).HasDatabaseName("ix_match_posts_creator");
+            e.HasIndex(x => x.SportId).HasDatabaseName("ix_match_posts_sport");
+            e.HasIndex(x => new { x.City, x.District }).HasDatabaseName("ix_match_posts_location");
+            e.HasIndex(x => x.Status).HasDatabaseName("ix_match_posts_status");
+        });
+
+        // ── MatchQueue ────────────────────────────────────────────────
+        modelBuilder.Entity<MatchQueue>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.Property(x => x.SkillLevel).HasConversion<int>();
+            e.Property(x => x.City).IsRequired().HasMaxLength(100);
+            e.Property(x => x.District).IsRequired().HasMaxLength(100);
+
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Sport).WithMany().HasForeignKey(x => x.SportId).OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(x => new { x.UserId, x.SportId }).IsUnique().HasDatabaseName("ux_match_queue_user_sport");
+        });
+
+        // ── MatchRoom ─────────────────────────────────────────────────
+        modelBuilder.Entity<MatchRoom>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.Property(x => x.Status).HasConversion<int>();
+
+            e.HasOne(x => x.Sport).WithMany().HasForeignKey(x => x.SportId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.MatchPost).WithMany(p => p.MatchRooms).HasForeignKey(x => x.MatchPostId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ── MatchRoomPlayer ───────────────────────────────────────────
+        modelBuilder.Entity<MatchRoomPlayer>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.Property(x => x.Status).HasConversion<int>();
+
+            e.HasOne(x => x.Room).WithMany(r => r.Players).HasForeignKey(x => x.RoomId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.User).WithMany(u => u.MatchRooms).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(x => new { x.RoomId, x.UserId }).IsUnique().HasDatabaseName("ux_match_room_players_room_user");
+        });
+
+        // ── MatchSuggestion ───────────────────────────────────────────
+        modelBuilder.Entity<MatchSuggestion>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.SuggestedUser).WithMany().HasForeignKey(x => x.SuggestedUserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Sport).WithMany().HasForeignKey(x => x.SportId).OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(x => new { x.UserId, x.SuggestedUserId, x.SportId }).IsUnique().HasDatabaseName("ux_match_suggestions_unique");
+        });
+
+        // ── AIChatMessage ─────────────────────────────────────────────
+        modelBuilder.Entity<AIChatMessage>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.Property(x => x.Role).IsRequired().HasMaxLength(20);
+            e.Property(x => x.Content).IsRequired();
+            e.Property(x => x.CreatedAt).HasDefaultValueSql("NOW()");
+
+            e.HasOne(x => x.User).WithMany(u => u.AIChatMessages).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.UserId).HasDatabaseName("ix_ai_chat_messages_user");
+        });
+
+        // ── Chat & Notifications ──────────────────────────────────────
+        modelBuilder.Entity<Conversation>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.Property(x => x.Type).HasConversion<int>();
+        });
+
+        modelBuilder.Entity<ConversationParticipant>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.HasOne(x => x.Conversation).WithMany(c => c.Participants).HasForeignKey(x => x.ConversationId);
+            e.HasOne(x => x.User).WithMany(u => u.Conversations).HasForeignKey(x => x.UserId);
+            e.HasIndex(x => new { x.ConversationId, x.UserId }).IsUnique();
+        });
+
+        modelBuilder.Entity<Message>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.HasOne(x => x.Conversation).WithMany(c => c.Messages).HasForeignKey(x => x.ConversationId);
+            e.HasOne(x => x.Sender).WithMany().HasForeignKey(x => x.SenderId);
+        });
+
+        modelBuilder.Entity<Notification>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.Property(x => x.Type).HasConversion<int>();
+            e.HasOne(x => x.User).WithMany(u => u.Notifications).HasForeignKey(x => x.UserId);
+        });
+
+        modelBuilder.Entity<UserConnection>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.HasOne(x => x.User).WithMany(u => u.Connections).HasForeignKey(x => x.UserId);
         });
     }
 }

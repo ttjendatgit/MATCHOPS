@@ -12,6 +12,8 @@ appsettings.Development.json
 appsettings.Production.json
 appsettings.Local.json
 
+
+_build_tmp*/
 TestResults/
 coverage/
 

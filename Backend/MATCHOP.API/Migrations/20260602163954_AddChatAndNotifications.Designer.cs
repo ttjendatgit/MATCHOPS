@@ -3,6 +3,7 @@ using System;
 using MATCHOP.API;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MATCHOP.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260602163954_AddChatAndNotifications")]
+    partial class AddChatAndNotifications
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -398,31 +401,6 @@ namespace MATCHOP.API.Migrations
                         .HasDatabaseName("ix_court_images_court_sort_order");
 
                     b.ToTable("CourtImages");
-                });
-
-            modelBuilder.Entity("MATCHOP.API.Entities.FavoriteSport", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<int>("SportType")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_favorite_sports_user_id");
-
-                    b.HasIndex("UserId", "SportType")
-                        .IsUnique()
-                        .HasDatabaseName("ux_favorite_sports_user_sport_type");
-
-                    b.ToTable("FavoriteSports");
                 });
 
             modelBuilder.Entity("MATCHOP.API.Entities.MatchPost", b =>
@@ -894,7 +872,7 @@ namespace MATCHOP.API.Migrations
                         .HasColumnType("character varying(50)")
                         .HasDefaultValue("LOCAL");
 
-                    b.Property<string>("AvatarUrl")
+                    b.Property<string>("Avatar")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
@@ -933,21 +911,12 @@ namespace MATCHOP.API.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text");
 
-                    b.Property<string>("PhoneNumber")
+                    b.Property<string>("Phone")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<string>("PreferredPlayingArea")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
                     b.Property<int>("Role")
                         .HasColumnType("integer");
-
-                    b.Property<int>("SkillLevel")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1);
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -967,10 +936,10 @@ namespace MATCHOP.API.Migrations
                     b.HasIndex("GoogleId")
                         .HasDatabaseName("ix_users_google_id");
 
-                    b.HasIndex("PhoneNumber")
+                    b.HasIndex("Phone")
                         .IsUnique()
-                        .HasDatabaseName("ux_users_phone_number")
-                        .HasFilter("\"PhoneNumber\" IS NOT NULL");
+                        .HasDatabaseName("ux_users_phone")
+                        .HasFilter("\"Phone\" IS NOT NULL");
 
                     b.ToTable("Users");
                 });
@@ -1259,17 +1228,6 @@ namespace MATCHOP.API.Migrations
                     b.Navigation("Court");
                 });
 
-            modelBuilder.Entity("MATCHOP.API.Entities.FavoriteSport", b =>
-                {
-                    b.HasOne("MATCHOP.API.Entities.User", "User")
-                        .WithMany("FavoriteSports")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("MATCHOP.API.Entities.MatchPost", b =>
                 {
                     b.HasOne("MATCHOP.API.Entities.User", "Creator")
@@ -1556,8 +1514,6 @@ namespace MATCHOP.API.Migrations
                     b.Navigation("Conversations");
 
                     b.Navigation("CourtBlocks");
-
-                    b.Navigation("FavoriteSports");
 
                     b.Navigation("MatchPosts");
 

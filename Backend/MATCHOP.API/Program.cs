@@ -12,9 +12,12 @@ using MATCHOP.API.Validators;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Mvc;
+using MATCHOP.API.Hubs;
 using Microsoft.AspNetCore.RateLimiting;
 using MATCHOP.API.Repositories.Interfaces;
 using MATCHOP.API.Services.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
+
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,6 +33,7 @@ if (configuredOrigins.Length == 0)
         ? []
         : [frontendBaseUrl];
 }
+
 
 builder.Services.AddControllers()
     .ConfigureApiBehaviorOptions(options =>
@@ -80,6 +84,14 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(configuredOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod();
+    });
+
+    options.AddPolicy("SignalRPolicy", policy =>
+    {
+        policy.AllowAnyHeader()
+            .AllowAnyMethod()
+            .SetIsOriginAllowed(_ => true)
+            .AllowCredentials();
     });
 });
 
@@ -154,6 +166,8 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ISportService, SportService>();
 builder.Services.AddScoped<IVenueRepository, VenueRepository>();
 builder.Services.AddScoped<IVenueService, VenueService>();
@@ -166,6 +180,30 @@ builder.Services.AddScoped<IBookingSlotRepository, BookingSlotRepository>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<ICourtAvailabilityService, CourtAvailabilityService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
+
+// Matching Features
+builder.Services.AddScoped<IUserSkillRepository, UserSkillRepository>();
+builder.Services.AddScoped<IMatchPostRepository, MatchPostRepository>();
+builder.Services.AddScoped<IMatchQueueRepository, MatchQueueRepository>();
+builder.Services.AddScoped<IMatchRoomRepository, MatchRoomRepository>();
+
+builder.Services.AddScoped<IUserSkillService, UserSkillService>();
+builder.Services.AddScoped<IMatchPostService, MatchPostService>();
+builder.Services.AddScoped<IMatchQueueService, MatchQueueService>();
+builder.Services.AddScoped<IMatchRoomService, MatchRoomService>();
+
+// AI Assistant
+builder.Services.AddHttpClient<IGroqService, GroqService>();
+builder.Services.AddScoped<IAIChatRepository, AIChatRepository>();
+builder.Services.AddScoped<IAIService, AIService>();
+
+// Real-time Chat & Notifications
+builder.Services.AddScoped<IChatRepository, ChatRepository>();
+builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddSignalR();
+
+
+
 builder.Services.AddScoped<ICourtBlockService, CourtBlockService>();
 builder.Services.AddHostedService<BookingExpirationHostedService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
@@ -190,17 +228,37 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = audience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key!))
     };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chatHub"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 builder.Services.AddAuthorization();
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    dbContext.Database.Migrate();
+}
+
 app.UseMiddleware<ExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+app.UseSwagger();
+app.UseSwaggerUI();
 }
 else
 {
@@ -209,6 +267,9 @@ else
 
 app.UseHttpsRedirection();
 app.UseRouting();
+app.UseStaticFiles();
+
+
 
 app.UseCors("Frontend");
 app.UseRateLimiter();
@@ -217,6 +278,7 @@ app.UseAuthorization();
 
 app.MapHealthChecks("/health").AllowAnonymous();
 app.MapControllers();
+app.MapHub<ChatHub>("/chatHub").RequireCors("SignalRPolicy");
 
 app.Run();
 
