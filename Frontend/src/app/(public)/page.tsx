@@ -26,13 +26,13 @@ function HeroFloatingCards() {
   return (
     <div className="relative hidden lg:flex flex-col gap-4 items-end pt-8">
       {/* Venue preview card */}
-      <div className="animate-float w-[280px] rounded-2xl border border-white/10 bg-white/8 backdrop-blur-md p-4 shadow-2xl shadow-black/40">
+      <div className="animate-float w-[280px] rounded-2xl border border-white/[0.16] bg-slate-950/80 backdrop-blur-xl p-4 shadow-[0_24px_64px_rgba(0,0,0,0.70),0_0_0_1px_rgba(255,255,255,0.05)] ring-1 ring-inset ring-white/[0.04]">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-[#FF8000] animate-pulse" />
             <span className="text-xs font-medium text-[#FF8000]">Còn 4 khung giờ</span>
           </div>
-          <Badge className="bg-[#FF8000]/10 text-[#FF8000] border border-[#FF8000]/22 text-[10px] px-2">
+          <Badge className="bg-[#FF8000]/12 text-[#FF8000] border border-[#FF8000]/28 text-[10px] px-2">
             Nổi bật
           </Badge>
         </div>
@@ -49,15 +49,16 @@ function HeroFloatingCards() {
           </div>
           <span className="text-[#FF8000] text-xs font-bold">150k/giờ</span>
         </div>
-        <div className="mt-3 rounded-lg h-16 bg-gradient-to-r from-[#141414] via-[#0A0A0A] to-slate-900 flex items-center justify-center overflow-hidden">
-          <Activity className="h-6 w-6 text-[#FF8000]/60" />
+        <div className="mt-3 rounded-lg h-16 bg-gradient-to-br from-[#1c1c1c] via-[#111111] to-slate-900/80 border border-white/[0.06] flex items-center justify-center overflow-hidden relative">
+          <div className="absolute inset-0 bg-[#FF8000]/[0.04]" />
+          <Activity className="h-6 w-6 text-[#FF8000]/75 relative z-10" />
         </div>
       </div>
 
       {/* Confirmation card */}
-      <div className="animate-float-delayed w-[240px] rounded-2xl border border-white/10 bg-white/8 backdrop-blur-md p-4 shadow-2xl shadow-black/40 mr-8">
+      <div className="animate-float-delayed w-[240px] rounded-2xl border border-white/[0.16] bg-slate-950/80 backdrop-blur-xl p-4 shadow-[0_24px_64px_rgba(0,0,0,0.70),0_0_0_1px_rgba(255,255,255,0.05)] ring-1 ring-inset ring-white/[0.04] mr-8">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FF8000]/12">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FF8000]/14 border border-[#FF8000]/20">
             <CheckCircle2 className="h-5 w-5 text-[#FF8000]" />
           </div>
           <div>
@@ -65,14 +66,14 @@ function HeroFloatingCards() {
             <p className="text-[11px] text-slate-400 mt-0.5">Sân A · 19:00 – 21:00</p>
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2">
+        <div className="mt-3 flex items-center gap-2 rounded-lg bg-white/[0.06] border border-white/[0.06] px-3 py-2">
           <Clock className="h-3.5 w-3.5 text-slate-400" />
           <span className="text-[11px] text-slate-400">Xác nhận trong 28 giây</span>
         </div>
       </div>
 
       {/* Rating pill */}
-      <div className="animate-float-slow w-[200px] rounded-2xl border border-white/10 bg-white/8 backdrop-blur-md px-4 py-3 shadow-2xl shadow-black/40 mr-4">
+      <div className="animate-float-slow w-[200px] rounded-2xl border border-white/[0.16] bg-slate-950/80 backdrop-blur-xl px-4 py-3 shadow-[0_24px_64px_rgba(0,0,0,0.70),0_0_0_1px_rgba(255,255,255,0.05)] ring-1 ring-inset ring-white/[0.04] mr-4">
         <div className="flex items-center gap-2 mb-1.5">
           {[1, 2, 3, 4, 5].map((s) => (
             <Star key={s} className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400" />
@@ -127,7 +128,7 @@ export default function HomePage() {
                 </p>
 
                 {/* Glassmorphism search panel */}
-                <div className="mt-8 rounded-2xl border border-white/15 bg-white/10 p-2 shadow-2xl shadow-black/50 backdrop-blur-xl">
+                <div className="mt-8 rounded-2xl border border-white/[0.18] bg-slate-950/60 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.65)] backdrop-blur-xl ring-1 ring-inset ring-white/[0.04]">
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <div className="flex flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/8 px-4 py-3 min-w-0">
                       <Activity className="h-4 w-4 shrink-0 text-[#FF8000]" />

@@ -209,7 +209,7 @@ export const ParticleHero: React.FC<ParticleHeroProps> = ({
         playsInline
         preload="auto"
         aria-hidden="true"
-        style={{ filter: "brightness(1.08) contrast(1.18) saturate(1.15)" }}
+        style={{ filter: "brightness(1.14) contrast(1.20) saturate(1.18)" }}
       >
         <source src="/videos/hero-sports-bg.mp4" type="video/mp4" />
       </video>
@@ -217,46 +217,58 @@ export const ParticleHero: React.FC<ParticleHeroProps> = ({
       {/* ── Cinematic overlay stack ─────────────────────────────────────── */}
 
       {/* 0. Thin global tint — unifies the layer stack, prevents raw-video bleed */}
-      <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+      <div className="absolute inset-0 bg-black/12 pointer-events-none" />
 
-      {/* 1. Left readability gradient — heavy left for text, transparent by 66% */}
+      {/* 1. Left readability gradient — text stays legible, right stays open */}
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{ background: "linear-gradient(to right, rgba(0,0,0,0.80) 0%, rgba(0,0,0,0.46) 26%, rgba(0,0,0,0.16) 50%, transparent 66%)" }}
+        style={{ background: "linear-gradient(to right, rgba(0,0,0,0.68) 0%, rgba(0,0,0,0.38) 28%, rgba(0,0,0,0.10) 52%, transparent 64%)" }}
       />
 
-      {/* 2. Right edge shading — only the far edge; center-right stays open */}
+      {/* 2. Right edge shading — subtle frame on far edge only */}
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{ background: "linear-gradient(to left, rgba(0,0,0,0.38) 0%, transparent 26%)" }}
+        style={{ background: "linear-gradient(to left, rgba(0,0,0,0.28) 0%, transparent 24%)" }}
       />
 
-      {/* 3. Top cinematic frame — darker upper strip, breathes through the midfield */}
+      {/* 3. Top cinematic frame */}
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.48) 0%, rgba(0,0,0,0.08) 28%, transparent 44%)" }}
+        style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.36) 0%, rgba(0,0,0,0.06) 28%, transparent 44%)" }}
       />
 
-      {/* 4. Bottom depth — rich shadows at base, grounds the composition */}
+      {/* 4. Bottom depth */}
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{ background: "linear-gradient(to top, rgba(0,0,0,0.60) 0%, rgba(0,0,0,0.20) 28%, transparent 46%)" }}
+        style={{ background: "linear-gradient(to top, rgba(0,0,0,0.48) 0%, rgba(0,0,0,0.14) 28%, transparent 46%)" }}
       />
 
-      {/* 5. Wide edge vignette — darkens corners only; center-right remains open */}
+      {/* 5. Wide edge vignette — corners only */}
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse 130% 105% at 48% 50%, transparent 32%, rgba(0,0,0,0.38) 72%, rgba(0,0,0,0.58) 100%)" }}
+        style={{ background: "radial-gradient(ellipse 130% 105% at 48% 50%, transparent 36%, rgba(0,0,0,0.26) 72%, rgba(0,0,0,0.44) 100%)" }}
       />
 
-      {/* 6. Cool stadium color grade — barely-there atmospheric direction */}
+      {/* 6. Subtle dark grade — anchors the base tone */}
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{ background: "linear-gradient(130deg, rgba(2,6,23,0.20) 0%, transparent 42%, rgba(8,47,73,0.10) 100%)" }}
+        style={{ background: "linear-gradient(130deg, rgba(2,6,23,0.12) 0%, transparent 48%)" }}
+      />
+
+      {/* 7. Brand orange ambient — warm energy from bottom-left energises the text area */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse 62% 50% at 4% 90%, rgba(255,128,0,0.11) 0%, transparent 58%)" }}
+      />
+
+      {/* 8. Brand green ambient — cool accent lifts the right / cards area */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse 52% 44% at 96% 82%, rgba(134,210,50,0.08) 0%, transparent 52%)" }}
       />
 
       {/* Particle Animation Background — softened so it complements rather than competes */}
-      <div className="absolute inset-0 flex items-center justify-center opacity-40">
+      <div className="absolute inset-0 flex items-center justify-center opacity-50">
         <div
           ref={containerRef}
           className="relative"
@@ -337,9 +349,9 @@ export const ParticleHero: React.FC<ParticleHeroProps> = ({
       
       {/* Ambient Effects */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-20 left-20 w-80 h-80 bg-[#FF8000]/5 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#86D232]/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[120vh] h-[120vh] bg-gradient-radial from-[#FF8000]/3 to-transparent rounded-full"></div>
+        <div className="absolute top-24 left-16 w-[420px] h-[420px] bg-[#FF8000]/8 rounded-full blur-[80px] animate-glow-pulse"></div>
+        <div className="absolute bottom-16 right-16 w-[520px] h-[520px] bg-[#86D232]/6 rounded-full blur-[100px] animate-glow-pulse" style={{ animationDelay: '2.5s' }}></div>
+        <div className="absolute bottom-28 right-28 w-72 h-72 bg-[#FF8000]/5 rounded-full blur-[64px]"></div>
       </div>
     </section>
   );

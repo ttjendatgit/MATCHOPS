@@ -214,10 +214,11 @@
   left: 50%;
   /* transform managed by GSAP (xPercent: -50); no CSS transform */
   white-space: nowrap;
+  font-family: 'Monr', 'Roba', 'Arial Black', system-ui, sans-serif;
   font-size: 11px;
   font-weight: 900;
-  letter-spacing: 0.44em;
-  color: rgba(255, 128, 0, 0.88);
+  letter-spacing: 0.46em;
+  color: rgba(255, 128, 0, 0.92);
   text-transform: uppercase;
   opacity: 0; /* hidden before GSAP initialises; GSAP animates in via autoAlpha */
   will-change: transform, opacity;
@@ -314,7 +315,7 @@
 
 @media (max-width: 768px) {
   .mi-intro-logo      { width: 80px; }
-  .mi-intro-wordmark  { font-size: 9px; letter-spacing: 0.36em; top: calc(50% + 52px); }
+  .mi-intro-wordmark  { font-size: 9px; letter-spacing: 0.40em; top: calc(50% + 52px); }
   .mi-center-beam     { width: 12vw; }
   /* Widen slabs on narrow viewports so both halves look balanced */
   .mi-stage-two::before   { left: 10vw; width: 70vw; }
@@ -324,4 +325,32 @@
 /* CSS-level fallback: hide intro immediately if reduced-motion is preferred. */
 @media (prefers-reduced-motion: reduce) {
   .mi-intro-root { display: none !important; }
+}
+
+/* ── Monr brand font — primary brand / wordmark identity ────────────────────
+   Applied exclusively to .brand-wordmark and .mi-intro-wordmark.
+   Never set on body, headings, or generic UI text.
+   ─────────────────────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: "Monr";
+  src: url("/fonts/Monr.otf") format("opentype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Roba brand font — retained as fallback ───────────────────────────────── */
+@font-face {
+  font-family: "Roba";
+  src: url("/fonts/Roba.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Scoped to brand identity only — never apply to UI / body text */
+.brand-wordmark {
+  font-family: 'Monr', 'Roba', 'Arial Black', system-ui, sans-serif;
+  font-weight: 900;
+  letter-spacing: 0.06em;
 }

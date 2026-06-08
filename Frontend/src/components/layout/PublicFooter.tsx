@@ -61,9 +61,9 @@ export function PublicFooter() {
           <div className="col-span-2">
             <Link href="/" className="group flex w-fit items-center gap-2.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FF8000] shadow-md shadow-[#FF8000]/30 transition-all duration-200 group-hover:shadow-lg group-hover:shadow-[#FF8000]/45 group-hover:scale-105">
-                <span className="select-none font-black italic text-[16px] text-white leading-none" aria-hidden>M</span>
+                <span className="brand-wordmark select-none italic text-[16px] text-white leading-none" aria-hidden>M</span>
               </div>
-              <span className="select-none text-[15px] font-black uppercase tracking-[0.06em] leading-none text-white transition-opacity duration-200 group-hover:opacity-90">
+              <span className="brand-wordmark select-none text-[15px] uppercase leading-none text-white transition-opacity duration-200 group-hover:opacity-90">
                 Match
                 <span className="bg-gradient-to-r from-[#FF8000] via-[#FF9A20] to-[#86D232] bg-clip-text text-transparent">
                   Ops
