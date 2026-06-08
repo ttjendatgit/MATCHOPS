@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Deep-black html backdrop — prevents white flash when intro overlay fades */
+html {
+  background-color: #030303;
+}
+
 /* ── Autofill override ──────────────────────────────────────────────────────
    Chrome/Edge forcibly paint :-webkit-autofill with a yellow or blue fill.
    The box-shadow inset trick (previous approach) suppressed it but created a
@@ -156,7 +161,7 @@
 }
 
 .mi-split-panel {
-  position: fixed;
+  position: absolute;
   top: 0;
   width: 50vw;
   height: 100vh;
@@ -185,33 +190,112 @@
 .mi-layer-2-left, .mi-layer-2-right { z-index: 50; }
 .mi-layer-3-left, .mi-layer-3-right { z-index: 40; }
 
-/* ── Stage 1 — front, near-black + orange center glow (hosts M + wordmark) */
-.mi-stage-one {
+/* ── Seamless cinematic background canvas — sits below all split panels (z-index 30).
+   Provides the premium atmosphere visible as panels pull apart and during the final
+   root fade-out. Never split, never seamed. */
+.mi-bg-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
   background:
-    radial-gradient(circle at 50% 48%, rgba(255, 128, 0, 0.35) 0%, rgba(134, 210, 50, 0.10) 32%, transparent 56%),
-    #020617;
+    /* Bottom warm-orange glow — sport arena energy source */
+    radial-gradient(ellipse 90% 55% at 50% 88%, rgba(255, 128, 0, 0.28) 0%, rgba(200, 75, 0, 0.11) 42%, transparent 65%),
+    /* Mid subtle green accent — athletic fresh energy */
+    radial-gradient(ellipse 45% 30% at 72% 22%, rgba(134, 210, 50, 0.07) 0%, transparent 55%),
+    /* Deep navy atmospheric layer */
+    radial-gradient(ellipse 60% 40% at 48% 45%, rgba(8, 18, 36, 0.55) 0%, transparent 60%),
+    /* Base: deep navy top → pure black bottom */
+    linear-gradient(175deg, #05080F 0%, #040610 22%, #030508 50%, #030303 78%, #020202 100%);
 }
 
-/* M logo mark — GSAP controls transform; no CSS transform set here */
+/* ── Stage 1 — front, solid dark — atmosphere provided by mi-bg-canvas below */
+.mi-stage-one {
+  background: linear-gradient(175deg, #04060A 0%, #050810 28%, #030508 58%, #030303 100%);
+}
+
+/* M logo mark — GSAP controls transform; no CSS transform set here.
+   position:absolute relative to mi-intro-root (viewport-sized fixed element).
+   z-index 67 → sits above all split panels (max z-index 60). */
 .mi-intro-logo {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 116px;
+  z-index: 67;
+  width: 136px;
   height: auto;
   opacity: 0; /* hidden before GSAP initialises; GSAP animates in via autoAlpha */
   filter:
-    drop-shadow(0 0 7px  rgba(255, 128,   0, 1.00))
-    drop-shadow(0 0 22px rgba(255, 128,   0, 0.80))
-    drop-shadow(0 0 56px rgba(134, 210,  50, 0.45));
+    drop-shadow(0 0 2px  rgba(255, 255, 255, 0.55))
+    drop-shadow(0 0 8px  rgba(255, 128,   0, 1.00))
+    drop-shadow(0 0 22px rgba(255, 128,   0, 0.72))
+    drop-shadow(0 0 42px rgba(255, 128,   0, 0.26))
+    drop-shadow(0 0 18px rgba(134, 210,  50, 0.16));
   will-change: transform, opacity;
 }
 
-/* MATCHOPS wordmark — sits below M logo, splits with panels for dramatic rip effect */
+/* Radial glow orb behind the M — GSAP animates scale/opacity at split moment */
+.mi-logo-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 65;
+  width: 210px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,128,0,0.58) 0%, rgba(255,128,0,0.18) 44%, transparent 70%);
+  filter: blur(26px);
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+
+/* Slow-drifting ambient depth blobs — pure CSS, no GSAP.
+   z-index 33 — above bg-canvas (30), below all split panels (40+). */
+.mi-ambient-blob {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform;
+  z-index: 33;
+}
+
+.mi-blob-orange {
+  width: 400px;
+  height: 400px;
+  bottom: -90px;
+  left: -80px;
+  background: radial-gradient(circle, rgba(255,128,0,0.13) 0%, transparent 65%);
+  filter: blur(55px);
+  animation: mi-blob-drift 16s ease-in-out infinite alternate;
+}
+
+.mi-blob-green {
+  width: 360px;
+  height: 360px;
+  top: -70px;
+  right: -70px;
+  background: radial-gradient(circle, rgba(134,210,50,0.09) 0%, transparent 65%);
+  filter: blur(65px);
+  animation: mi-blob-drift-rev 20s ease-in-out infinite alternate;
+  animation-delay: -5s;
+}
+
+@keyframes mi-blob-drift {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(26px, -16px); }
+}
+
+@keyframes mi-blob-drift-rev {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(-20px, 14px); }
+}
+
+/* MATCHOPS wordmark — single element, z-index above all panels; never panel-clipped */
 .mi-intro-wordmark {
   position: absolute;
   top: calc(50% + 68px);
   left: 50%;
+  z-index: 67;
   /* transform managed by GSAP (xPercent: -50); no CSS transform */
   white-space: nowrap;
   font-family: 'Monr', 'Roba', 'Arial Black', system-ui, sans-serif;
@@ -260,7 +344,7 @@
 
 /* ── Orange-green beam — sharp sword of light at the split seam */
 .mi-center-beam {
-  position: fixed;
+  position: absolute;
   top: -22vh;
   left: 50%;
   z-index: 90;
@@ -271,20 +355,21 @@
   transform: translateX(-50%) skewX(-13deg);
   background: linear-gradient(
     180deg,
-    rgba(255, 128,   0, 0.08) 0%,
-    rgba(255, 128,   0, 0.95) 38%,
-    rgba(134, 210,  50, 0.88) 58%,
-    rgba(100, 160,  38, 0.72) 100%
+    rgba(255, 128,   0, 0.05) 0%,
+    rgba(255, 200,  80, 0.96) 30%,
+    rgba(255, 128,   0, 0.94) 46%,
+    rgba(134, 210,  50, 0.90) 60%,
+    rgba(86,  160,  30, 0.62) 100%
   );
   box-shadow:
-    0 0  28px rgba(255, 128,  0, 0.70),
-    0 0  70px rgba(134, 210, 50, 0.52),
-    0 0 120px rgba(100, 160, 38, 0.28);
+    0 0  20px rgba(255, 200, 80, 0.88),
+    0 0  55px rgba(255, 128,  0, 0.65),
+    0 0 110px rgba(134, 210, 50, 0.36);
 }
 
 /* ── Speed lines — camera-motion burst during split */
 .mi-speed-lines {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 85;
   pointer-events: none;
@@ -294,14 +379,15 @@
 .mi-speed-line {
   position: absolute;
   top: -35vh;
-  width: 1px;
+  width: 1.5px;
   height: 160vh;
   transform: skewX(-13deg);
   background: linear-gradient(
     180deg,
     transparent 0%,
-    rgba(255, 128,  0, 0.58) 38%,
-    rgba(134, 210, 50, 0.38) 62%,
+    rgba(255, 200, 80,  0.70) 32%,
+    rgba(255, 128,  0,  0.55) 48%,
+    rgba(134, 210, 50,  0.40) 64%,
     transparent 100%
   );
   opacity: 0;
@@ -313,10 +399,81 @@
 .mi-speed-line:nth-child(4) { left: 59%; }
 .mi-speed-line:nth-child(5) { left: 66%; }
 
+/* ── Impact ring — circle that bursts outward at split moment */
+.mi-impact-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 92;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 128, 0, 0.95);
+  box-shadow:
+    0 0 14px rgba(255, 128, 0, 0.80),
+    0 0 32px rgba(255, 128, 0, 0.40),
+    inset 0 0 14px rgba(255, 200, 80, 0.20);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* ── Metallic light sweep — glint crossing the M on materialise */
+.mi-light-sweep {
+  position: absolute;
+  top: calc(50% - 2px);
+  left: calc(50% - 68px); /* half of M logo width (136px) */
+  z-index: 68;
+  width: 136px;
+  height: 4px;
+  border-radius: 2px;
+  transform-origin: left center;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 15%,
+    rgba(255, 255, 255, 0.92) 38%,
+    rgba(255, 200, 80, 0.95) 50%,
+    rgba(255, 255, 255, 0.92) 62%,
+    rgba(255, 255, 255, 0.15) 85%,
+    transparent 100%
+  );
+  filter: blur(0.8px);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* ── Panel edge glow — trailing energy as panels rip from center */
+.mi-split-left::after,
+.mi-split-right::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 5px;
+  pointer-events: none;
+  z-index: 10;
+}
+.mi-split-left::after {
+  right: 0;
+  background: linear-gradient(to right, transparent, rgba(255, 200, 80, 0.55));
+}
+.mi-split-right::after {
+  left: 0;
+  background: linear-gradient(to left, transparent, rgba(255, 200, 80, 0.55));
+}
+
+/* ── Additional speed lines (positions 6 and 7) */
+.mi-speed-line:nth-child(6) { left: 24%; }
+.mi-speed-line:nth-child(7) { left: 76%; }
+
 @media (max-width: 768px) {
-  .mi-intro-logo      { width: 80px; }
+  .mi-intro-logo      { width: 86px; }
+  .mi-logo-glow       { width: 160px; height: 150px; }
   .mi-intro-wordmark  { font-size: 9px; letter-spacing: 0.40em; top: calc(50% + 52px); }
   .mi-center-beam     { width: 12vw; }
+  .mi-light-sweep     { left: calc(50% - 43px); width: 86px; }
   /* Widen slabs on narrow viewports so both halves look balanced */
   .mi-stage-two::before   { left: 10vw; width: 70vw; }
   .mi-stage-three::before { left: 8vw;  width: 78vw; }
@@ -325,6 +482,7 @@
 /* CSS-level fallback: hide intro immediately if reduced-motion is preferred. */
 @media (prefers-reduced-motion: reduce) {
   .mi-intro-root { display: none !important; }
+  .mi-ambient-blob { animation: none !important; }
 }
 
 /* ── Monr brand font — primary brand / wordmark identity ────────────────────
