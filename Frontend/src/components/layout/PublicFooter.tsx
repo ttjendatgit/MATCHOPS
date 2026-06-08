@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Activity } from "lucide-react";
 import { TextHoverEffect, FooterBackgroundGradient } from "@/components/hover-footer";
 
 // ─── Link data ────────────────────────────────────────────────────────────────
@@ -47,12 +46,12 @@ const columns = [
 
 export function PublicFooter() {
   return (
-    <footer className="relative overflow-hidden bg-slate-950">
-      {/* Radial emerald/cyan background */}
+    <footer className="relative overflow-hidden bg-[#030303]">
+      {/* Radial ambient background */}
       <FooterBackgroundGradient />
 
       {/* Top separator glow */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF8000]/40 to-transparent" />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
@@ -61,19 +60,18 @@ export function PublicFooter() {
           {/* Brand — 2 cols on md */}
           <div className="col-span-2">
             <Link href="/" className="group flex w-fit items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 shadow-md shadow-emerald-500/30 transition-all duration-200 group-hover:shadow-lg group-hover:shadow-emerald-500/50 group-hover:scale-105">
-                <Activity className="h-4 w-4 text-white" aria-hidden="true" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FF8000] shadow-md shadow-[#FF8000]/30 transition-all duration-200 group-hover:shadow-lg group-hover:shadow-[#FF8000]/45 group-hover:scale-105">
+                <span className="select-none font-black italic text-[16px] text-white leading-none" aria-hidden>M</span>
               </div>
-              <span className="select-none text-[15px] font-black tracking-tight text-white">
+              <span className="select-none text-[15px] font-black uppercase tracking-[0.06em] leading-none text-white transition-opacity duration-200 group-hover:opacity-90">
                 Match
-                <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-[#FF8000] via-[#FF9A20] to-[#86D232] bg-clip-text text-transparent">
                   Ops
                 </span>
               </span>
             </Link>
-            <p className="mt-4 max-w-[200px] text-sm leading-relaxed text-slate-400">
-              Đặt sân nhanh hơn.<br />
-              Kết nối trận đấu dễ hơn.
+            <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#C4C7C9]/50 select-none">
+              Match More<span className="mx-1.5 text-[#FF8000]" aria-hidden>·</span>Play More
             </p>
           </div>
 
@@ -88,7 +86,7 @@ export function PublicFooter() {
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-sm text-slate-400 transition-colors duration-200 hover:text-emerald-400"
+                      className="text-sm text-slate-400 transition-colors duration-200 hover:text-[#FF8000]"
                     >
                       {link.label}
                     </Link>
@@ -112,19 +110,19 @@ export function PublicFooter() {
           <div className="flex items-center gap-5">
             <Link
               href="#"
-              className="text-xs text-slate-500 transition-colors duration-200 hover:text-emerald-400"
+              className="text-xs text-slate-500 transition-colors duration-200 hover:text-[#FF8000]"
             >
               Điều khoản
             </Link>
             <Link
               href="#"
-              className="text-xs text-slate-500 transition-colors duration-200 hover:text-emerald-400"
+              className="text-xs text-slate-500 transition-colors duration-200 hover:text-[#FF8000]"
             >
               Bảo mật
             </Link>
             <Link
               href="#"
-              className="text-xs text-slate-500 transition-colors duration-200 hover:text-emerald-400"
+              className="text-xs text-slate-500 transition-colors duration-200 hover:text-[#FF8000]"
             >
               Liên hệ
             </Link>

@@ -87,8 +87,8 @@ export const ParticleHero: React.FC<ParticleHeroProps> = ({
         top: ${row * 1.8}rem;
         transform: scale(${scale});
         opacity: ${opacity};
-        background: hsl(172, 100%, ${lightness}%);
-        box-shadow: 0 0 ${glowSize * 0.2}rem 0 hsl(172, 100%, 48%);
+        background: hsl(30, 100%, ${lightness}%);
+        box-shadow: 0 0 ${glowSize * 0.2}rem 0 hsl(30, 100%, 50%);
         mix-blend-mode: screen;
         z-index: ${Math.round(totalParticles - distanceFromCenter * 5)};
         transition: transform 0.05s linear;
@@ -337,9 +337,9 @@ export const ParticleHero: React.FC<ParticleHeroProps> = ({
       
       {/* Ambient Effects */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-20 left-20 w-80 h-80 bg-teal-400/5 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-20 w-96 h-96 bg-teal-600/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[120vh] h-[120vh] bg-gradient-radial from-emerald-900/3 to-transparent rounded-full"></div>
+        <div className="absolute top-20 left-20 w-80 h-80 bg-[#FF8000]/5 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#86D232]/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[120vh] h-[120vh] bg-gradient-radial from-[#FF8000]/3 to-transparent rounded-full"></div>
       </div>
     </section>
   );

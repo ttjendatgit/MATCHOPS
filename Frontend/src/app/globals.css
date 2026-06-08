@@ -39,6 +39,29 @@
   .animate-glow-pulse {
     animation: glow-pulse 4s ease-in-out infinite;
   }
+  /* ── Sports-tech owner area utilities ── */
+  .sport-card {
+    background-color: #0A0A0A;
+    border: 1px solid rgba(134, 210, 50, 0.28);
+    border-radius: 0.75rem;
+  }
+  .sport-card-elevated {
+    background-color: #141414;
+    border: 1px solid rgba(134, 210, 50, 0.28);
+    border-radius: 0.75rem;
+  }
+  .sport-border {
+    border-color: rgba(134, 210, 50, 0.28);
+  }
+  .sport-divide > * + * {
+    border-top: 1px solid rgba(134, 210, 50, 0.15);
+  }
+  .sport-glow-orange {
+    box-shadow: 0 0 20px rgba(255, 128, 0, 0.15);
+  }
+  .sport-glow-green {
+    box-shadow: 0 0 20px rgba(134, 210, 50, 0.12);
+  }
 }
 
 @keyframes float {
@@ -64,42 +87,45 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 172 100% 48%;
-    --primary-foreground: 220 40% 12%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* ── MatchOps brand primary: energy orange #FF8000 ── */
+    --primary: 30 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    /* ── MatchOps brand secondary: sport green #86D232 ── */
+    --secondary: 89 64% 51%;
+    --secondary-foreground: 0 0% 100%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* ── Error red #FF4B4B ── */
+    --destructive: 0 100% 65%;
+    --destructive-foreground: 0 0% 100%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 172 100% 48%;
+    --ring: 30 100% 50%;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 172 100% 48%;
-    --primary-foreground: 220 40% 12%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 172 100% 48%;
+    --background: 0 0% 1%;           /* #030303 deep black */
+    --foreground: 0 0% 100%;
+    --card: 0 0% 4%;                  /* #0A0A0A surface */
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 8%;               /* #141414 elevated */
+    --popover-foreground: 0 0% 100%;
+    --primary: 30 100% 50%;           /* #FF8000 orange */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 89 64% 51%;          /* #86D232 green */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 8%;                 /* #141414 */
+    --muted-foreground: 206 4% 77%;   /* #C4C7C9 */
+    --accent: 0 0% 8%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 100% 65%;        /* #FF4B4B */
+    --destructive-foreground: 0 0% 100%;
+    --border: 89 64% 51%;             /* green border base — use /[.28] opacity modifier */
+    --input: 0 0% 8%;
+    --ring: 30 100% 50%;
   }
 
   * {
@@ -159,10 +185,10 @@
 .mi-layer-2-left, .mi-layer-2-right { z-index: 50; }
 .mi-layer-3-left, .mi-layer-3-right { z-index: 40; }
 
-/* ── Stage 1 — front, near-black navy + teal center glow (hosts M + wordmark) */
+/* ── Stage 1 — front, near-black + orange center glow (hosts M + wordmark) */
 .mi-stage-one {
   background:
-    radial-gradient(circle at 50% 48%, rgba(0, 245, 212, 0.38) 0%, rgba(0, 201, 134, 0.10) 32%, transparent 56%),
+    radial-gradient(circle at 50% 48%, rgba(255, 128, 0, 0.35) 0%, rgba(134, 210, 50, 0.10) 32%, transparent 56%),
     #020617;
 }
 
@@ -175,9 +201,9 @@
   height: auto;
   opacity: 0; /* hidden before GSAP initialises; GSAP animates in via autoAlpha */
   filter:
-    drop-shadow(0 0 7px  rgba(0, 245, 212, 1.00))
-    drop-shadow(0 0 22px rgba(0,  201, 134, 0.80))
-    drop-shadow(0 0 56px rgba(0,  169, 143, 0.45));
+    drop-shadow(0 0 7px  rgba(255, 128,   0, 1.00))
+    drop-shadow(0 0 22px rgba(255, 128,   0, 0.80))
+    drop-shadow(0 0 56px rgba(134, 210,  50, 0.45));
   will-change: transform, opacity;
 }
 
@@ -191,15 +217,15 @@
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.44em;
-  color: rgba(0, 245, 212, 0.78);
+  color: rgba(255, 128, 0, 0.88);
   text-transform: uppercase;
   opacity: 0; /* hidden before GSAP initialises; GSAP animates in via autoAlpha */
   will-change: transform, opacity;
 }
 
-/* ── Stage 2 — mid, SPORT TEAL (clearly distinct from stage 1's near-black) */
+/* ── Stage 2 — mid, ENERGY ORANGE (clearly distinct from stage 1's near-black) */
 .mi-stage-two {
-  background: linear-gradient(158deg, #061e1c 0%, #082d2a 45%, #0a3935 100%);
+  background: linear-gradient(158deg, #1a0800 0%, #2a1000 45%, #3a1800 100%);
 }
 
 .mi-stage-two::before {
@@ -209,14 +235,14 @@
   left: 22vw;
   width: 56vw;
   height: 155vh;
-  background: linear-gradient(180deg, #00c986 0%, #00a98f 55%, #007a69 100%);
+  background: linear-gradient(180deg, #FF8000 0%, #cc6600 55%, #994d00 100%);
   transform: skewX(-13deg);
   opacity: 0.45;
 }
 
-/* ── Stage 3 — back, OCEAN CYAN-BLUE (clearly distinct from stages 1 and 2) */
+/* ── Stage 3 — back, SPORT GREEN (clearly distinct from stages 1 and 2) */
 .mi-stage-three {
-  background: linear-gradient(158deg, #041520 0%, #063450 45%, #075985 100%);
+  background: linear-gradient(158deg, #091a02 0%, #132b04 45%, #1b3d05 100%);
 }
 
 .mi-stage-three::before {
@@ -226,12 +252,12 @@
   left: 14vw;
   width: 72vw;
   height: 155vh;
-  background: linear-gradient(180deg, #22d3ee 0%, #0284c7 55%, #0369a1 100%);
+  background: linear-gradient(180deg, #86D232 0%, #65a026 55%, #4a7a1d 100%);
   transform: skewX(-13deg);
   opacity: 0.48;
 }
 
-/* ── Emerald-cyan beam — sharp sword of light at the split seam */
+/* ── Orange-green beam — sharp sword of light at the split seam */
 .mi-center-beam {
   position: fixed;
   top: -22vh;
@@ -244,15 +270,15 @@
   transform: translateX(-50%) skewX(-13deg);
   background: linear-gradient(
     180deg,
-    rgba(0, 245, 212, 0.08) 0%,
-    rgba(34, 211, 238, 0.95) 38%,
-    rgba(0,  201, 134, 0.88) 58%,
-    rgba(0,  169, 143, 0.72) 100%
+    rgba(255, 128,   0, 0.08) 0%,
+    rgba(255, 128,   0, 0.95) 38%,
+    rgba(134, 210,  50, 0.88) 58%,
+    rgba(100, 160,  38, 0.72) 100%
   );
   box-shadow:
-    0 0 28px rgba(34, 211, 238, 0.70),
-    0 0 70px rgba(0,  201, 134, 0.52),
-    0 0 120px rgba(0, 169, 143, 0.28);
+    0 0  28px rgba(255, 128,  0, 0.70),
+    0 0  70px rgba(134, 210, 50, 0.52),
+    0 0 120px rgba(100, 160, 38, 0.28);
 }
 
 /* ── Speed lines — camera-motion burst during split */
@@ -273,8 +299,8 @@
   background: linear-gradient(
     180deg,
     transparent 0%,
-    rgba(34, 211, 238, 0.58) 38%,
-    rgba(0, 245, 212, 0.38) 62%,
+    rgba(255, 128,  0, 0.58) 38%,
+    rgba(134, 210, 50, 0.38) 62%,
     transparent 100%
   );
   opacity: 0;

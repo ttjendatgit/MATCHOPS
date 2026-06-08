@@ -9,7 +9,6 @@ import {
   DollarSign,
   TrendingUp,
   UserCircle,
-  ChevronRight,
   LogOut,
   Zap,
   X,
@@ -57,26 +56,29 @@ export function OwnerSidebar({ user, open, onClose }: OwnerSidebarProps) {
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-800 bg-slate-900 transition-transform duration-300 ease-in-out",
+        "fixed inset-y-0 left-0 z-50 flex w-64 flex-col transition-transform duration-300 ease-in-out",
+        "border-r border-[rgba(134,210,50,0.2)] bg-[#0A0A0A]",
         "lg:translate-x-0",
         open ? "translate-x-0" : "-translate-x-full"
       )}
     >
-      {/* Logo */}
-      <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-slate-800 px-5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
-          <Zap className="h-4 w-4 text-slate-900" />
+      {/* Logo area */}
+      <div className="relative flex h-16 shrink-0 items-center gap-2.5 border-b border-[rgba(134,210,50,0.15)] px-5 overflow-hidden">
+        {/* Subtle orange glow behind logo */}
+        <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-[#FF8000]/60 via-[#FF8000]/30 to-transparent" />
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#FF8000] shadow-[0_0_14px_rgba(255,128,0,0.4)]">
+          <Zap className="h-4 w-4 text-white" />
         </div>
         <span className="text-base font-bold tracking-tight text-white font-heading">
           MatchOps
         </span>
-        <span className="ml-auto rounded-md bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+        <span className="ml-auto rounded-md bg-[rgba(255,128,0,0.15)] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#FF8000]">
           OWNER
         </span>
         <button
           onClick={onClose}
           aria-label="Đóng menu"
-          className="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-800 hover:text-white lg:hidden"
+          className="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[#C4C7C9] transition-colors hover:bg-[#141414] hover:text-white lg:hidden"
         >
           <X className="h-4 w-4" />
         </button>
@@ -84,6 +86,9 @@ export function OwnerSidebar({ user, open, onClose }: OwnerSidebarProps) {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
+        <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-[#C4C7C9]/40">
+          Menu
+        </p>
         <ul className="space-y-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -94,21 +99,27 @@ export function OwnerSidebar({ user, open, onClose }: OwnerSidebarProps) {
                   href={item.href}
                   onClick={onClose}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
                     active
-                      ? "bg-primary/10 text-primary"
-                      : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+                      ? "bg-[rgba(255,128,0,0.12)] text-white"
+                      : "text-[#C4C7C9] hover:bg-[#141414] hover:text-white"
                   )}
                 >
+                  {/* Active left accent bar */}
+                  {active && (
+                    <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-[#FF8000]" />
+                  )}
                   <Icon
                     className={cn(
-                      "h-4 w-4 shrink-0",
-                      active ? "text-primary" : "text-slate-500"
+                      "h-4 w-4 shrink-0 transition-all duration-150",
+                      active
+                        ? "text-[#FF8000]"
+                        : "text-[#C4C7C9]/60 group-hover:text-[#C4C7C9] group-hover:scale-110"
                     )}
                   />
-                  {item.label}
+                  <span className="flex-1">{item.label}</span>
                   {active && (
-                    <ChevronRight className="ml-auto h-3.5 w-3.5 text-primary" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#FF8000]" />
                   )}
                 </Link>
               </li>
@@ -118,23 +129,23 @@ export function OwnerSidebar({ user, open, onClose }: OwnerSidebarProps) {
       </nav>
 
       {/* User footer */}
-      <div className="shrink-0 border-t border-slate-800 p-4">
-        <div className="flex items-center gap-3">
+      <div className="shrink-0 border-t border-[rgba(134,210,50,0.15)] p-4">
+        <div className="flex items-center gap-3 rounded-lg bg-[#141414] px-3 py-2.5">
           <Avatar className="h-8 w-8 shrink-0">
-            <AvatarFallback className="bg-primary/15 text-xs font-bold text-primary">
+            <AvatarFallback className="bg-[rgba(255,128,0,0.2)] text-xs font-bold text-[#FF8000]">
               {initials}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-white">
+            <p className="truncate text-sm font-semibold text-white">
               {user.fullName}
             </p>
-            <p className="truncate text-xs text-slate-500">{user.email}</p>
+            <p className="truncate text-xs text-[#C4C7C9]/60">{user.email}</p>
           </div>
           <button
             onClick={handleLogout}
             title="Đăng xuất"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-800 hover:text-red-400"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[#C4C7C9]/50 transition-colors hover:bg-[rgba(255,75,75,0.15)] hover:text-[#FF4B4B]"
           >
             <LogOut className="h-4 w-4" />
           </button>

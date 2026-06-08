@@ -67,69 +67,72 @@ export default function OwnerBookingsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white font-heading">
+        <h1 className="text-2xl font-bold text-white font-heading tracking-tight">
           Lịch đặt
         </h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-[#C4C7C9]">
           Tất cả đơn đặt sân từ các cụm sân của bạn.
         </p>
       </div>
 
-      {/* Placeholder note */}
-      <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+      {/* Phase note */}
+      <div className="rounded-lg border border-[rgba(251,191,36,0.25)] bg-[rgba(251,191,36,0.05)] px-4 py-3">
         <p className="text-xs text-amber-400/80">
-          Bộ lọc và phân trang sẽ triển khai ở phase tiếp theo. Dữ liệu hiện là
-          mock.
+          Bộ lọc và phân trang sẽ triển khai ở phase tiếp theo. Dữ liệu hiện là mock.
         </p>
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden">
+      <div className="rounded-xl border border-[rgba(134,210,50,0.28)] bg-[#0A0A0A] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 bg-slate-950/50">
-                <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr className="border-b border-[rgba(134,210,50,0.15)] bg-[#141414]">
+                <th className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-[#C4C7C9]/50">
                   Khách hàng
                 </th>
-                <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-[#C4C7C9]/50">
                   Sân / Cụm
                 </th>
-                <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-[#C4C7C9]/50">
                   Thời gian
                 </th>
-                <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-[#C4C7C9]/50">
                   Trạng thái
                 </th>
-                <th className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-3.5 text-right text-[10px] font-bold uppercase tracking-widest text-[#C4C7C9]/50">
                   Tổng tiền
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
-              {mockBookings.map((b) => (
+            <tbody>
+              {mockBookings.map((b, i) => (
                 <tr
                   key={b.id}
-                  className="transition-colors hover:bg-slate-800/40"
+                  className={`transition-colors hover:bg-[#141414] ${
+                    i < mockBookings.length - 1
+                      ? "border-b border-[rgba(134,210,50,0.1)]"
+                      : ""
+                  }`}
                 >
                   <td className="px-5 py-4">
-                    <p className="font-medium text-white">{b.customerName}</p>
-                    <p className="text-xs text-slate-500">{b.customerPhone}</p>
+                    <p className="font-semibold text-white">{b.customerName}</p>
+                    <p className="text-xs text-[#C4C7C9]/50">{b.customerPhone}</p>
                   </td>
                   <td className="px-5 py-4">
-                    <p className="text-slate-200">{b.courtName}</p>
-                    <p className="max-w-[160px] truncate text-xs text-slate-500">
+                    <p className="font-medium text-[#86D232]">{b.courtName}</p>
+                    <p className="max-w-[160px] truncate text-xs text-[#C4C7C9]/60">
                       {b.venueName}
                     </p>
                   </td>
                   <td className="px-5 py-4">
-                    <p className="text-slate-300">{b.bookingDate}</p>
-                    <p className="text-xs text-slate-500">{b.time}</p>
+                    <p className="text-white font-medium">{b.bookingDate}</p>
+                    <p className="text-xs text-[#C4C7C9]/60">{b.time}</p>
                   </td>
                   <td className="px-5 py-4">
                     <BookingStatusBadge status={b.status} />
                   </td>
-                  <td className="px-5 py-4 text-right font-semibold tabular-nums text-slate-200">
+                  <td className="px-5 py-4 text-right font-bold tabular-nums text-[#FF8000]">
                     {formatCurrency(b.totalPrice)}
                   </td>
                 </tr>

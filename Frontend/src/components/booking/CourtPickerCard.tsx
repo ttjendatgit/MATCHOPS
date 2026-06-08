@@ -27,10 +27,11 @@ export function CourtPickerCard({
       aria-label={`Chọn ${court.name}`}
       className={cn(
         "group w-full rounded-xl border px-3.5 py-3 text-left transition-all duration-200",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]/60",
         "focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950",
+        "active:scale-[0.99]",
         isSelected
-          ? "border-emerald-500/50 bg-emerald-950/50 shadow-[0_0_18px_rgba(16,185,129,0.14),inset_0_1px_0_rgba(255,255,255,0.05)]"
+          ? "border-[#FF8000]/50 bg-[rgba(255,128,0,0.08)] shadow-[0_0_18px_rgba(255,128,0,0.14),inset_0_1px_0_rgba(255,255,255,0.05)]"
           : "border-slate-700/50 bg-slate-800/40 hover:border-slate-600/80 hover:bg-slate-800/70",
       )}
     >
@@ -41,7 +42,7 @@ export function CourtPickerCard({
             {/* Fixed-width slot so name doesn't jump when check appears */}
             <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
               {isSelected && (
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" aria-hidden />
+                <CheckCircle2 className="h-3.5 w-3.5 text-[#FF8000]" aria-hidden />
               )}
             </span>
             <p
@@ -55,7 +56,7 @@ export function CourtPickerCard({
           </div>
           <div className="flex flex-wrap items-center gap-1.5 pl-5">
             {sport && (
-              <span className="rounded-full border border-emerald-800/50 bg-emerald-950/60 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+              <span className="rounded-full border border-[#FF8000]/30 bg-[rgba(255,128,0,0.10)] px-2 py-0.5 text-[10px] font-medium text-[#FF8000]">
                 {sport.name}
               </span>
             )}
@@ -80,8 +81,8 @@ export function CourtPickerCard({
                 className={cn(
                   "text-sm font-bold tabular-nums transition-all duration-200",
                   isSelected
-                    ? "bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent"
-                    : "text-emerald-500",
+                    ? "bg-gradient-to-r from-[#FF8000] to-[#86D232] bg-clip-text text-transparent"
+                    : "text-[#FF8000]",
                 )}
               >
                 {(minPrice / 1000).toFixed(0)}k

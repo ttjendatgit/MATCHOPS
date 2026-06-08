@@ -15,13 +15,13 @@ export function EmptyState({ icon: Icon, title, description, action }: EmptyStat
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       {Icon && (
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
-          <Icon className="h-8 w-8 text-slate-400" />
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-[rgba(134,210,50,0.25)] bg-[#141414]">
+          <Icon className="h-8 w-8 text-[#FF8000]" />
         </div>
       )}
-      <h3 className="mb-1 text-base font-semibold text-slate-900">{title}</h3>
+      <h3 className="mb-1 text-base font-semibold text-white">{title}</h3>
       {description && (
-        <p className="mb-6 max-w-sm text-sm text-slate-500">{description}</p>
+        <p className="mb-6 max-w-sm text-sm text-[#C4C7C9]">{description}</p>
       )}
       {action && (
         <Button onClick={action.onClick} size="sm">

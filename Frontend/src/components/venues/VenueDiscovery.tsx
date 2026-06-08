@@ -63,10 +63,10 @@ const SPORT_ICONS: Record<string, LucideIcon> = {
 };
 
 const CARD_GRADIENTS: Array<{ bg: string; Icon: LucideIcon }> = [
-  { bg: "from-emerald-900 to-teal-950",  Icon: Feather   },
-  { bg: "from-green-900 to-slate-950",   Icon: Trophy    },
-  { bg: "from-cyan-900 to-slate-950",    Icon: Circle    },
-  { bg: "from-violet-900 to-slate-950",  Icon: Activity  },
+  { bg: "from-emerald-900 to-green-950",  Icon: Feather   },
+  { bg: "from-green-900 to-slate-950",    Icon: Trophy    },
+  { bg: "from-orange-900 to-slate-950",   Icon: Circle    },
+  { bg: "from-violet-900 to-slate-950",   Icon: Activity  },
 ];
 
 const PRICE_OPTIONS: Array<{ key: PriceFilter; label: string }> = [
@@ -165,12 +165,12 @@ function SportChip({
         "whitespace-nowrap transition-all duration-200",
         isActive
           ? [
-              "bg-gradient-to-r from-emerald-500 to-cyan-500 text-white",
-              "shadow-[0_0_18px_rgba(16,185,129,0.5)]",
+              "bg-[#FF8000] text-white",
+              "shadow-[0_0_18px_rgba(255,128,0,0.5)]",
             ]
           : [
               "border border-white/[0.08] bg-slate-800/70 text-slate-400",
-              "hover:border-emerald-500/25 hover:bg-slate-800 hover:text-slate-200",
+              "hover:border-[#FF8000]/25 hover:bg-slate-800 hover:text-slate-200",
             ],
       )}
     >
@@ -196,9 +196,9 @@ function VenueCard({ venue }: { venue: VenueDisplayData }) {
         "group block overflow-hidden rounded-2xl border border-white/[0.08]",
         "bg-gradient-to-b from-slate-900 to-slate-950 shadow-lg",
         "transition-all duration-300",
-        "hover:-translate-y-0.5 hover:border-emerald-500/30",
-        "hover:shadow-[0_8px_32px_rgba(16,185,129,0.15)]",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
+        "hover:-translate-y-0.5 hover:border-[#FF8000]/30",
+        "hover:shadow-[0_8px_32px_rgba(255,128,0,0.15)]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]/50",
       )}
     >
       {/* ── Cover ── */}
@@ -236,8 +236,8 @@ function VenueCard({ venue }: { venue: VenueDisplayData }) {
         {/* Open badge */}
         <div className="absolute right-3 top-3">
           {openNow ? (
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-slate-950/80 px-2.5 py-1 text-[10px] font-semibold text-emerald-400 backdrop-blur-sm">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" aria-hidden />
+            <span className="inline-flex items-center gap-1 rounded-full border border-[#86D232]/30 bg-slate-950/80 px-2.5 py-1 text-[10px] font-semibold text-[#86D232] backdrop-blur-sm">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#86D232]" aria-hidden />
               Đang mở cửa
             </span>
           ) : (
@@ -251,7 +251,7 @@ function VenueCard({ venue }: { venue: VenueDisplayData }) {
         <div className="absolute bottom-3 left-3">
           <span className="inline-flex items-center rounded-full bg-slate-950/70 px-2.5 py-1 text-xs font-semibold backdrop-blur-sm">
             {venue.minPricePerHour !== null ? (
-              <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#FF8000] to-[#86D232] bg-clip-text text-transparent">
                 từ {formatCurrency(venue.minPricePerHour)}/giờ
               </span>
             ) : (
@@ -264,7 +264,7 @@ function VenueCard({ venue }: { venue: VenueDisplayData }) {
       {/* ── Card body ── */}
       <div className="p-4">
         {/* Venue name */}
-        <h3 className="mb-1 line-clamp-1 text-base font-bold text-white transition-colors duration-200 group-hover:text-emerald-400">
+        <h3 className="mb-1 line-clamp-1 text-base font-bold text-white transition-colors duration-200 group-hover:text-[#FF8000]">
           {venue.name}
         </h3>
 
@@ -297,7 +297,7 @@ function VenueCard({ venue }: { venue: VenueDisplayData }) {
             <Clock className="h-3 w-3 text-slate-600" aria-hidden />
             {venue.openingTime} – {venue.closingTime}
           </span>
-          <span className="flex items-center gap-1 text-xs font-medium text-slate-600 transition-colors duration-200 group-hover:text-emerald-400">
+          <span className="flex items-center gap-1 text-xs font-medium text-slate-600 transition-colors duration-200 group-hover:text-[#FF8000]">
             Xem chi tiết
             <ArrowRight className="h-3.5 w-3.5" aria-hidden />
           </span>
@@ -326,9 +326,9 @@ function EmptyVenueState({ onReset }: { onReset: () => void }) {
         onClick={onReset}
         className={cn(
           "flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold",
-          "bg-gradient-to-r from-emerald-500 to-cyan-500 text-white",
-          "transition-all duration-200 hover:from-emerald-400 hover:to-cyan-400",
-          "hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] active:scale-[0.98]",
+          "bg-[#FF8000] text-white",
+          "transition-all duration-200 hover:bg-[#FF8000]/85",
+          "hover:shadow-[0_0_20px_rgba(255,128,0,0.4)] active:scale-[0.98]",
         )}
       >
         Xoá bộ lọc
@@ -358,7 +358,7 @@ function FilterSelect({
         className={cn(
           "h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-slate-900",
           "pl-4 pr-9 text-sm focus:outline-none",
-          "focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/30",
+          "focus:border-[#FF8000]/40 focus:ring-1 focus:ring-[#FF8000]/30",
           "transition-colors cursor-pointer",
           value === "ALL" ? "text-slate-500" : "text-white",
         )}
@@ -522,7 +522,7 @@ export function VenueDiscovery({ venues, allSports, allDistricts }: VenueDiscove
             "flex h-11 shrink-0 items-center gap-2 rounded-xl border px-4 text-sm font-medium",
             "whitespace-nowrap transition-all duration-200",
             openNowOnly
-              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+              ? "border-[#86D232]/30 bg-[#86D232]/10 text-[#86D232]"
               : "border-white/[0.08] bg-slate-900 text-slate-500 hover:border-white/[0.15] hover:text-slate-300",
           )}
         >
@@ -565,7 +565,7 @@ export function VenueDiscovery({ venues, allSports, allDistricts }: VenueDiscove
           <button
             type="button"
             onClick={resetFilters}
-            className="flex items-center gap-1.5 text-xs text-slate-500 transition-colors hover:text-emerald-400"
+            className="flex items-center gap-1.5 text-xs text-slate-500 transition-colors hover:text-[#FF8000]"
           >
             <X className="h-3.5 w-3.5" aria-hidden />
             Xoá bộ lọc

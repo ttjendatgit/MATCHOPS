@@ -130,7 +130,7 @@ function StepLabel({
 }) {
   return (
     <div className="mb-3 flex items-center gap-2">
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-[10px] font-bold text-emerald-400">
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FF8000]/15 text-[10px] font-bold text-[#FF8000]">
         {step}
       </span>
       <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -316,7 +316,7 @@ export function TimeSlotPicker({ venue, courts, sports }: TimeSlotPickerProps) {
     >
       {/* Ambient emerald glow — top */}
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-emerald-500/10 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-[#FF8000]/10 to-transparent"
         aria-hidden
       />
 
@@ -332,12 +332,12 @@ export function TimeSlotPicker({ venue, courts, sports }: TimeSlotPickerProps) {
             </p>
           </div>
           {/* Live badge */}
-          <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/8 px-2.5 py-1">
+          <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#86D232]/20 bg-[#86D232]/8 px-2.5 py-1">
             <span
-              className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"
+              className="h-1.5 w-1.5 rounded-full bg-[#86D232] animate-pulse"
               aria-hidden
             />
-            <span className="text-[10px] font-medium text-emerald-400">
+            <span className="text-[10px] font-medium text-[#86D232]">
               Lịch trống thực
             </span>
           </div>
@@ -384,7 +384,7 @@ export function TimeSlotPicker({ venue, courts, sports }: TimeSlotPickerProps) {
               className={cn(
                 "h-11 w-full rounded-xl border border-slate-700/60 bg-slate-800/50 py-2 pl-9 pr-3 text-sm text-white",
                 "[color-scheme:dark]",
-                "focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/40",
+                "focus:outline-none focus:ring-2 focus:ring-[#FF8000]/40 focus:border-[#FF8000]/40",
                 "disabled:cursor-not-allowed disabled:opacity-40",
                 "transition-colors duration-150",
               )}
@@ -418,7 +418,7 @@ export function TimeSlotPicker({ venue, courts, sports }: TimeSlotPickerProps) {
                       id="start-time-trigger"
                       className={cn(
                         "h-11 rounded-xl border-slate-700/60 bg-slate-800/50 text-white",
-                        "focus:ring-emerald-500/40 focus:border-emerald-500/40",
+                        "focus:ring-[#FF8000]/40 focus:border-[#FF8000]/40",
                         "data-[placeholder]:text-slate-500",
                         "disabled:opacity-40",
                         !startTime && "text-slate-500",
@@ -431,7 +431,7 @@ export function TimeSlotPicker({ venue, courts, sports }: TimeSlotPickerProps) {
                         <SelectItem
                           key={t}
                           value={t}
-                          className="cursor-pointer text-slate-300 focus:bg-emerald-500/15 focus:text-emerald-200"
+                          className="cursor-pointer text-slate-300 focus:bg-[#FF8000]/15 focus:text-white"
                         >
                           {t}
                         </SelectItem>
@@ -463,7 +463,7 @@ export function TimeSlotPicker({ venue, courts, sports }: TimeSlotPickerProps) {
                       id="end-time-trigger"
                       className={cn(
                         "h-11 rounded-xl border-slate-700/60 bg-slate-800/50 text-white",
-                        "focus:ring-emerald-500/40 focus:border-emerald-500/40",
+                        "focus:ring-[#FF8000]/40 focus:border-[#FF8000]/40",
                         "disabled:opacity-40",
                         !endTime && "text-slate-500",
                       )}
@@ -475,7 +475,7 @@ export function TimeSlotPicker({ venue, courts, sports }: TimeSlotPickerProps) {
                         <SelectItem
                           key={t}
                           value={t}
-                          className="cursor-pointer text-slate-300 focus:bg-emerald-500/15 focus:text-emerald-200"
+                          className="cursor-pointer text-slate-300 focus:bg-[#FF8000]/15 focus:text-white"
                         >
                           {t}
                         </SelectItem>
@@ -521,7 +521,7 @@ export function TimeSlotPicker({ venue, courts, sports }: TimeSlotPickerProps) {
                   {[
                     { dot: "bg-slate-700 border border-slate-600", label: "Trống" },
                     { dot: "bg-red-900/50 border border-red-800/40", label: "Đã đặt" },
-                    { dot: "bg-emerald-500/30 ring-1 ring-emerald-500/40", label: "Chọn" },
+                    { dot: "bg-[#FF8000]/30 ring-1 ring-[#FF8000]/40", label: "Chọn" },
                   ].map(({ dot, label }) => (
                     <span key={label} className="flex items-center gap-1">
                       <span
@@ -538,7 +538,7 @@ export function TimeSlotPicker({ venue, courts, sports }: TimeSlotPickerProps) {
               {avLoading ? (
                 <div className="flex h-20 items-center justify-center">
                   <div
-                    className="h-4 w-4 animate-spin rounded-full border-2 border-slate-700 border-t-emerald-400"
+                    className="h-4 w-4 animate-spin rounded-full border-2 border-slate-700 border-t-[#FF8000]"
                     aria-label="Đang tải lịch trống..."
                   />
                 </div>
@@ -572,7 +572,7 @@ export function TimeSlotPicker({ venue, courts, sports }: TimeSlotPickerProps) {
                             : booked
                               ? "bg-red-900/25 text-red-500/60 line-through"
                               : inRange
-                                ? "bg-emerald-500/20 font-semibold text-emerald-300 ring-1 ring-emerald-500/30"
+                                ? "bg-[#FF8000]/20 font-semibold text-white ring-1 ring-[#FF8000]/30"
                                 : "bg-slate-800/60 text-slate-500",
                         )}
                       >
@@ -590,7 +590,7 @@ export function TimeSlotPicker({ venue, courts, sports }: TimeSlotPickerProps) {
         {duration !== null && !validationError && (
           <>
             <div className="mb-5 border-t border-white/5" />
-            <div className="mb-5 rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-950/60 to-slate-900/60 p-4">
+            <div className="mb-5 rounded-xl border border-[#FF8000]/20 bg-gradient-to-br from-[rgba(255,128,0,0.06)] to-slate-900/60 p-4">
               <div className="flex items-end justify-between gap-3">
                 <div>
                   <p className="text-xs tabular-nums text-slate-500">
@@ -606,7 +606,7 @@ export function TimeSlotPicker({ venue, courts, sports }: TimeSlotPickerProps) {
                     Tổng cộng
                   </p>
                   {price !== null ? (
-                    <p className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-2xl font-bold text-transparent tabular-nums">
+                    <p className="bg-gradient-to-r from-[#FF8000] to-[#86D232] bg-clip-text text-2xl font-bold text-transparent tabular-nums">
                       {formatCurrency(price)}
                     </p>
                   ) : (
@@ -632,9 +632,9 @@ export function TimeSlotPicker({ venue, courts, sports }: TimeSlotPickerProps) {
             "flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all duration-200",
             canSubmit
               ? [
-                  "bg-gradient-to-r from-emerald-500 to-cyan-500 text-white",
-                  "hover:from-emerald-400 hover:to-cyan-400",
-                  "hover:shadow-[0_0_28px_rgba(16,185,129,0.5)]",
+                  "bg-[#FF8000] text-white",
+                  "hover:bg-[#FF8000]/85",
+                  "hover:shadow-[0_0_28px_rgba(255,128,0,0.5)]",
                   "active:scale-[0.98] cursor-pointer",
                 ]
               : "cursor-not-allowed bg-slate-800 text-slate-500 border border-slate-700/50",

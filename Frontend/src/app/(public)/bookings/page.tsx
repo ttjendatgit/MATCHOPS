@@ -40,14 +40,14 @@ function BookingCard({ booking }: { booking: DisplayBooking }) {
         "group block overflow-hidden rounded-2xl border border-white/[0.08]",
         "bg-gradient-to-b from-slate-900 to-slate-950 shadow-lg",
         "transition-all duration-200",
-        "hover:border-emerald-500/30 hover:shadow-[0_0_24px_rgba(16,185,129,0.1)]",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
+        "hover:border-[#FF8000]/30 hover:shadow-[0_0_24px_rgba(255,128,0,0.1)]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]/50",
       )}
     >
       <div className="relative p-5">
         {/* Subtle emerald tint */}
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-16 rounded-t-2xl bg-gradient-to-b from-emerald-500/[0.04] to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 h-16 rounded-t-2xl bg-gradient-to-b from-[#FF8000]/[0.04] to-transparent"
           aria-hidden
         />
 
@@ -60,7 +60,7 @@ function BookingCard({ booking }: { booking: DisplayBooking }) {
                   {booking.courtName}
                 </h3>
                 {booking.sportName && (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-800/40 bg-emerald-900/30 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#FF8000]/30 bg-[rgba(255,128,0,0.10)] px-2 py-0.5 text-[10px] font-medium text-[#FF8000]">
                     <Dumbbell className="h-2.5 w-2.5" aria-hidden />
                     {booking.sportName}
                   </span>
@@ -111,12 +111,12 @@ function BookingCard({ booking }: { booking: DisplayBooking }) {
                   {PAYMENT_LABELS_SHORT[booking.paymentMethod]}
                 </p>
               )}
-              <p className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-lg font-bold text-transparent tabular-nums">
+              <p className="bg-gradient-to-r from-[#FF8000] to-[#86D232] bg-clip-text text-lg font-bold text-transparent tabular-nums">
                 {formatCurrency(booking.totalPrice)}
               </p>
             </div>
 
-            <div className="flex items-center gap-1 text-xs font-medium text-slate-600 transition-colors duration-200 group-hover:text-emerald-400">
+            <div className="flex items-center gap-1 text-xs font-medium text-slate-600 transition-colors duration-200 group-hover:text-[#FF8000]">
               Xem chi tiết
               <ArrowRight className="h-3.5 w-3.5" aria-hidden />
             </div>
@@ -153,9 +153,9 @@ function EmptyBookingState({ isFiltered }: { isFiltered: boolean }) {
           onClick={() => router.push("/venues")}
           className={cn(
             "flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold",
-            "bg-gradient-to-r from-emerald-500 to-cyan-500 text-white",
+            "bg-[#FF8000] text-white",
             "transition-all duration-200",
-            "hover:from-emerald-400 hover:to-cyan-400 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]",
+            "hover:bg-[#FF8000]/85 hover:shadow-[0_0_20px_rgba(255,128,0,0.4)]",
             "active:scale-[0.98]",
           )}
         >
@@ -225,7 +225,7 @@ export default function BookingsPage() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-700 border-t-emerald-400" />
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-700 border-t-[#FF8000]" />
           <p className="text-sm text-slate-500">Đang tải lịch đặt sân...</p>
         </div>
       </div>
@@ -269,7 +269,7 @@ export default function BookingsPage() {
                 "flex shrink-0 items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium",
                 "transition-all duration-200",
                 isActive
-                  ? "bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-[0_0_14px_rgba(16,185,129,0.35)]"
+                  ? "bg-[#FF8000] text-white shadow-[0_0_14px_rgba(255,128,0,0.35)]"
                   : [
                       "bg-slate-800/70 text-slate-400",
                       "hover:bg-slate-800 hover:text-slate-300",

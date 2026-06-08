@@ -56,10 +56,11 @@ export function PaymentMethodCard({
       onClick={onSelect}
       className={cn(
         "group w-full rounded-xl border p-4 text-left transition-all duration-200",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60",
-        "focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]/60",
+        "focus-visible:ring-offset-1 focus-visible:ring-offset-[#030303]",
+        "active:scale-[0.99]",
         isSelected
-          ? "border-emerald-500/50 bg-emerald-950/40 shadow-[0_0_18px_rgba(16,185,129,0.14),inset_0_1px_0_rgba(255,255,255,0.04)]"
+          ? "border-[#FF8000]/50 bg-[rgba(255,128,0,0.08)] shadow-[0_0_18px_rgba(255,128,0,0.14),inset_0_1px_0_rgba(255,255,255,0.04)]"
           : "border-slate-700/50 bg-slate-800/40 hover:border-slate-600/80 hover:bg-slate-800/70",
       )}
     >
@@ -94,7 +95,7 @@ export function PaymentMethodCard({
           className={cn(
             "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200",
             isSelected
-              ? "border-emerald-500 bg-emerald-500"
+              ? "border-[#FF8000] bg-[#FF8000]"
               : "border-slate-600 group-hover:border-slate-500",
           )}
           aria-hidden

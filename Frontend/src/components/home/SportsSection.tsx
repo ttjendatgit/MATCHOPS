@@ -16,8 +16,8 @@ const sports = [
     icon: Zap,
     count: "1.200+",
     dotColor: "bg-emerald-400",
-    iconGradient: "from-emerald-400 to-teal-500",
-    cardBg: "from-emerald-950 via-teal-950/70 to-slate-950",
+    iconGradient: "from-emerald-400 to-green-600",
+    cardBg: "from-emerald-950 via-green-950/70 to-slate-950",
     borderHover: "hover:border-emerald-500/60",
     shadowHover: "hover:shadow-emerald-500/20",
     countColor: "text-emerald-400",
@@ -95,13 +95,13 @@ export function SportsSection() {
   return (
     <section className="relative bg-slate-950 px-4 py-20 sm:px-6 lg:px-8">
       {/* Section top depth glow */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_40%_at_50%_-10%,rgba(16,185,129,0.06),transparent)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_40%_at_50%_-10%,rgba(255,128,0,0.06),transparent)]" />
 
       <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-12 flex items-end justify-between">
           <div>
-            <span className="mb-3 inline-block text-xs font-bold uppercase tracking-widest text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]">
+            <span className="mb-3 inline-block text-xs font-bold uppercase tracking-widest text-[#FF8000] drop-shadow-[0_0_8px_rgba(255,128,0,0.5)]">
               Khám phá
             </span>
             <h2 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
@@ -113,7 +113,7 @@ export function SportsSection() {
           </div>
           <Link
             href="/venues"
-            className="hidden shrink-0 items-center gap-1.5 text-sm font-medium text-slate-400 transition-colors duration-200 hover:text-emerald-400 sm:flex"
+            className="hidden shrink-0 items-center gap-1.5 text-sm font-medium text-slate-400 transition-colors duration-200 hover:text-[#FF8000] sm:flex"
             aria-label="Xem tất cả sân thể thao"
           >
             Xem tất cả
@@ -211,7 +211,7 @@ export function SportsSection() {
         <div className="mt-8 flex justify-center sm:hidden">
           <Link
             href="/venues"
-            className="flex items-center gap-1.5 text-sm font-medium text-slate-400 hover:text-emerald-400 transition-colors duration-200"
+            className="flex items-center gap-1.5 text-sm font-medium text-slate-400 hover:text-[#FF8000] transition-colors duration-200"
           >
             Xem tất cả môn thể thao
             <ArrowRight className="h-4 w-4" />

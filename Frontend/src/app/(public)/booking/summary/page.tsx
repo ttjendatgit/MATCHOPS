@@ -170,8 +170,8 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10">
-        <Icon className="h-3.5 w-3.5 text-emerald-400" aria-hidden />
+      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#FF8000]/10">
+        <Icon className="h-3.5 w-3.5 text-[#FF8000]" aria-hidden />
       </div>
       <div className="min-w-0">
         <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
@@ -246,7 +246,7 @@ function InvalidState({
             {venueId && (
               <Link
                 href={`/venues/${venueId}`}
-                className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-medium text-emerald-400 transition-colors hover:bg-emerald-500/20"
+                className="flex items-center justify-center gap-2 rounded-xl border border-[#FF8000]/30 bg-[#FF8000]/10 px-4 py-2.5 text-sm font-medium text-[#FF8000] transition-colors hover:bg-[#FF8000]/20"
               >
                 <ArrowLeft className="h-4 w-4" aria-hidden />
                 Quay lại chọn giờ
@@ -440,7 +440,7 @@ function SummaryPageInner() {
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div
-            className="h-6 w-6 animate-spin rounded-full border-2 border-slate-700 border-t-emerald-400"
+            className="h-6 w-6 animate-spin rounded-full border-2 border-slate-700 border-t-[#FF8000]"
             aria-hidden
           />
           <p className="text-sm text-slate-500">
@@ -497,7 +497,7 @@ function SummaryPageInner() {
             {/* Booking details card */}
             <GlassCard>
               <div
-                className="pointer-events-none absolute inset-x-0 top-0 h-28 rounded-t-2xl bg-gradient-to-b from-emerald-500/8 to-transparent"
+                className="pointer-events-none absolute inset-x-0 top-0 h-28 rounded-t-2xl bg-gradient-to-b from-[#FF8000]/8 to-transparent"
                 aria-hidden
               />
               <div className="relative p-6">
@@ -512,7 +512,7 @@ function SummaryPageInner() {
                       <span className="flex flex-wrap items-center gap-2">
                         {court.name}
                         {court.sportName && (
-                          <Badge className="border-emerald-800/50 bg-emerald-900/50 px-1.5 py-0 text-[10px] text-emerald-300">
+                          <Badge className="border-[#FF8000]/30 bg-[rgba(255,128,0,0.12)] px-1.5 py-0 text-[10px] text-[#FF8000]">
                             {court.sportName}
                           </Badge>
                         )}
@@ -580,7 +580,7 @@ function SummaryPageInner() {
                       aria-invalid={!!nameError}
                       className={cn(
                         "h-11 border-slate-700/60 bg-slate-800/50 text-white placeholder:text-slate-500",
-                        "focus-visible:border-emerald-500/40 focus-visible:ring-emerald-500/40",
+                        "focus-visible:border-[#FF8000]/40 focus-visible:ring-[#FF8000]/40",
                         nameError &&
                           "border-red-500/50 focus-visible:ring-red-500/30"
                       )}
@@ -623,7 +623,7 @@ function SummaryPageInner() {
                       aria-invalid={!!phoneError}
                       className={cn(
                         "h-11 border-slate-700/60 bg-slate-800/50 text-white placeholder:text-slate-500",
-                        "focus-visible:border-emerald-500/40 focus-visible:ring-emerald-500/40",
+                        "focus-visible:border-[#FF8000]/40 focus-visible:ring-[#FF8000]/40",
                         phoneError &&
                           "border-red-500/50 focus-visible:ring-red-500/30"
                       )}
@@ -665,7 +665,7 @@ function SummaryPageInner() {
                       className={cn(
                         "w-full resize-none rounded-lg border border-slate-700/60 bg-slate-800/50 px-3 py-2.5",
                         "text-sm text-white placeholder:text-slate-500",
-                        "focus:border-emerald-500/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/40",
+                        "focus:border-[#FF8000]/40 focus:outline-none focus:ring-2 focus:ring-[#FF8000]/40",
                         "transition-colors duration-150"
                       )}
                     />
@@ -685,7 +685,7 @@ function SummaryPageInner() {
               {/* Summary card */}
               <GlassCard>
                 <div
-                  className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-2xl bg-gradient-to-b from-emerald-500/6 to-transparent"
+                  className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-2xl bg-gradient-to-b from-[#FF8000]/6 to-transparent"
                   aria-hidden
                 />
 
@@ -703,7 +703,7 @@ function SummaryPageInner() {
                     </p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {court.sportName && (
-                        <Badge className="border-emerald-800/50 bg-emerald-900/50 px-2 text-xs text-emerald-300">
+                        <Badge className="border-[#FF8000]/30 bg-[rgba(255,128,0,0.12)] px-2 text-xs text-[#FF8000]">
                           {court.sportName}
                         </Badge>
                       )}
@@ -773,7 +773,7 @@ function SummaryPageInner() {
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-400">Phí đặt lịch</span>
-                      <span className="font-medium text-emerald-400">
+                      <span className="font-medium text-[#86D232]">
                         Miễn phí
                       </span>
                     </div>
@@ -792,7 +792,7 @@ function SummaryPageInner() {
                       </p>
                     </div>
                     {totalPrice !== null ? (
-                      <p className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-2xl font-bold text-transparent tabular-nums">
+                      <p className="bg-gradient-to-r from-[#FF8000] via-[#FF9A20] to-[#86D232] bg-clip-text text-2xl font-bold text-transparent tabular-nums">
                         {formatCurrency(totalPrice)}
                       </p>
                     ) : (
@@ -813,9 +813,9 @@ function SummaryPageInner() {
                   "flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all duration-200",
                   !isSubmitting
                     ? [
-                        "cursor-pointer bg-gradient-to-r from-emerald-500 to-cyan-500 text-white",
-                        "hover:from-emerald-400 hover:to-cyan-400",
-                        "hover:shadow-[0_0_28px_rgba(16,185,129,0.5)]",
+                        "cursor-pointer bg-[#FF8000] text-white",
+                        "hover:bg-[#FF8000]/85",
+                        "hover:shadow-[0_0_28px_rgba(255,128,0,0.5)]",
                         "active:scale-[0.98]",
                       ]
                     : "cursor-not-allowed bg-slate-800 text-slate-500"
@@ -858,7 +858,7 @@ export default function BookingSummaryPage() {
       fallback={
         <div className="flex min-h-[60vh] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-700 border-t-emerald-400" />
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-700 border-t-[#FF8000]" />
             <p className="text-sm text-slate-500">
               Đang tải thông tin đặt sân...
             </p>

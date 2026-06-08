@@ -205,13 +205,13 @@ function GoogleIcon() {
 // ─── Shared field styles ──────────────────────────────────────────────────────
 
 const fieldInputClass =
-  "block py-2.5 px-0 w-full text-sm text-white bg-transparent border-0 border-b-2 border-white/60 appearance-none focus:outline-none focus:ring-0 focus:border-emerald-400 lf-input peer";
+  "block py-2.5 px-0 w-full text-sm text-white bg-transparent border-0 border-b-2 border-white/60 appearance-none focus:outline-none focus:ring-0 focus:border-[#FF8000] lf-input peer";
 
 const fieldLabelClass =
-  "absolute text-sm text-slate-300 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:left-0 peer-focus:text-emerald-300 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6";
+  "absolute text-sm text-slate-300 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:left-0 peer-focus:text-[#FF8000] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6";
 
 const submitBtnClass =
-  "group w-full flex items-center justify-center py-3 px-4 rounded-lg text-white font-semibold bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 shadow-[0_0_20px_rgba(16,185,129,0.35)] hover:shadow-[0_0_28px_rgba(16,185,129,0.55)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-emerald-500 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed";
+  "group w-full flex items-center justify-center py-3 px-4 rounded-lg text-white font-semibold bg-[#FF8000] hover:bg-[#FF8000]/85 shadow-[0_0_20px_rgba(255,128,0,0.35)] hover:shadow-[0_0_28px_rgba(255,128,0,0.55)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#030303] focus:ring-[#FF8000] transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed";
 
 // ─── LoginForm ────────────────────────────────────────────────────────────────
 
@@ -283,7 +283,7 @@ export function LoginForm({ registered = false, redirect }: LoginFormProps) {
   }
 
   return (
-    <div className="w-full max-w-sm p-8 space-y-6 bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-emerald-500/[0.18] shadow-2xl shadow-black/60">
+    <div className="w-full max-w-sm p-8 space-y-6 bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-[rgba(255,128,0,0.18)] shadow-2xl shadow-black/60">
       <div className="text-center">
         <h2 className="text-3xl font-black text-white">Chào mừng trở lại</h2>
         <p className="mt-2 text-sm text-slate-400">Đăng nhập để tiếp tục với MatchOps</p>
@@ -292,7 +292,7 @@ export function LoginForm({ registered = false, redirect }: LoginFormProps) {
       {/* Registration success banner */}
       {registered && (
         <div
-          className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-900/20 px-4 py-3 text-sm text-emerald-400"
+          className="flex items-center gap-2 rounded-xl border border-[rgba(255,128,0,0.25)] bg-[rgba(255,128,0,0.08)] px-4 py-3 text-sm text-[#FF8000]"
           role="status"
           aria-live="polite"
         >
@@ -353,7 +353,7 @@ export function LoginForm({ registered = false, redirect }: LoginFormProps) {
         <div className="flex items-center justify-between">
           <a
             href="#"
-            className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors duration-200"
+            className="text-xs text-[#FF8000] hover:text-[#FF8000]/80 transition-colors duration-200"
           >
             Quên mật khẩu?
           </a>
@@ -389,7 +389,7 @@ export function LoginForm({ registered = false, redirect }: LoginFormProps) {
         {/* Google */}
         <button
           type="button"
-          className="w-full flex items-center justify-center py-2.5 px-4 bg-white/90 hover:bg-white rounded-lg text-gray-700 font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-emerald-500 transition-all duration-300 shadow-sm"
+          className="w-full flex items-center justify-center py-2.5 px-4 bg-white/90 hover:bg-white rounded-lg text-gray-700 font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-[#FF8000] transition-all duration-300 shadow-sm"
         >
           <GoogleIcon />
           Đăng nhập với Google
@@ -400,7 +400,7 @@ export function LoginForm({ registered = false, redirect }: LoginFormProps) {
         Chưa có tài khoản?{" "}
         <a
           href="/register"
-          className="font-semibold text-emerald-400 hover:text-emerald-300 transition-colors duration-200"
+          className="font-semibold text-[#FF8000] hover:text-[#FF8000]/80 transition-colors duration-200"
         >
           Đăng ký
         </a>
@@ -466,7 +466,7 @@ export function RegisterForm() {
   }
 
   return (
-    <div className="w-full max-w-sm p-8 space-y-6 bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-emerald-500/[0.18] shadow-2xl shadow-black/60">
+    <div className="w-full max-w-sm p-8 space-y-6 bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-[rgba(255,128,0,0.18)] shadow-2xl shadow-black/60">
       <div className="text-center">
         <h2 className="text-3xl font-black text-white">Tạo tài khoản</h2>
         <p className="mt-2 text-sm text-slate-400">
@@ -588,7 +588,7 @@ export function RegisterForm() {
         {/* Google */}
         <button
           type="button"
-          className="w-full flex items-center justify-center py-2.5 px-4 bg-white/90 hover:bg-white rounded-lg text-gray-700 font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-emerald-500 transition-all duration-300 shadow-sm"
+          className="w-full flex items-center justify-center py-2.5 px-4 bg-white/90 hover:bg-white rounded-lg text-gray-700 font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-[#FF8000] transition-all duration-300 shadow-sm"
         >
           <GoogleIcon />
           Đăng ký với Google
@@ -597,7 +597,7 @@ export function RegisterForm() {
 
       <p className="text-center text-xs text-slate-500">
         Bằng cách đăng ký, bạn đồng ý với{" "}
-        <a href="#" className="text-emerald-400 hover:text-emerald-300 transition-colors duration-200">
+        <a href="#" className="text-[#FF8000] hover:text-[#FF8000]/80 transition-colors duration-200">
           Điều khoản dịch vụ
         </a>
       </p>
@@ -606,7 +606,7 @@ export function RegisterForm() {
         Đã có tài khoản?{" "}
         <a
           href="/login"
-          className="font-semibold text-emerald-400 hover:text-emerald-300 transition-colors duration-200"
+          className="font-semibold text-[#FF8000] hover:text-[#FF8000]/80 transition-colors duration-200"
         >
           Đăng nhập
         </a>

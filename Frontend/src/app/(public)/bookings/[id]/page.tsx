@@ -84,7 +84,7 @@ function LoadingState() {
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
       <div className="flex flex-col items-center gap-3">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-700 border-t-emerald-400" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-700 border-t-[#FF8000]" />
         <p className="text-sm text-slate-500">Đang tải chi tiết đặt sân...</p>
       </div>
     </div>
@@ -190,7 +190,7 @@ export default function BookingDetailPage() {
           <div className="relative p-6">
             {/* Top tint */}
             <div
-              className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-2xl bg-gradient-to-b from-emerald-500/[0.06] to-transparent"
+              className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-2xl bg-gradient-to-b from-[#FF8000]/[0.06] to-transparent"
               aria-hidden
             />
 
@@ -208,7 +208,7 @@ export default function BookingDetailPage() {
                   </p>
                   {b.sportName && (
                     <div className="mt-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-800/50 bg-emerald-900/40 px-2.5 py-0.5 text-xs font-medium text-emerald-300">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#FF8000]/30 bg-[rgba(255,128,0,0.12)] px-2.5 py-0.5 text-xs font-medium text-[#FF8000]">
                         <Dumbbell className="h-3 w-3" aria-hidden />
                         {b.sportName}
                       </span>
@@ -284,7 +284,7 @@ export default function BookingDetailPage() {
                 )}
                 <div className="flex items-end justify-between pt-1">
                   <span className="text-sm text-slate-400">Tổng cộng</span>
-                  <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-2xl font-bold text-transparent tabular-nums">
+                  <span className="bg-gradient-to-r from-[#FF8000] to-[#86D232] bg-clip-text text-2xl font-bold text-transparent tabular-nums">
                     {formatCurrency(b.totalPrice)}
                   </span>
                 </div>
@@ -317,9 +317,9 @@ export default function BookingDetailPage() {
             href="/booking/payment"
             className={cn(
               "flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold",
-              "bg-gradient-to-r from-emerald-500 to-cyan-500 text-white",
+              "bg-[#FF8000] text-white",
               "transition-all duration-200",
-              "hover:from-emerald-400 hover:to-cyan-400 hover:shadow-[0_0_24px_rgba(16,185,129,0.45)]",
+              "hover:bg-[#FF8000]/85 hover:shadow-[0_0_24px_rgba(255,128,0,0.45)]",
               "active:scale-[0.98]",
             )}
           >
@@ -348,7 +348,7 @@ export default function BookingDetailPage() {
           href="/venues"
           className={cn(
             "flex items-center justify-center gap-1.5 text-sm text-slate-600",
-            "transition-colors hover:text-emerald-400",
+            "transition-colors hover:text-[#FF8000]",
           )}
         >
           Tìm sân thể thao khác

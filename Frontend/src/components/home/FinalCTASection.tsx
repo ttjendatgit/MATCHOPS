@@ -12,15 +12,15 @@ export function FinalCTASection() {
   return (
     <section className="relative overflow-hidden bg-slate-950 px-4 py-28 sm:px-6 lg:px-8">
       {/* ── Ambient glow blobs ───────────────────────────────────────────── */}
-      {/* Large emerald center */}
+      {/* Large orange center */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[700px] w-[700px] rounded-full bg-emerald-600/[0.11] blur-[140px]"
+        className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[700px] w-[700px] rounded-full bg-[#FF8000]/[0.08] blur-[140px]"
       />
-      {/* Cyan upper-right */}
+      {/* Green upper-right */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute right-1/4 top-0 h-[420px] w-[420px] rounded-full bg-cyan-500/[0.08] blur-[100px]"
+        className="pointer-events-none absolute right-1/4 top-0 h-[420px] w-[420px] rounded-full bg-[#86D232]/[0.06] blur-[100px]"
       />
       {/* Violet lower-left */}
       <div
@@ -37,23 +37,23 @@ export function FinalCTASection() {
       {/* ── Top border glow ──────────────────────────────────────────────── */}
       <div
         aria-hidden="true"
-        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent"
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF8000]/60 to-transparent"
       />
-      {/* Cyan accent layer on top border */}
+      {/* Green accent layer on top border */}
       <div
         aria-hidden="true"
-        className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent"
+        className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-transparent via-[#86D232]/20 to-transparent"
       />
 
       {/* ── Content ──────────────────────────────────────────────────────── */}
       <div className="relative mx-auto max-w-3xl text-center">
         {/* Eyebrow — ping dot + sharp pill */}
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 shadow-inner shadow-emerald-500/10">
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#FF8000]/30 bg-[#FF8000]/10 px-4 py-1.5 shadow-inner shadow-[#FF8000]/10">
           <span className="relative flex h-2 w-2" aria-hidden="true">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF8000] opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-[#FF8000]" />
           </span>
-          <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#FF8000]">
             Bắt đầu ngay hôm nay
           </span>
         </div>
@@ -62,7 +62,7 @@ export function FinalCTASection() {
         <h2 className="text-4xl font-black tracking-tighter leading-[0.95] text-white sm:text-5xl lg:text-6xl">
           Sân trống đang
           <br />
-          <span className="bg-gradient-to-r from-emerald-400 via-cyan-300 to-teal-300 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-[#FF8000] to-[#86D232] bg-clip-text text-transparent">
             chờ bạn.
           </span>
         </h2>
@@ -81,7 +81,7 @@ export function FinalCTASection() {
               key={label}
               className="flex items-center gap-2 rounded-full border border-white/8 bg-white/5 px-4 py-2 text-sm text-slate-300 backdrop-blur-sm"
             >
-              <Icon className="h-4 w-4 shrink-0 text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.6)]" aria-hidden="true" />
+              <Icon className="h-4 w-4 shrink-0 text-[#FF8000] drop-shadow-[0_0_6px_rgba(255,128,0,0.6)]" aria-hidden="true" />
               <span>{label}</span>
             </div>
           ))}
@@ -92,7 +92,7 @@ export function FinalCTASection() {
           {/* Primary — gradient + strong glow */}
           <Button
             size="lg"
-            className="gap-2 rounded-xl px-8 py-6 text-base font-bold bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-xl shadow-emerald-500/35 transition-all duration-200 hover:from-emerald-400 hover:to-cyan-400 hover:shadow-emerald-400/55 hover:-translate-y-0.5"
+            className="gap-2 rounded-xl px-8 py-6 text-base font-bold bg-[#FF8000] text-white shadow-xl shadow-[#FF8000]/35 transition-all duration-200 hover:bg-[#FF8000]/85 hover:shadow-[#FF8000]/55 hover:-translate-y-0.5"
             asChild
           >
             <Link href="/venues">
@@ -105,7 +105,7 @@ export function FinalCTASection() {
           <Button
             size="lg"
             variant="outline"
-            className="gap-2 rounded-xl px-8 py-6 text-base font-semibold bg-slate-950/70 border border-white/15 text-white shadow-lg shadow-emerald-950/20 backdrop-blur-md transition-all duration-200 hover:bg-emerald-500/15 hover:border-emerald-400/50 hover:text-emerald-100 hover:shadow-emerald-500/20 focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+            className="gap-2 rounded-xl px-8 py-6 text-base font-semibold bg-[#030303]/70 border border-white/15 text-white shadow-lg backdrop-blur-md transition-all duration-200 hover:bg-[#FF8000]/12 hover:border-[#FF8000]/45 hover:text-white hover:shadow-[#FF8000]/20 focus-visible:ring-2 focus-visible:ring-[#FF8000]/60"
             asChild
           >
             <Link href="/register">

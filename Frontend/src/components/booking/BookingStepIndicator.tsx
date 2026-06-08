@@ -30,9 +30,9 @@ export function BookingStepIndicator() {
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition-all duration-300",
                   isCompleted
-                    ? "bg-emerald-500 text-white"
+                    ? "bg-[#FF8000] text-white"
                     : isActive
-                      ? "bg-emerald-500 text-white shadow-[0_0_18px_rgba(16,185,129,0.55)]"
+                      ? "bg-[#FF8000] text-white shadow-[0_0_18px_rgba(255,128,0,0.55)]"
                       : "bg-slate-800 text-slate-500 ring-1 ring-slate-700",
                 )}
                 aria-current={isActive ? "step" : undefined}
@@ -47,9 +47,9 @@ export function BookingStepIndicator() {
                 className={cn(
                   "whitespace-nowrap text-xs font-medium transition-colors duration-200",
                   isActive
-                    ? "text-emerald-400"
+                    ? "text-[#FF8000]"
                     : isCompleted
-                      ? "text-emerald-600"
+                      ? "text-[#86D232]"
                       : "text-slate-600",
                 )}
               >
@@ -62,7 +62,7 @@ export function BookingStepIndicator() {
               <div
                 className={cn(
                   "mx-3 mt-4 h-px w-16 shrink-0 transition-colors duration-300 sm:w-24",
-                  i < current ? "bg-emerald-500" : "bg-slate-700",
+                  i < current ? "bg-[#FF8000]" : "bg-slate-700",
                 )}
                 aria-hidden
               />

@@ -98,19 +98,19 @@ export function StatsBar() {
         .statsbar-shimmer { animation: statsbar-shimmer 5s ease-in-out infinite; }
       `}</style>
 
-      {/* Top border — emerald primary glow */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/80 to-transparent" />
-      {/* Top border — cyan accent layer */}
-      <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-transparent via-cyan-400/25 to-transparent" />
+      {/* Top border — orange primary glow */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF8000]/80 to-transparent" />
+      {/* Top border — green accent layer */}
+      <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-transparent via-[#86D232]/25 to-transparent" />
       {/* Bottom border */}
-      <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#FF8000]/30 to-transparent" />
 
-      {/* Emerald left radial glow */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_50%_90%_at_15%_50%,rgba(16,185,129,0.09),transparent)]" />
-      {/* Cyan right radial glow */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_50%_90%_at_85%_50%,rgba(6,182,212,0.07),transparent)]" />
+      {/* Orange left radial glow */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_50%_90%_at_15%_50%,rgba(255,128,0,0.09),transparent)]" />
+      {/* Green right radial glow */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_50%_90%_at_85%_50%,rgba(134,210,50,0.07),transparent)]" />
       {/* Center top glow */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_0%,rgba(16,185,129,0.06),transparent)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_0%,rgba(255,128,0,0.06),transparent)]" />
 
       {/* Shimmer sweep — decorative */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
@@ -130,7 +130,7 @@ export function StatsBar() {
                 i >= 2 && "border-t border-white/8 lg:border-t-0"
               )}
             >
-              <dd className="text-4xl font-black tracking-tight sm:text-5xl bg-gradient-to-br from-emerald-300 via-cyan-300 to-teal-200 bg-clip-text text-transparent leading-none">
+              <dd className="text-4xl font-black tracking-tight sm:text-5xl bg-gradient-to-br from-[#FF8000] to-[#86D232] bg-clip-text text-transparent leading-none">
                 <Counter
                   end={stat.end}
                   suffix={stat.suffix}

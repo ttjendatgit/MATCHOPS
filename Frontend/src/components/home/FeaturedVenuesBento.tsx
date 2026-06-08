@@ -79,7 +79,7 @@ function RatingBadge({ rating }: { rating: number }) {
 
 function AvailabilityDot({ slots }: { slots: number }) {
   return (
-    <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-black/60 px-3 py-1 backdrop-blur-sm">
+    <div className="flex items-center gap-1.5 rounded-full border border-[rgba(134,210,50,0.25)] bg-black/60 px-3 py-1 backdrop-blur-sm">
       <span className="h-1.5 w-1.5 rounded-full bg-lime-400 animate-pulse" aria-hidden="true" />
       <span className="text-[11px] font-semibold text-white">Còn {slots} khung giờ</span>
     </div>
@@ -92,20 +92,20 @@ function HeroVenueCard() {
   return (
     <Link
       href={heroVenue.href}
-      className="group relative flex min-h-[440px] flex-col overflow-hidden rounded-2xl border border-white/8 transition-all duration-300 hover:border-emerald-500/50 hover:shadow-2xl hover:shadow-emerald-500/20 sm:col-span-2 lg:col-span-1 lg:row-span-2"
+      className="group relative flex min-h-[440px] flex-col overflow-hidden rounded-2xl border border-white/8 transition-all duration-300 hover:border-[#FF8000]/50 hover:shadow-2xl hover:shadow-[#FF8000]/20 sm:col-span-2 lg:col-span-1 lg:row-span-2"
       aria-label={`Xem chi tiết ${heroVenue.name}`}
     >
       {/* Full-bleed gradient background — deep cinematic */}
-      <div className="absolute inset-0 bg-gradient-to-b from-emerald-900/80 via-teal-950/90 to-slate-950" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a1a] via-[#0f0f0f] to-[#030303]" />
 
       {/* Top cinematic glow line */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/60 to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF8000]/45 to-transparent" />
 
       {/* Ambient top radial */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_55%_at_50%_0%,rgba(16,185,129,0.14),transparent)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_55%_at_50%_0%,rgba(255,128,0,0.12),transparent)]" />
 
       {/* Hover glow overlay */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_100%_70%_at_50%_50%,rgba(16,185,129,0.07),transparent)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_100%_70%_at_50%_50%,rgba(255,128,0,0.07),transparent)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
       {/* Decorative large faint icon */}
       <div
@@ -128,7 +128,7 @@ function HeroVenueCard() {
       <div className="relative bg-gradient-to-t from-black/90 via-black/60 to-transparent px-5 pb-6 pt-16">
         <AvailabilityDot slots={heroVenue.slots} />
 
-        <h3 className="mt-3 text-xl font-bold leading-tight text-white transition-colors duration-200 group-hover:text-emerald-300">
+        <h3 className="mt-3 text-xl font-bold leading-tight text-white transition-colors duration-200 group-hover:text-[#FF8000]">
           {heroVenue.name}
         </h3>
 
@@ -144,14 +144,14 @@ function HeroVenueCard() {
 
         <div className="mt-5 flex items-center justify-between">
           <div>
-            <span className="text-2xl font-black text-emerald-400">
+            <span className="text-2xl font-black text-[#FF8000]">
               {heroVenue.price.toLocaleString("vi-VN")}đ
             </span>
             <span className="ml-1 text-sm text-slate-400">/ giờ</span>
           </div>
           <Button
             size="sm"
-            className="gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-xs font-bold text-white shadow-lg shadow-emerald-500/40 transition-all duration-200 hover:from-emerald-400 hover:to-cyan-400 hover:shadow-emerald-400/60"
+            className="gap-1.5 rounded-xl bg-[#FF8000] text-xs font-bold text-white shadow-lg shadow-[#FF8000]/40 transition-all duration-200 hover:bg-[#FF8000]/85 hover:shadow-[#FF8000]/60"
           >
             Đặt ngay
             <ArrowRight
@@ -287,7 +287,7 @@ function CTATile() {
   return (
     <Link
       href="/venues"
-      className="group relative flex min-h-[200px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/8 bg-slate-800/50 transition-all duration-300 hover:border-emerald-500/40 hover:bg-slate-800/80 hover:shadow-xl hover:shadow-emerald-500/15 lg:col-start-3 lg:row-start-2"
+      className="group relative flex min-h-[200px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/8 bg-slate-800/50 transition-all duration-300 hover:border-[#FF8000]/40 hover:bg-slate-800/80 hover:shadow-xl hover:shadow-[#FF8000]/15 lg:col-start-3 lg:row-start-2"
       aria-label="Xem tất cả sân thể thao"
     >
       {/* Dot-grid pattern */}
@@ -297,18 +297,18 @@ function CTATile() {
       />
       {/* Emerald glow on hover */}
       <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_70%_at_50%_50%,rgba(16,185,129,0.09),transparent)] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_70%_at_50%_50%,rgba(255,128,0,0.09),transparent)] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         aria-hidden="true"
       />
 
       <div className="relative p-6 text-center">
         {/* Icon ring — glows on hover */}
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/25 transition-all duration-300 group-hover:bg-emerald-500/20 group-hover:ring-2 group-hover:ring-emerald-500/55 group-hover:shadow-lg group-hover:shadow-emerald-500/30">
-          <ChevronRight className="h-6 w-6 text-emerald-400" aria-hidden="true" />
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#FF8000]/10 ring-1 ring-[#FF8000]/25 transition-all duration-300 group-hover:bg-[#FF8000]/20 group-hover:ring-2 group-hover:ring-[#FF8000]/55 group-hover:shadow-lg group-hover:shadow-[#FF8000]/30">
+          <ChevronRight className="h-6 w-6 text-[#FF8000]" aria-hidden="true" />
         </div>
         <h3 className="text-base font-bold text-white">Xem tất cả sân</h3>
         <p className="mt-1 text-sm text-slate-400">3.000+ sân đang chờ bạn</p>
-        <div className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-400 transition-all duration-200 group-hover:gap-2.5">
+        <div className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#FF8000] transition-all duration-200 group-hover:gap-2.5">
           Khám phá ngay
           <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </div>
@@ -323,13 +323,13 @@ export function FeaturedVenuesBento() {
   return (
     <section className="relative bg-slate-900 px-4 py-20 sm:px-6 lg:px-8">
       {/* Section depth gradient — cyan tint from bottom */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_40%_at_50%_110%,rgba(6,182,212,0.04),transparent)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_40%_at_50%_110%,rgba(255,128,0,0.04),transparent)]" />
 
       <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <span className="mb-3 inline-block text-xs font-bold uppercase tracking-widest text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]">
+            <span className="mb-3 inline-block text-xs font-bold uppercase tracking-widest text-[#FF8000] drop-shadow-[0_0_8px_rgba(255,128,0,0.5)]">
               Sân nổi bật
             </span>
             <h2 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
@@ -341,11 +341,11 @@ export function FeaturedVenuesBento() {
           </div>
           <Link
             href="/venues"
-            className="hidden shrink-0 items-center gap-1.5 rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 transition-all duration-200 hover:border-emerald-500/35 hover:bg-emerald-500/5 hover:text-white sm:flex"
+            className="group hidden shrink-0 items-center gap-1.5 rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 transition-all duration-200 hover:border-[#FF8000]/35 hover:bg-[#FF8000]/5 hover:text-white sm:flex"
             aria-label="Xem tất cả sân thể thao"
           >
             Xem tất cả sân
-            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            <ChevronRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true" />
           </Link>
         </div>
 

@@ -136,7 +136,7 @@ function ConfirmationMissingState() {
           <div className="flex flex-col gap-3">
             <Link
               href="/venues"
-              className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-medium text-emerald-400 transition-colors hover:bg-emerald-500/20"
+              className="flex items-center justify-center gap-2 rounded-xl border border-[#FF8000]/30 bg-[#FF8000]/10 px-4 py-2.5 text-sm font-medium text-[#FF8000] transition-colors hover:bg-[#FF8000]/20"
             >
               Tìm sân thể thao
             </Link>
@@ -159,7 +159,7 @@ function LoadingState() {
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
       <div className="flex flex-col items-center gap-3">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-700 border-t-emerald-400" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-700 border-t-[#FF8000]" />
         <p className="text-sm text-slate-500">Đang tải thông tin xác nhận...</p>
       </div>
     </div>
@@ -211,21 +211,21 @@ export default function BookingSuccessPage() {
         <div className="relative mb-6 flex h-32 w-32 items-center justify-center">
           {/* Outermost pulse ring */}
           <span
-            className="absolute h-32 w-32 animate-ping rounded-full bg-emerald-500/[0.12]"
+            className="absolute h-32 w-32 animate-ping rounded-full bg-[#FF8000]/[0.12]"
             style={{ animationDuration: "2s" }}
             aria-hidden
           />
           {/* Static mid ring */}
           <span
-            className="absolute h-24 w-24 rounded-full bg-emerald-500/[0.08]"
+            className="absolute h-24 w-24 rounded-full bg-[#FF8000]/[0.08]"
             aria-hidden
           />
           {/* Icon circle */}
           <div
             className={cn(
               "relative flex h-20 w-20 items-center justify-center rounded-full transition-all duration-700",
-              "bg-gradient-to-br from-emerald-400 to-cyan-500",
-              "shadow-[0_0_48px_rgba(16,185,129,0.5)]",
+              "bg-gradient-to-br from-[#FF8000] via-[#FF9A20] to-[#86D232]",
+              "shadow-[0_0_48px_rgba(255,128,0,0.5)]",
               mounted ? "scale-100 opacity-100" : "scale-50 opacity-0",
             )}
             role="img"
@@ -262,13 +262,13 @@ export default function BookingSuccessPage() {
         {/* Booking ID badge */}
         <div
           className={cn(
-            "inline-flex items-center gap-2 rounded-full border border-emerald-500/30",
-            "bg-emerald-500/10 px-4 py-1.5 transition-all duration-500 delay-300",
+            "inline-flex items-center gap-2 rounded-full border border-[#FF8000]/30",
+            "bg-[#FF8000]/10 px-4 py-1.5 transition-all duration-500 delay-300",
             mounted ? "scale-100 opacity-100" : "scale-90 opacity-0",
           )}
         >
-          <Hash className="h-3.5 w-3.5 text-emerald-500" aria-hidden />
-          <span className="font-mono text-sm font-semibold tracking-wider text-emerald-400">
+          <Hash className="h-3.5 w-3.5 text-[#FF8000]" aria-hidden />
+          <span className="font-mono text-sm font-semibold tracking-wider text-[#FF8000]">
             {c.bookingId}
           </span>
         </div>
@@ -285,7 +285,7 @@ export default function BookingSuccessPage() {
           <div className="relative p-6">
             {/* Subtle top tint */}
             <div
-              className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-2xl bg-gradient-to-b from-emerald-500/[0.06] to-transparent"
+              className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-2xl bg-gradient-to-b from-[#FF8000]/[0.06] to-transparent"
               aria-hidden
             />
 
@@ -305,7 +305,7 @@ export default function BookingSuccessPage() {
                 </p>
                 {c.sportName && (
                   <div className="mt-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-800/50 bg-emerald-900/40 px-2.5 py-0.5 text-xs font-medium text-emerald-300">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-[#FF8000]/30 bg-[rgba(255,128,0,0.12)] px-2.5 py-0.5 text-xs font-medium text-[#FF8000]">
                       <Dumbbell className="h-3 w-3" aria-hidden />
                       {c.sportName}
                     </span>
@@ -367,17 +367,17 @@ export default function BookingSuccessPage() {
                 />
                 <div className="flex items-end justify-between pt-1">
                   <span className="text-sm text-slate-400">Tổng cộng</span>
-                  <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-2xl font-bold text-transparent tabular-nums">
+                  <span className="bg-gradient-to-r from-[#FF8000] via-[#FF9A20] to-[#86D232] bg-clip-text text-2xl font-bold text-transparent tabular-nums">
                     {formatCurrency(c.totalPrice)}
                   </span>
                 </div>
               </div>
 
               {/* Confirmation status pill */}
-              <div className="flex items-center justify-between rounded-xl border border-emerald-800/30 bg-emerald-900/20 px-4 py-3">
+              <div className="flex items-center justify-between rounded-xl border border-[#FF8000]/20 bg-[rgba(255,128,0,0.08)] px-4 py-3">
                 <span className="text-xs text-slate-400">Trạng thái</span>
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" aria-hidden />
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-[#86D232]">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#86D232]" aria-hidden />
                   Đã xác nhận · Đã thanh toán
                 </span>
               </div>
@@ -398,9 +398,9 @@ export default function BookingSuccessPage() {
           href="/bookings"
           className={cn(
             "flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3",
-            "bg-gradient-to-r from-emerald-500 to-cyan-500 text-sm font-semibold text-white",
+            "bg-[#FF8000] text-sm font-semibold text-white",
             "transition-all duration-200",
-            "hover:from-emerald-400 hover:to-cyan-400 hover:shadow-[0_0_24px_rgba(16,185,129,0.45)]",
+            "hover:bg-[#FF8000]/85 hover:shadow-[0_0_24px_rgba(255,128,0,0.45)]",
             "active:scale-[0.98]",
           )}
         >

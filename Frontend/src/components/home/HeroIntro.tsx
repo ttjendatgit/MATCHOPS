@@ -17,18 +17,18 @@ function MLogoMark({ className = "" }: { className?: string }) {
       {/* Main body — parallelogram-topped pillars give a forward-motion cut */}
       <path
         d="M12 22 L46 10 L110 92 L174 10 L208 22 L208 148 L174 148 L174 38 L110 118 L46 38 L46 148 L12 148 Z"
-        fill="#00f5d4"
+        fill="#FF8000"
       />
       {/* Top-ridge specular strip — bright chamfer along the arm peaks */}
       <path
         d="M50 10 L110 88 L170 10 L174 10 L110 92 L46 10 Z"
-        fill="#ecfdf5"
+        fill="#fff7ed"
         opacity="0.32"
       />
       {/* Left-pillar shadow wedge — adds 3-D depth */}
       <path
         d="M12 22 L12 148 L26 148 L26 22 Z"
-        fill="#042f2e"
+        fill="#1a0800"
         opacity="0.58"
       />
     </svg>
@@ -127,7 +127,7 @@ export function HeroIntro() {
         // "open" marker — all split effects from here (t ≈ 0.9s)
         .add("open")
 
-        // Emerald-cyan beam at seam
+        // Orange-green beam at seam
         .to(
           ".mi-center-beam",
           { autoAlpha: 1, scaleY: 1, duration: 0.32, ease: "power3.out" },
@@ -158,7 +158,7 @@ export function HeroIntro() {
         .to(".mi-layer-2-left",  { xPercent: -100, duration: 1.0, ease: "power4.inOut" }, "open+=0.18")
         .to(".mi-layer-2-right", { xPercent:  100, duration: 1.0, ease: "power4.inOut" }, "open+=0.18")
 
-        // Layer 3 — +0.36s stagger (cyan layer — visibly different from layer 2)
+        // Layer 3 — +0.36s stagger (green layer — visibly different from layer 2)
         .to(".mi-layer-3-left",  { xPercent: -100, duration: 1.0, ease: "power4.inOut" }, "open+=0.36")
         .to(".mi-layer-3-right", { xPercent:  100, duration: 1.0, ease: "power4.inOut" }, "open+=0.36")
 
@@ -183,7 +183,7 @@ export function HeroIntro() {
 
   return (
     <div ref={rootRef} className="mi-intro-root" aria-hidden="true">
-      {/* Layer 3 — back, cyan-ocean (clearly distinct from layers 1+2) */}
+      {/* Layer 3 — back, sport-green (clearly distinct from layers 1+2) */}
       <div className="mi-split-panel mi-split-left mi-layer-3-left">
         <div className="mi-full-stage mi-stage-three" />
       </div>

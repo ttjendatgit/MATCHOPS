@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Activity,
   CalendarCheck2,
   ChevronDown,
   KeyRound,
@@ -32,6 +31,24 @@ function checkActive(pathname: string, href: string, exact: boolean) {
   return exact ? pathname === href : pathname.startsWith(href);
 }
 
+// ─── Logo mark — shared between mobile (left) and desktop (center) ────────────
+
+function LogoMark() {
+  return (
+    <Link href="/" className="flex items-center gap-2 md:gap-2.5 group shrink-0">
+      <div className="flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-xl bg-[#FF8000] shadow-lg shadow-[#FF8000]/35 transition-all duration-200 group-hover:scale-105 group-hover:shadow-xl group-hover:shadow-[#FF8000]/55">
+        <span className="select-none font-black italic text-[18px] md:text-[20px] text-white leading-none" aria-hidden>M</span>
+      </div>
+      <span className="select-none text-[16px] md:text-[18px] font-black uppercase tracking-[0.06em] leading-none text-white drop-shadow-[0_0_14px_rgba(255,128,0,0.22)] transition-opacity duration-200 group-hover:opacity-90">
+        Match
+        <span className="bg-gradient-to-r from-[#FF8000] via-[#FF9A20] to-[#86D232] bg-clip-text text-transparent">
+          Ops
+        </span>
+      </span>
+    </Link>
+  );
+}
+
 // ─── Nav link — vertical text-flip micro-animation ────────────────────────────
 
 type NavLinkProps = {
@@ -50,7 +67,7 @@ function NavLink({ href, label, active, onClick }: NavLinkProps) {
         "relative px-3.5 py-2 text-sm font-medium rounded-full",
         "group overflow-hidden transition-all duration-200",
         active
-          ? "bg-[#00F5D4]/14 text-[#00F5D4] border border-[#00F5D4]/32 shadow-sm shadow-[#00F5D4]/18"
+          ? "bg-[#FF8000]/14 text-[#FF8000] border border-[#FF8000]/32 shadow-sm shadow-[#FF8000]/18"
           : "border border-transparent text-slate-300 hover:text-white hover:bg-white/[0.07]"
       )}
     >
@@ -110,12 +127,12 @@ function UserDropdown({ user, onLogout }: UserDropdownProps) {
           "flex items-center gap-1.5 rounded-full px-1.5 py-1",
           "border transition-all duration-200",
           open
-            ? "border-[#00F5D4]/28 bg-[#00F5D4]/8 shadow-[0_0_18px_rgba(0,245,212,0.28)]"
-            : "border-[#00F5D4]/15 bg-[#00F5D4]/[0.05] hover:border-[#00F5D4]/28 hover:bg-[#00F5D4]/8 hover:shadow-[0_0_14px_rgba(0,245,212,0.22)]"
+            ? "border-[#FF8000]/28 bg-[#FF8000]/8 shadow-[0_0_18px_rgba(255,128,0,0.28)]"
+            : "border-[#FF8000]/15 bg-[#FF8000]/[0.05] hover:border-[#FF8000]/28 hover:bg-[#FF8000]/8 hover:shadow-[0_0_14px_rgba(255,128,0,0.22)]"
         )}
       >
-        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#00F5D4]/12 to-[#00B4D8]/12 border border-[#00F5D4]/22">
-          <span className="text-[10px] font-bold text-[#00F5D4]">{initials}</span>
+        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FF8000]/12 border border-[#FF8000]/22">
+          <span className="text-[10px] font-bold text-[#FF8000]">{initials}</span>
         </div>
         <ChevronDown
           className={cn(
@@ -136,7 +153,7 @@ function UserDropdown({ user, onLogout }: UserDropdownProps) {
             "bg-slate-950/95 backdrop-blur-xl",
             "border border-white/10",
             "shadow-2xl shadow-black/60",
-            "ring-1 ring-[#00F5D4]/[0.10]"
+            "ring-1 ring-[#FF8000]/[0.10]"
           )}
         >
           {/* User info header */}
@@ -156,7 +173,7 @@ function UserDropdown({ user, onLogout }: UserDropdownProps) {
                 className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-slate-300 transition-all duration-150 hover:bg-white/[0.06] hover:text-white group"
               >
                 <Icon
-                  className="h-3.5 w-3.5 text-slate-500 group-hover:text-[#00F5D4] transition-colors duration-150"
+                  className="h-3.5 w-3.5 text-slate-500 group-hover:text-[#FF8000] transition-colors duration-150"
                   aria-hidden
                 />
                 {label}
@@ -230,99 +247,102 @@ export function PublicNavbar() {
           ? [
               "bg-slate-950/88 backdrop-blur-xl",
               "border-b border-white/[0.08]",
-              "shadow-[0_4px_32px_rgba(0,0,0,0.45),0_0_0_1px_rgba(0,245,212,0.06)]",
+              "shadow-[0_4px_32px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,128,0,0.06)]",
             ]
           : "bg-transparent border-b border-transparent"
       )}
     >
       {/* ── Main bar ── */}
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-6">
+      <div className="mx-auto h-16 max-w-7xl px-5 sm:px-6 flex items-center">
 
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group shrink-0">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#00F5D4] to-[#00B4D8] shadow-md shadow-[#00F5D4]/25 transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg group-hover:shadow-[#00F5D4]/38">
-            <Activity className="h-4 w-4 text-white" aria-hidden />
-          </div>
-          <span className="select-none text-[15px] font-black tracking-tight text-white">
-            Match
-            <span className="bg-gradient-to-r from-[#00F5D4] to-[#00B4D8] bg-clip-text text-transparent">
-              Ops
-            </span>
-          </span>
-        </Link>
-
-        {/* Desktop nav links */}
-        <nav className="hidden md:flex items-center gap-1" aria-label="Primary navigation">
-          {navLinks.map((link) => (
-            <NavLink
-              key={link.href}
-              href={link.href}
-              label={link.label}
-              active={checkActive(pathname, link.href, link.exact)}
-            />
-          ))}
-        </nav>
-
-        {/* Desktop auth / user area */}
-        <div className="hidden md:flex items-center gap-2.5">
-          {user ? (
-            /* ── Logged-in: Lịch đặt pill + avatar dropdown ── */
-            <div className="flex items-center gap-2">
-              {user.role === "OWNER" && (
-                <Link
-                  href="/owner"
-                  className="flex items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-xs font-medium text-slate-300 transition-all duration-200 hover:border-white/30 hover:bg-white/5 hover:text-white"
-                >
-                  <LayoutDashboard className="h-3.5 w-3.5" aria-hidden />
-                  Dashboard
-                </Link>
-              )}
-
-              {/* Lịch đặt — kept as standalone visible button */}
-              <Link
-                href="/bookings"
-                className="flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-xs font-medium text-slate-300 transition-all duration-200 hover:border-[#00F5D4]/22 hover:bg-[#00F5D4]/[0.05] hover:text-white"
-              >
-                <CalendarCheck2 className="h-3.5 w-3.5" aria-hidden />
-                Lịch đặt
-              </Link>
-
-              {/* Avatar dropdown (replaces old logout button) */}
-              <UserDropdown user={user} onLogout={handleLogout} />
-            </div>
-          ) : (
-            /* ── Guest: login / register ── */
-            <>
-              <Link
-                href="/login"
-                className="rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 transition-all duration-200 hover:border-[#00F5D4]/22 hover:bg-[#00F5D4]/[0.05] hover:text-white"
-              >
-                Đăng nhập
-              </Link>
-              <Link
-                href="/register"
-                className="rounded-full bg-gradient-to-r from-[#00F5D4] to-[#00B4D8] px-4 py-2 text-sm font-bold text-slate-900 shadow-[0_0_22px_rgba(0,245,212,0.50)] transition-all duration-200 hover:-translate-y-px hover:brightness-110 hover:shadow-[0_0_32px_rgba(0,245,212,0.70)]"
-              >
-                Đăng ký
-              </Link>
-            </>
-          )}
+        {/* ── Mobile row: logo-left + hamburger-right ── (hidden md+) */}
+        <div className="flex w-full items-center justify-between md:hidden">
+          <LogoMark />
+          <button
+            type="button"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-300 transition-colors duration-200 hover:bg-white/10 hover:text-white"
+            onClick={() => setMobileOpen((prev) => !prev)}
+            aria-label={mobileOpen ? "Đóng menu" : "Mở menu"}
+            aria-expanded={mobileOpen}
+            aria-controls="public-mobile-nav"
+          >
+            {mobileOpen
+              ? <X className="h-4 w-4" aria-hidden />
+              : <Menu className="h-4 w-4" aria-hidden />
+            }
+          </button>
         </div>
 
-        {/* Mobile hamburger */}
-        <button
-          type="button"
-          className="md:hidden flex h-9 w-9 items-center justify-center rounded-full text-slate-300 transition-colors duration-200 hover:bg-white/10 hover:text-white"
-          onClick={() => setMobileOpen((prev) => !prev)}
-          aria-label={mobileOpen ? "Đóng menu" : "Mở menu"}
-          aria-expanded={mobileOpen}
-          aria-controls="public-mobile-nav"
-        >
-          {mobileOpen
-            ? <X className="h-4 w-4" aria-hidden />
-            : <Menu className="h-4 w-4" aria-hidden />
-          }
-        </button>
+        {/* ── Desktop 3-col grid: [nav left] [logo center] [auth right] ── */}
+        {/*
+          grid-cols-[1fr_auto_1fr]:
+            Col 1 (1fr)  — nav links, left-aligned
+            Col 2 (auto) — logo, exact natural width → grid centers it between two equal 1fr cols
+            Col 3 (1fr)  — auth actions, right-aligned via justify-end
+          Equal 1fr columns guarantee the logo center is always the geometric
+          center of the navbar, regardless of how many auth buttons appear.
+        */}
+        <div className="hidden md:grid md:grid-cols-[1fr_auto_1fr] items-center w-full gap-x-8">
+
+          {/* Col 1 — primary nav links */}
+          <nav className="flex items-center gap-1" aria-label="Primary navigation">
+            {navLinks.map((link) => (
+              <NavLink
+                key={link.href}
+                href={link.href}
+                label={link.label}
+                active={checkActive(pathname, link.href, link.exact)}
+              />
+            ))}
+          </nav>
+
+          {/* Col 2 — centered logo mark */}
+          <LogoMark />
+
+          {/* Col 3 — auth / user actions */}
+          <div className="flex items-center justify-end gap-2.5">
+            {user ? (
+              /* ── Logged-in: booking pill + avatar dropdown ── */
+              <div className="flex items-center gap-2">
+                {user.role === "OWNER" && (
+                  <Link
+                    href="/owner"
+                    className="flex items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-xs font-medium text-slate-300 transition-all duration-200 hover:border-white/30 hover:bg-white/5 hover:text-white"
+                  >
+                    <LayoutDashboard className="h-3.5 w-3.5" aria-hidden />
+                    Dashboard
+                  </Link>
+                )}
+
+                <Link
+                  href="/bookings"
+                  className="flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-xs font-medium text-slate-300 transition-all duration-200 hover:border-[#FF8000]/22 hover:bg-[#FF8000]/[0.05] hover:text-white"
+                >
+                  <CalendarCheck2 className="h-3.5 w-3.5" aria-hidden />
+                  Lịch đặt
+                </Link>
+
+                <UserDropdown user={user} onLogout={handleLogout} />
+              </div>
+            ) : (
+              /* ── Guest: login / register ── */
+              <>
+                <Link
+                  href="/login"
+                  className="rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 transition-all duration-200 hover:border-[#FF8000]/22 hover:bg-[#FF8000]/[0.05] hover:text-white"
+                >
+                  Đăng nhập
+                </Link>
+                <Link
+                  href="/register"
+                  className="rounded-full bg-[#FF8000] px-4 py-2 text-sm font-bold text-white shadow-[0_0_22px_rgba(255,128,0,0.45)] transition-all duration-200 hover:-translate-y-px hover:bg-[#FF8000]/90 hover:shadow-[0_0_32px_rgba(255,128,0,0.65)]"
+                >
+                  Đăng ký
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* ── Mobile dropdown ── */}
@@ -348,7 +368,7 @@ export function PublicNavbar() {
                 className={cn(
                   "flex items-center rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200",
                   active
-                    ? "bg-[#00F5D4]/8 text-[#00F5D4] border border-[#00F5D4]/15"
+                    ? "bg-[#FF8000]/8 text-[#FF8000] border border-[#FF8000]/15"
                     : "border border-transparent text-slate-400 hover:bg-white/[0.07] hover:text-white"
                 )}
                 onClick={() => setMobileOpen(false)}
@@ -364,9 +384,9 @@ export function PublicNavbar() {
             /* ── Mobile: logged-in section ── */
             <>
               {/* User identity */}
-              <div className="flex items-center gap-2.5 rounded-xl border border-[#00F5D4]/15 bg-[#00F5D4]/[0.04] px-3.5 py-2.5">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#00F5D4]/22 bg-[#00F5D4]/8">
-                  <span className="text-[11px] font-bold text-[#00F5D4]">
+              <div className="flex items-center gap-2.5 rounded-xl border border-[#FF8000]/15 bg-[#FF8000]/[0.04] px-3.5 py-2.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#FF8000]/22 bg-[#FF8000]/8">
+                  <span className="text-[11px] font-bold text-[#FF8000]">
                     {user.fullName.slice(0, 2).toUpperCase()}
                   </span>
                 </div>
@@ -440,14 +460,14 @@ export function PublicNavbar() {
             <>
               <Link
                 href="/login"
-                className="flex items-center rounded-xl border border-white/10 px-3.5 py-2.5 text-sm font-medium text-slate-300 transition-all duration-200 hover:border-[#00F5D4]/20 hover:bg-[#00F5D4]/[0.05] hover:text-white"
+                className="flex items-center rounded-xl border border-white/10 px-3.5 py-2.5 text-sm font-medium text-slate-300 transition-all duration-200 hover:border-[#FF8000]/20 hover:bg-[#FF8000]/[0.05] hover:text-white"
                 onClick={() => setMobileOpen(false)}
               >
                 Đăng nhập
               </Link>
               <Link
                 href="/register"
-                className="mt-1 flex items-center justify-center rounded-xl bg-gradient-to-r from-[#00F5D4] to-[#00B4D8] px-3.5 py-2.5 text-sm font-bold text-slate-900 shadow-[0_0_22px_rgba(0,245,212,0.50)] transition-all duration-200 hover:brightness-110 hover:shadow-[0_0_32px_rgba(0,245,212,0.70)]"
+                className="mt-1 flex items-center justify-center rounded-xl bg-[#FF8000] px-3.5 py-2.5 text-sm font-bold text-white shadow-[0_0_22px_rgba(255,128,0,0.45)] transition-all duration-200 hover:bg-[#FF8000]/90 hover:shadow-[0_0_32px_rgba(255,128,0,0.65)]"
                 onClick={() => setMobileOpen(false)}
               >
                 Đăng ký

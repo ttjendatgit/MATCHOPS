@@ -137,7 +137,7 @@ function DraftMissingState() {
           </p>
           <Link
             href="/venues"
-            className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-medium text-emerald-400 transition-colors hover:bg-emerald-500/20"
+            className="flex items-center justify-center gap-2 rounded-xl border border-[#FF8000]/30 bg-[#FF8000]/10 px-4 py-2.5 text-sm font-medium text-[#FF8000] transition-colors hover:bg-[#FF8000]/20"
           >
             Tìm sân thể thao
           </Link>
@@ -153,7 +153,7 @@ function LoadingState() {
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
       <div className="flex flex-col items-center gap-3">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-700 border-t-emerald-400" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-700 border-t-[#FF8000]" />
         <p className="text-sm text-slate-500">Đang tải thông tin thanh toán...</p>
       </div>
     </div>
@@ -263,7 +263,7 @@ export default function PaymentPage() {
           <GlassCard>
             <div className="relative p-6">
               <div
-                className="pointer-events-none absolute inset-x-0 top-0 h-28 rounded-t-2xl bg-gradient-to-b from-emerald-500/6 to-transparent"
+                className="pointer-events-none absolute inset-x-0 top-0 h-28 rounded-t-2xl bg-gradient-to-b from-[#FF8000]/6 to-transparent"
                 aria-hidden
               />
               <div className="relative">
@@ -294,7 +294,7 @@ export default function PaymentPage() {
 
           {/* Security note */}
           <div className="flex items-center gap-2.5 rounded-xl border border-white/5 bg-slate-900/40 px-4 py-3">
-            <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-500" aria-hidden />
+            <ShieldCheck className="h-4 w-4 shrink-0 text-[#86D232]" aria-hidden />
             <p className="text-xs text-slate-500">
               Thông tin đặt sân được bảo mật. MatchOps không lưu thông tin thẻ
               ngân hàng.
@@ -310,7 +310,7 @@ export default function PaymentPage() {
             <GlassCard>
               <div className="relative p-6">
                 <div
-                  className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-2xl bg-gradient-to-b from-emerald-500/6 to-transparent"
+                  className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-2xl bg-gradient-to-b from-[#FF8000]/6 to-transparent"
                   aria-hidden
                 />
                 <div className="relative">
@@ -328,7 +328,7 @@ export default function PaymentPage() {
                     </p>
                     {draft.sportName && (
                       <div className="mt-2">
-                        <Badge className="border-emerald-800/50 bg-emerald-900/50 px-2 text-xs text-emerald-300">
+                        <Badge className="border-[#FF8000]/30 bg-[rgba(255,128,0,0.12)] px-2 text-xs text-[#FF8000]">
                           {draft.sportName}
                         </Badge>
                       </div>
@@ -401,7 +401,7 @@ export default function PaymentPage() {
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-400">Phí đặt lịch</span>
-                      <span className="font-medium text-emerald-400">Miễn phí</span>
+                      <span className="font-medium text-[#86D232]">Miễn phí</span>
                     </div>
                   </div>
 
@@ -414,7 +414,7 @@ export default function PaymentPage() {
                         Tổng cộng
                       </p>
                     </div>
-                    <p className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-2xl font-bold text-transparent tabular-nums">
+                    <p className="bg-gradient-to-r from-[#FF8000] via-[#FF9A20] to-[#86D232] bg-clip-text text-2xl font-bold text-transparent tabular-nums">
                       {formatCurrency(draft.totalPrice)}
                     </p>
                   </div>
@@ -436,9 +436,9 @@ export default function PaymentPage() {
                 "flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all duration-200",
                 canConfirm
                   ? [
-                      "cursor-pointer bg-gradient-to-r from-emerald-500 to-cyan-500 text-white",
-                      "hover:from-emerald-400 hover:to-cyan-400",
-                      "hover:shadow-[0_0_28px_rgba(16,185,129,0.5)]",
+                      "cursor-pointer bg-[#FF8000] text-white",
+                      "hover:bg-[#FF8000]/85",
+                      "hover:shadow-[0_0_28px_rgba(255,128,0,0.5)]",
                       "active:scale-[0.98]",
                     ]
                   : "cursor-not-allowed bg-slate-800 text-slate-500 border border-slate-700/50",

@@ -9,7 +9,7 @@ export function LoadingSpinner({ size = "md", className }: LoadingSpinnerProps) 
   return (
     <div
       className={cn(
-        "animate-spin rounded-full border-2 border-slate-200 border-t-primary",
+        "animate-spin rounded-full border-2 border-[#141414] border-t-[#FF8000]",
         size === "sm" && "h-4 w-4",
         size === "md" && "h-6 w-6",
         size === "lg" && "h-10 w-10",

@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Circle,
   ArrowRight,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { BookingStatusBadge, VenueStatusBadge } from "@/components/shared/StatusBadge";
@@ -31,20 +32,24 @@ export default function OwnerDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* ── Welcome ── */}
+
+      {/* ── Welcome header ── */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white font-heading">
-            Quản lý sân của bạn
-          </h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <div className="flex items-center gap-2 mb-1">
+            <Zap className="h-5 w-5 text-[#FF8000]" />
+            <h1 className="text-2xl font-bold text-white font-heading tracking-tight">
+              Quản lý sân của bạn
+            </h1>
+          </div>
+          <p className="text-sm text-[#C4C7C9]">
             Theo dõi hoạt động, lịch đặt và doanh thu từ tất cả cụm sân.
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900 px-4 py-2">
-          <span className="text-xs text-slate-500">Hôm nay</span>
-          <span className="h-3 w-px bg-slate-700" />
-          <span className="text-xs font-medium text-slate-300">
+        <div className="flex items-center gap-2 rounded-lg border border-[rgba(134,210,50,0.25)] bg-[#0A0A0A] px-4 py-2">
+          <span className="text-xs text-[#C4C7C9]/60">Hôm nay</span>
+          <span className="h-3 w-px bg-[rgba(134,210,50,0.3)]" />
+          <span className="text-xs font-semibold text-[#86D232]">
             Thứ Sáu, 06/06/2026
           </span>
         </div>
@@ -52,30 +57,32 @@ export default function OwnerDashboardPage() {
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        {/* Revenue */}
-        <div className="col-span-2 rounded-xl border border-slate-800 bg-slate-900 p-5 lg:col-span-1">
-          <div className="flex items-start justify-between">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-              <TrendingUp className="h-4.5 w-4.5 h-[18px] w-[18px] text-primary" />
+
+        {/* Revenue — highlighted card */}
+        <div className="col-span-2 rounded-xl border border-[rgba(255,128,0,0.3)] bg-[#0A0A0A] p-5 lg:col-span-1 relative overflow-hidden transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:border-[rgba(255,128,0,0.5)] hover:shadow-[0_0_20px_rgba(255,128,0,0.12)]">
+          <div className="absolute inset-0 bg-gradient-to-br from-[rgba(255,128,0,0.06)] to-transparent pointer-events-none" />
+          <div className="flex items-start justify-between relative">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[rgba(255,128,0,0.15)]">
+              <TrendingUp className="h-[18px] w-[18px] text-[#FF8000]" />
             </div>
-            <span className="flex items-center gap-1 text-xs font-medium text-emerald-400">
+            <span className="flex items-center gap-1 text-xs font-semibold text-[#86D232]">
               <ArrowUpRight className="h-3 w-3" />
               +{mockRevenueDelta.revenue.value}%
             </span>
           </div>
-          <p className="mt-3 text-xl font-bold tabular-nums text-white">
+          <p className="mt-3 text-xl font-bold tabular-nums text-white relative">
             {formatCurrency(mockKpis.revenueToday)}
           </p>
-          <p className="mt-0.5 text-xs text-slate-500">Doanh thu hôm nay</p>
+          <p className="mt-0.5 text-xs text-[#C4C7C9]/60 relative">Doanh thu hôm nay</p>
         </div>
 
         {/* Bookings */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-5">
+        <div className="rounded-xl border border-[rgba(134,210,50,0.28)] bg-[#0A0A0A] p-5 transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:border-[rgba(134,210,50,0.45)]">
           <div className="flex items-start justify-between">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[rgba(96,165,250,0.12)]">
               <CalendarCheck2 className="h-[18px] w-[18px] text-blue-400" />
             </div>
-            <span className="flex items-center gap-1 text-xs font-medium text-emerald-400">
+            <span className="flex items-center gap-1 text-xs font-semibold text-[#86D232]">
               <ArrowUpRight className="h-3 w-3" />
               +{mockRevenueDelta.bookings.value}
             </span>
@@ -83,16 +90,16 @@ export default function OwnerDashboardPage() {
           <p className="mt-3 text-xl font-bold tabular-nums text-white">
             {mockKpis.bookingsToday}
           </p>
-          <p className="mt-0.5 text-xs text-slate-500">Lịch đặt hôm nay</p>
+          <p className="mt-0.5 text-xs text-[#C4C7C9]/60">Lịch đặt hôm nay</p>
         </div>
 
         {/* Occupancy */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-5">
+        <div className="rounded-xl border border-[rgba(134,210,50,0.28)] bg-[#0A0A0A] p-5 transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:border-[rgba(134,210,50,0.45)]">
           <div className="flex items-start justify-between">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/10">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[rgba(167,139,250,0.12)]">
               <Building2 className="h-[18px] w-[18px] text-violet-400" />
             </div>
-            <span className="flex items-center gap-1 text-xs font-medium text-red-400">
+            <span className="flex items-center gap-1 text-xs font-semibold text-[#FF4B4B]">
               <ArrowDownRight className="h-3 w-3" />
               {mockRevenueDelta.occupancy.value}%
             </span>
@@ -100,72 +107,82 @@ export default function OwnerDashboardPage() {
           <p className="mt-3 text-xl font-bold tabular-nums text-white">
             {mockKpis.occupancyRate}%
           </p>
-          <p className="mt-0.5 text-xs text-slate-500">Tỷ lệ lấp đầy</p>
+          <p className="mt-0.5 text-xs text-[#C4C7C9]/60">Tỷ lệ lấp đầy</p>
         </div>
 
         {/* Active venues */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10">
+        <div className="rounded-xl border border-[rgba(134,210,50,0.28)] bg-[#0A0A0A] p-5 transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:border-[rgba(134,210,50,0.45)]">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[rgba(251,191,36,0.12)]">
             <Building2 className="h-[18px] w-[18px] text-amber-400" />
           </div>
           <p className="mt-3 text-xl font-bold tabular-nums text-white">
             {mockKpis.activeVenues.current}
-            <span className="text-sm font-normal text-slate-500">
+            <span className="text-sm font-normal text-[#C4C7C9]/50">
               /{mockKpis.activeVenues.total}
             </span>
           </p>
-          <p className="mt-0.5 text-xs text-slate-500">Cụm sân hoạt động</p>
+          <p className="mt-0.5 text-xs text-[#C4C7C9]/60">Cụm sân hoạt động</p>
         </div>
 
         {/* Pending */}
-        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10">
+        <div className="rounded-xl border border-[rgba(251,191,36,0.35)] bg-[rgba(251,191,36,0.05)] p-5 transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:border-[rgba(251,191,36,0.55)]">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[rgba(251,191,36,0.12)]">
             <Clock className="h-[18px] w-[18px] text-amber-400" />
           </div>
           <p className="mt-3 text-xl font-bold tabular-nums text-white">
             {mockKpis.pendingApprovals}
           </p>
-          <p className="mt-0.5 text-xs text-amber-500/80">Chờ duyệt</p>
+          <p className="mt-0.5 text-xs text-amber-400/70">Chờ duyệt</p>
         </div>
       </div>
 
       {/* ── Mid row: Revenue chart + Quick actions ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+
         {/* Revenue chart */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-5 lg:col-span-2">
+        <div className="rounded-xl border border-[rgba(134,210,50,0.28)] bg-[#0A0A0A] p-5 lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold text-white">Doanh thu 7 ngày</h2>
-              <p className="text-xs text-slate-500">T2 – CN tuần này</p>
+              <p className="text-xs text-[#C4C7C9]/60">T2 – CN tuần này</p>
             </div>
-            <span className="text-xs font-medium text-primary">
+            <span className="text-xs font-semibold text-[#FF8000] bg-[rgba(255,128,0,0.1)] px-2 py-1 rounded-md">
               Tổng: 25.2M
             </span>
           </div>
-          <div className="flex h-36 items-end gap-2">
-            {mockRevenueChart.map((d) => (
-              <div
-                key={d.day}
-                className="flex flex-1 flex-col items-center gap-1.5"
-              >
-                <span className="text-[9px] font-medium tabular-nums text-slate-500">
-                  {d.label}
-                </span>
+          <div className="flex h-36 items-end gap-1.5">
+            {mockRevenueChart.map((d, i) => {
+              const isHighest = d.value === Math.max(...mockRevenueChart.map((x) => x.value));
+              return (
                 <div
-                  className="w-full rounded-t-md bg-primary/25 transition-colors hover:bg-primary/50"
-                  style={{ height: `${d.value}%` }}
-                />
-                <span className="text-[9px] text-slate-600">{d.day}</span>
-              </div>
-            ))}
+                  key={d.day}
+                  className="flex flex-1 flex-col items-center gap-1.5"
+                >
+                  <span className="text-[9px] font-semibold tabular-nums text-[#C4C7C9]/50">
+                    {d.label}
+                  </span>
+                  <div
+                    className={`w-full rounded-t-md transition-all hover:opacity-90 ${
+                      isHighest
+                        ? "bg-[#FF8000]"
+                        : i % 2 === 0
+                        ? "bg-[rgba(134,210,50,0.35)]"
+                        : "bg-[rgba(255,128,0,0.2)]"
+                    }`}
+                    style={{ height: `${d.value}%` }}
+                  />
+                  <span className="text-[9px] text-[#C4C7C9]/40">{d.day}</span>
+                </div>
+              );
+            })}
           </div>
-          <div className="mt-3 flex items-center justify-between border-t border-slate-800 pt-3">
-            <span className="text-xs text-slate-500">
+          <div className="mt-3 flex items-center justify-between border-t border-[rgba(134,210,50,0.15)] pt-3">
+            <span className="text-xs text-[#C4C7C9]/50">
               Cao nhất: Thứ Bảy – 5.0M
             </span>
             <Link
               href="/owner/revenue"
-              className="flex items-center gap-1 text-xs text-primary hover:underline"
+              className="flex items-center gap-1 text-xs font-medium text-[#FF8000] hover:underline"
             >
               Xem chi tiết <ArrowRight className="h-3 w-3" />
             </Link>
@@ -173,7 +190,7 @@ export default function OwnerDashboardPage() {
         </div>
 
         {/* Quick actions */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-5">
+        <div className="rounded-xl border border-[rgba(134,210,50,0.28)] bg-[#0A0A0A] p-5">
           <h2 className="mb-4 text-sm font-semibold text-white">
             Thao tác nhanh
           </h2>
@@ -182,16 +199,16 @@ export default function OwnerDashboardPage() {
               <Link
                 key={action.href + action.label}
                 href={action.href}
-                className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-3 text-sm transition-colors hover:border-primary/30 hover:bg-primary/5"
+                className="group flex items-center gap-3 rounded-lg border border-[rgba(134,210,50,0.15)] bg-[#141414] px-3 py-3 text-sm transition-all duration-200 hover:border-[rgba(255,128,0,0.35)] hover:bg-[rgba(255,128,0,0.06)] active:scale-[0.99]"
               >
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10">
-                  <Plus className="h-3.5 w-3.5 text-primary" />
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[rgba(255,128,0,0.12)]">
+                  <Plus className="h-3.5 w-3.5 text-[#FF8000]" />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-slate-200">
+                  <p className="truncate text-sm font-medium text-white">
                     {action.label}
                   </p>
-                  <p className="truncate text-xs text-slate-500">
+                  <p className="truncate text-xs text-[#C4C7C9]/60">
                     {action.description}
                   </p>
                 </div>
@@ -203,38 +220,43 @@ export default function OwnerDashboardPage() {
 
       {/* ── Bottom row: Recent bookings + Venue status & Checklist ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+
         {/* Recent bookings */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900 lg:col-span-2">
-          <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+        <div className="rounded-xl border border-[rgba(134,210,50,0.28)] bg-[#0A0A0A] lg:col-span-2 overflow-hidden">
+          <div className="flex items-center justify-between border-b border-[rgba(134,210,50,0.15)] px-5 py-4">
             <h2 className="text-sm font-semibold text-white">
               Lịch đặt gần đây
             </h2>
             <Link
               href="/owner/bookings"
-              className="flex items-center gap-1 text-xs text-primary hover:underline"
+              className="flex items-center gap-1 text-xs font-medium text-[#FF8000] hover:underline"
             >
               Xem tất cả <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="divide-y divide-slate-800">
-            {mockRecentBookings.map((b) => (
+          <div>
+            {mockRecentBookings.map((b, i) => (
               <div
                 key={b.id}
-                className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-slate-800/40"
+                className={`flex items-center gap-4 px-5 py-3.5 transition-colors duration-150 hover:bg-[#141414] ${
+                  i < mockRecentBookings.length - 1
+                    ? "border-b border-[rgba(134,210,50,0.1)]"
+                    : ""
+                }`}
               >
                 <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-medium text-white">
+                  <p className="truncate text-sm font-semibold text-white">
                     {b.customerName}
                   </p>
-                  <p className="truncate text-xs text-slate-500">
+                  <p className="truncate text-xs text-[#C4C7C9]/60">
                     {b.courtName} · {b.venueName}
                   </p>
                 </div>
                 <div className="hidden shrink-0 text-right sm:block">
-                  <p className="text-xs text-slate-400">{b.time}</p>
+                  <p className="text-xs text-[#C4C7C9]/70">{b.time}</p>
                 </div>
                 <BookingStatusBadge status={b.status} />
-                <p className="shrink-0 text-sm font-semibold tabular-nums text-slate-200">
+                <p className="shrink-0 text-sm font-bold tabular-nums text-[#FF8000]">
                   {formatCurrency(b.amount)}
                 </p>
               </div>
@@ -242,17 +264,18 @@ export default function OwnerDashboardPage() {
           </div>
         </div>
 
-        {/* Right column: Venue approvals + Checklist */}
+        {/* Right column */}
         <div className="flex flex-col gap-4">
+
           {/* Venue approval panel */}
-          <div className="rounded-xl border border-slate-800 bg-slate-900 p-5">
+          <div className="rounded-xl border border-[rgba(134,210,50,0.28)] bg-[#0A0A0A] p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-white">
                 Trạng thái cụm sân
               </h2>
               <Link
                 href="/owner/venues"
-                className="text-xs text-primary hover:underline"
+                className="text-xs font-medium text-[#FF8000] hover:underline"
               >
                 Quản lý
               </Link>
@@ -263,7 +286,7 @@ export default function OwnerDashboardPage() {
                   key={v.id}
                   className="flex items-center justify-between gap-3"
                 >
-                  <p className="min-w-0 truncate text-xs text-slate-400">
+                  <p className="min-w-0 truncate text-xs text-[#C4C7C9]">
                     {v.name}
                   </p>
                   <VenueStatusBadge status={v.status} />
@@ -273,19 +296,19 @@ export default function OwnerDashboardPage() {
           </div>
 
           {/* Operations checklist */}
-          <div className="rounded-xl border border-slate-800 bg-slate-900 p-5">
+          <div className="rounded-xl border border-[rgba(134,210,50,0.28)] bg-[#0A0A0A] p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-white">
                 Thiết lập hồ sơ
               </h2>
-              <span className="text-xs text-slate-500">
+              <span className="text-xs font-semibold text-[#86D232]">
                 {completedChecklist}/{mockChecklist.length}
               </span>
             </div>
             {/* Progress bar */}
-            <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-slate-800">
+            <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-[#141414]">
               <div
-                className="h-full rounded-full bg-primary transition-all"
+                className="h-full rounded-full bg-[#FF8000] transition-all shadow-[0_0_8px_rgba(255,128,0,0.5)]"
                 style={{
                   width: `${(completedChecklist / mockChecklist.length) * 100}%`,
                 }}
@@ -295,15 +318,15 @@ export default function OwnerDashboardPage() {
               {mockChecklist.map((item) => (
                 <li key={item.id} className="flex items-center gap-2.5">
                   {item.done ? (
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-[#86D232]" />
                   ) : (
-                    <Circle className="h-4 w-4 shrink-0 text-slate-600" />
+                    <Circle className="h-4 w-4 shrink-0 text-[#C4C7C9]/30" />
                   )}
                   <span
                     className={
                       item.done
-                        ? "text-xs text-slate-400 line-through"
-                        : "text-xs text-slate-300"
+                        ? "text-xs text-[#C4C7C9]/40 line-through"
+                        : "text-xs text-[#C4C7C9]"
                     }
                   >
                     {item.label}

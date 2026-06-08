@@ -154,7 +154,7 @@ export default async function VenueDetailPage({
         <p className="text-sm text-red-400">{venueError}</p>
         <Link
           href="/venues"
-          className="mt-4 inline-block text-sm text-emerald-400 hover:underline"
+          className="mt-4 inline-block text-sm text-[#FF8000] hover:underline"
         >
           ← Quay lại danh sách sân
         </Link>
@@ -241,8 +241,8 @@ export default async function VenueDetailPage({
               />
             </div>
           ) : (
-            <div className="relative flex h-72 w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900 to-teal-950">
-              <MapPin className="h-16 w-16 text-emerald-500/25" aria-hidden />
+            <div className="relative flex h-72 w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#141414] to-[#0A0A0A]">
+              <MapPin className="h-16 w-16 text-[#FF8000]/25" aria-hidden />
               <div
                 className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/60 to-transparent"
                 aria-hidden
@@ -285,7 +285,7 @@ export default async function VenueDetailPage({
                 {sports.map((sport) => (
                   <span
                     key={sport.id}
-                    className="inline-flex items-center rounded-full border border-emerald-800/40 bg-emerald-900/30 px-2.5 py-0.5 text-xs font-medium text-emerald-300"
+                    className="inline-flex items-center rounded-full border border-[#FF8000]/30 bg-[rgba(255,128,0,0.12)] px-2.5 py-0.5 text-xs font-medium text-[#FF8000]"
                   >
                     {sport.name}
                   </span>
@@ -327,7 +327,7 @@ export default async function VenueDetailPage({
                   return (
                     <div
                       key={court.id}
-                      className="flex items-center justify-between rounded-xl border border-white/[0.08] bg-slate-900/50 p-4 transition-colors hover:border-emerald-500/20 hover:bg-slate-900/70"
+                      className="flex items-center justify-between rounded-xl border border-white/[0.08] bg-slate-900/50 p-4 transition-colors hover:border-[#FF8000]/20 hover:bg-slate-900/70"
                     >
                       <div className="min-w-0">
                         <p className="font-medium text-slate-200">
@@ -335,7 +335,7 @@ export default async function VenueDetailPage({
                         </p>
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                           {sport && (
-                            <span className="rounded-full border border-emerald-800/40 bg-emerald-900/30 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                            <span className="rounded-full border border-[#FF8000]/30 bg-[rgba(255,128,0,0.10)] px-2 py-0.5 text-[10px] font-medium text-[#FF8000]">
                               {sport.name}
                             </span>
                           )}
@@ -354,7 +354,7 @@ export default async function VenueDetailPage({
 
                       <div className="ml-4 shrink-0 text-right">
                         {courtMinPrice !== null ? (
-                          <p className="text-sm font-semibold text-emerald-400">
+                          <p className="text-sm font-semibold text-[#FF8000]">
                             từ {(courtMinPrice / 1000).toFixed(0)}k/h
                           </p>
                         ) : (
@@ -362,7 +362,7 @@ export default async function VenueDetailPage({
                         )}
                         <a
                           href="#booking-panel"
-                          className="mt-2 inline-block rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                          className="mt-2 inline-block rounded-lg bg-[#FF8000] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#FF8000]/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]"
                         >
                           Đặt sân
                         </a>

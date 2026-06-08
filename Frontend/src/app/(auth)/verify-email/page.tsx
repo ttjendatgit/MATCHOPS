@@ -10,8 +10,8 @@ export default function VerifyEmailPage() {
     <div className="w-full max-w-sm">
       <div className="rounded-xl border border-slate-100 bg-white p-8 shadow-sm text-center">
         <div className="mb-5 flex justify-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
-            <MailCheck className="h-8 w-8 text-emerald-600" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[rgba(134,210,50,0.12)]">
+            <MailCheck className="h-8 w-8 text-[#86D232]" />
           </div>
         </div>
         <h1 className="mb-2 text-xl font-bold text-slate-900">Xác thực email của bạn</h1>

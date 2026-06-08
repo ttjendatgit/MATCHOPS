@@ -29,10 +29,10 @@ function HeroFloatingCards() {
       <div className="animate-float w-[280px] rounded-2xl border border-white/10 bg-white/8 backdrop-blur-md p-4 shadow-2xl shadow-black/40">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-[#00F5D4] animate-pulse" />
-            <span className="text-xs font-medium text-[#00F5D4]">Còn 4 khung giờ</span>
+            <div className="h-2 w-2 rounded-full bg-[#FF8000] animate-pulse" />
+            <span className="text-xs font-medium text-[#FF8000]">Còn 4 khung giờ</span>
           </div>
-          <Badge className="bg-[#00F5D4]/10 text-[#00F5D4] border border-[#00F5D4]/22 text-[10px] px-2">
+          <Badge className="bg-[#FF8000]/10 text-[#FF8000] border border-[#FF8000]/22 text-[10px] px-2">
             Nổi bật
           </Badge>
         </div>
@@ -47,18 +47,18 @@ function HeroFloatingCards() {
             <span className="text-xs font-semibold text-white">4.9</span>
             <span className="text-slate-500 text-xs">· 312 đánh giá</span>
           </div>
-          <span className="text-[#00F5D4] text-xs font-bold">150k/giờ</span>
+          <span className="text-[#FF8000] text-xs font-bold">150k/giờ</span>
         </div>
-        <div className="mt-3 rounded-lg h-16 bg-gradient-to-r from-emerald-800 via-teal-900 to-slate-800 flex items-center justify-center overflow-hidden">
-          <Activity className="h-6 w-6 text-[#00F5D4]/60" />
+        <div className="mt-3 rounded-lg h-16 bg-gradient-to-r from-[#141414] via-[#0A0A0A] to-slate-900 flex items-center justify-center overflow-hidden">
+          <Activity className="h-6 w-6 text-[#FF8000]/60" />
         </div>
       </div>
 
       {/* Confirmation card */}
       <div className="animate-float-delayed w-[240px] rounded-2xl border border-white/10 bg-white/8 backdrop-blur-md p-4 shadow-2xl shadow-black/40 mr-8">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#00F5D4]/12">
-            <CheckCircle2 className="h-5 w-5 text-[#00F5D4]" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FF8000]/12">
+            <CheckCircle2 className="h-5 w-5 text-[#FF8000]" />
           </div>
           <div>
             <p className="text-xs font-semibold text-white">Đặt sân thành công</p>
@@ -99,10 +99,15 @@ export default function HomePage() {
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               {/* Left: headline + search */}
               <div className="animate-fade-up">
+                {/* Brand slogan */}
+                <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#C4C7C9]/55 select-none">
+                  Match More<span className="mx-1.5 text-[#FF8000]" aria-hidden>·</span>Play More
+                </p>
+
                 {/* Eyebrow */}
-                <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#00F5D4]/35 bg-[#00F5D4]/12 px-4 py-1.5">
-                  <div className="h-1.5 w-1.5 rounded-full bg-[#00F5D4] animate-pulse" />
-                  <span className="text-xs font-semibold uppercase tracking-widest text-[#00F5D4]">
+                <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#FF8000]/35 bg-[#FF8000]/12 px-4 py-1.5">
+                  <div className="h-1.5 w-1.5 rounded-full bg-[#FF8000] animate-pulse" />
+                  <span className="text-xs font-semibold uppercase tracking-widest text-[#FF8000]">
                     Nền tảng đặt sân #1 Việt Nam
                   </span>
                 </div>
@@ -110,7 +115,7 @@ export default function HomePage() {
                 {/* Headline */}
                 <h1 className="text-5xl font-black tracking-tighter leading-[0.95] text-white sm:text-6xl lg:text-7xl">
                   Tìm sân.<br />
-                  <span className="bg-gradient-to-r from-[#00F5D4] to-[#00B4D8] bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-[#FF8000] to-[#86D232] bg-clip-text text-transparent">
                     Đặt ngay.
                   </span><br />
                   Chơi thôi.
@@ -125,7 +130,7 @@ export default function HomePage() {
                 <div className="mt-8 rounded-2xl border border-white/15 bg-white/10 p-2 shadow-2xl shadow-black/50 backdrop-blur-xl">
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <div className="flex flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/8 px-4 py-3 min-w-0">
-                      <Activity className="h-4 w-4 shrink-0 text-[#00F5D4]" />
+                      <Activity className="h-4 w-4 shrink-0 text-[#FF8000]" />
                       <input
                         type="text"
                         placeholder="Môn thể thao..."
@@ -134,7 +139,7 @@ export default function HomePage() {
                       />
                     </div>
                     <div className="flex flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/8 px-4 py-3 min-w-0">
-                      <MapPin className="h-4 w-4 shrink-0 text-[#00F5D4]" />
+                      <MapPin className="h-4 w-4 shrink-0 text-[#FF8000]" />
                       <input
                         type="text"
                         placeholder="Khu vực..."
@@ -143,7 +148,7 @@ export default function HomePage() {
                       />
                     </div>
                     <div className="flex flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/8 px-4 py-3 min-w-0">
-                      <Clock className="h-4 w-4 shrink-0 text-[#00F5D4]" />
+                      <Clock className="h-4 w-4 shrink-0 text-[#FF8000]" />
                       <input
                         type="text"
                         placeholder="Ngày & giờ..."
@@ -153,7 +158,7 @@ export default function HomePage() {
                     </div>
                     <Button
                       size="lg"
-                      className="shrink-0 gap-2 rounded-xl px-6 font-semibold bg-gradient-to-r from-[#00F5D4] to-[#00B4D8] hover:brightness-110 text-slate-900 shadow-[0_0_24px_rgba(0,245,212,0.45)]"
+                      className="shrink-0 gap-2 rounded-xl px-6 font-semibold bg-[#FF8000] hover:bg-[#FF8000]/85 text-white shadow-[0_0_24px_rgba(255,128,0,0.45)]"
                       asChild
                     >
                       <Link href="/venues">
@@ -172,7 +177,7 @@ export default function HomePage() {
                     { icon: Shield, label: "Sân đã xác thực" },
                   ].map(({ icon: Icon, label }) => (
                     <div key={label} className="flex items-center gap-1.5 text-sm text-slate-300">
-                      <Icon className="h-3.5 w-3.5 text-[#00F5D4] shrink-0" />
+                      <Icon className="h-3.5 w-3.5 text-[#FF8000] shrink-0" />
                       <span>{label}</span>
                     </div>
                   ))}
@@ -182,7 +187,7 @@ export default function HomePage() {
                 <div className="mt-5">
                   <Button
                     variant="outline"
-                    className="gap-2 rounded-xl bg-slate-950/70 border border-white/15 text-white shadow-lg shadow-emerald-950/20 backdrop-blur-md text-sm transition-all duration-200 hover:bg-[#00F5D4]/10 hover:border-[#00F5D4]/40 hover:text-[#00F5D4]/90 hover:shadow-[0_0_16px_rgba(0,245,212,0.18)] focus-visible:ring-2 focus-visible:ring-[#00F5D4]/50"
+                    className="gap-2 rounded-xl bg-[#030303]/70 border border-white/15 text-white shadow-lg backdrop-blur-md text-sm transition-all duration-200 hover:bg-[#FF8000]/10 hover:border-[#FF8000]/40 hover:text-white hover:shadow-[0_0_16px_rgba(255,128,0,0.18)] focus-visible:ring-2 focus-visible:ring-[#FF8000]/50"
                     asChild
                   >
                     <Link href="/register">

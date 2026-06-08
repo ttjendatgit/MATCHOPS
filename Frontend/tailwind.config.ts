@@ -10,10 +10,17 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // ── MatchOps sport-tech accent palette ──────────────────────────────
-        // Overrides Tailwind's built-in emerald scale so every `emerald-*`
-        // class in the codebase uses the new teal-aqua brand palette without
-        // per-file changes.
+        // ── MatchOps sports-tech brand palette ──────────────────────────────
+        sport: {
+          orange:   "#FF8000",   // primary CTA, active state, highlight
+          green:    "#86D232",   // secondary accent, success, positive metrics
+          dark:     "#030303",   // deepest page background
+          surface:  "#0A0A0A",   // card / section background
+          elevated: "#141414",   // elevated card / modal / sidebar section
+          muted:    "#C4C7C9",   // secondary text, labels
+          error:    "#FF4B4B",   // error / destructive states
+        },
+        // ── Teal-aqua scale kept for public landing / intro animation ────────
         emerald: {
           50:  "#f0fdfb",
           100: "#d1f9f2",
