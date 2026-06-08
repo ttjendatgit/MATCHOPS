@@ -184,8 +184,24 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    dbContext.Database.Migrate();
+    var services = scope.ServiceProvider;
+    try
+    {
+        var dbContext = services.GetRequiredService<ApplicationDbContext>();
+        Console.WriteLine("[Startup] Kiểm tra và thực hiện Database Migration...");
+        dbContext.Database.Migrate();
+        Console.WriteLine("[Startup] Database Migration hoàn tất thành công.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Startup] LỖI khi thực hiện Migration: {ex.Message}");
+        if (ex.InnerException != null)
+        {
+            Console.WriteLine($"[Startup] Lỗi chi tiết: {ex.InnerException.Message}");
+        }
+        // Trong môi trường production, chúng ta có thể muốn app dừng lại nếu migration thất bại
+        throw;
+    }
 }
 
 app.UseMiddleware<ExceptionMiddleware>();
