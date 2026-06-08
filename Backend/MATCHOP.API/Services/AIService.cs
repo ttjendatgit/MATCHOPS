@@ -21,6 +21,7 @@ namespace MATCHOP.API.Services
         private readonly IBookingService _bookingService;
         private readonly ISportService _sportService;
         private readonly IUserSkillService _userSkillService;
+        private readonly IMatchPostService _matchPostService;
 
         public AIService(
             IGroqService groqService,
@@ -28,7 +29,8 @@ namespace MATCHOP.API.Services
             IVenueService venueService,
             IBookingService bookingService,
             ISportService sportService,
-            IUserSkillService userSkillService)
+            IUserSkillService userSkillService,
+            IMatchPostService matchPostService)
         {
             _groqService = groqService;
             _aiChatRepository = aiChatRepository;
@@ -36,6 +38,7 @@ namespace MATCHOP.API.Services
             _bookingService = bookingService;
             _sportService = sportService;
             _userSkillService = userSkillService;
+            _matchPostService = matchPostService;
         }
 
         public async Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage)
@@ -62,7 +65,7 @@ Nhiệm vụ của bạn:
 1. Trả lời câu hỏi về đặt sân, địa điểm (venue), sân (court) còn trống.
 2. Trả lời câu hỏi về lịch sử đặt sân của người dùng.
 3. Gợi ý địa điểm chơi phù hợp.
-4. Gợi ý đối thủ dựa trên trình độ kỹ năng.
+4. Gợi ý đối thủ hoặc bài đăng ghép trận dựa trên trình độ kỹ năng và khu vực (thành phố, quận).
 5. Trả lời lịch sự, ngắn gọn và hữu ích bằng tiếng Việt.
 
 Nếu người dùng hỏi về thông tin không có trong dữ liệu trên, hãy trả lời rằng bạn không có thông tin chính xác và khuyên họ kiểm tra lại trên ứng dụng."
@@ -129,6 +132,18 @@ Nếu người dùng hỏi về thông tin không có trong dữ liệu trên, h
                 foreach (var b in bookings.Take(5)) sb.AppendLine($"- Đơn {b.Id}: {b.VenueName}, Sân {b.CourtName}, Ngày {b.BookingDate}, Tổng {b.TotalPrice} VNĐ, Trạng thái: {b.Status}");
             }
             else sb.AppendLine("- Bạn chưa có đơn đặt sân nào.");
+
+            // Matching Posts
+             var matchPosts = await _matchPostService.GetPostsAsync(new MATCHOP.API.DTOs.Matching.MatchPostFilterDto());
+             sb.AppendLine("\nCác bài đăng tìm đối thủ/ghép trận đang mở:");
+             if (matchPosts.Any())
+             {
+                 foreach (var p in matchPosts.Where(x => x.Status == "OPEN").Take(10))
+                 {
+                     sb.AppendLine($"- [{p.SportName}] {p.CreatorName} tìm đối thủ tại {p.District}, {p.City}. Trình độ: {p.MinSkillLevel}-{p.MaxSkillLevel}. Thời gian: {p.PreferredTime}. Ghi chú: {p.Note}");
+                 }
+             }
+             else sb.AppendLine("- Hiện không có bài đăng ghép trận nào.");
 
             return sb.ToString();
         }
