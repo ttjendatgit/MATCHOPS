@@ -50,6 +50,7 @@ namespace MATCHOP.API.DTOs.Matching
     public class MatchPostFilterDto
     {
         public Guid? SportId { get; set; }
+        public Guid? CreatorId { get; set; }
         public SkillLevel? Level { get; set; }
         public string? City { get; set; }
         public string? District { get; set; }

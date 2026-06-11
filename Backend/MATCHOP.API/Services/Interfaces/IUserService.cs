@@ -12,6 +12,9 @@ namespace MATCHOP.API.Services.Interfaces
 
         Task<List<FavoriteSportDto>> GetFavoriteSportsAsync(Guid userId);
         Task<List<FavoriteSportDto>> UpdateFavoriteSportsAsync(Guid userId, UpdateFavoriteSportsRequestDto dto);
+
+        // Admin
+        Task<List<UserAdminResponseDto>> GetAllUsersForAdminAsync();
     }
 }
 

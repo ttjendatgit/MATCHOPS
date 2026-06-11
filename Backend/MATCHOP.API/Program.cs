@@ -1,4 +1,4 @@
-﻿using MATCHOP.API;
+﻿﻿﻿﻿﻿﻿﻿using MATCHOP.API;
 using MATCHOP.API.Middlewares;
 using MATCHOP.API.Services;
 using Microsoft.EntityFrameworkCore;
@@ -191,6 +191,8 @@ builder.Services.AddScoped<IUserSkillService, UserSkillService>();
 builder.Services.AddScoped<IMatchPostService, MatchPostService>();
 builder.Services.AddScoped<IMatchQueueService, MatchQueueService>();
 builder.Services.AddScoped<IMatchRoomService, MatchRoomService>();
+builder.Services.AddScoped<IMatchRequestRepository, MatchRequestRepository>();
+builder.Services.AddScoped<IMatchRequestService, MatchRequestService>();
 
 // AI Assistant
 builder.Services.AddHttpClient<IGroqService, GroqService>();

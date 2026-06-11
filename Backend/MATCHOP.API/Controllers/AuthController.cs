@@ -1,7 +1,9 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using MATCHOP.API.DTOs.Auth;
+using MATCHOP.API.DTOs.Profile;
 using MATCHOP.API.Helpers;
 using MATCHOP.API.Services;
+using MATCHOP.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,10 +14,20 @@ namespace MATCHOP.API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IUserService _userService;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, IUserService userService)
         {
             _authService = authService;
+            _userService = userService;
+        }
+
+        [Authorize(Roles = "ADMIN")]
+        [HttpGet("admin/users")]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var result = await _userService.GetAllUsersForAdminAsync();
+            return Ok(ApiResponse<List<UserAdminResponseDto>>.Ok(result));
         }
 
         [HttpPost("register")]

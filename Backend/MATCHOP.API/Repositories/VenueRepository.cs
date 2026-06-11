@@ -1,4 +1,4 @@
-﻿using MATCHOP.API.Entities;
+using MATCHOP.API.Entities;
 using MATCHOP.API.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -59,6 +59,11 @@ public class VenueRepository : IVenueRepository
     public async Task<Venue?> GetByIdAsync(Guid id) =>
         await BaseQuery()
             .FirstOrDefaultAsync(v => v.Id == id);
+
+    public async Task<List<Venue>> GetAllAsync() =>
+        await BaseQuery()
+            .OrderByDescending(v => v.CreatedAt)
+            .ToListAsync();
 
     public async Task<List<Venue>> GetByOwnerIdAsync(Guid ownerId) =>
         await BaseQuery()

@@ -70,6 +70,9 @@ namespace MATCHOP.API.Repositories
             if (filter.SportId.HasValue)
                 query = query.Where(p => p.SportId == filter.SportId.Value);
 
+            if (filter.CreatorId.HasValue)
+                query = query.Where(p => p.CreatorId == filter.CreatorId.Value);
+
             if (filter.Level.HasValue)
                 query = query.Where(p => p.MinSkillLevel <= filter.Level.Value && p.MaxSkillLevel >= filter.Level.Value);
 
@@ -82,7 +85,11 @@ namespace MATCHOP.API.Repositories
             if (filter.Date.HasValue)
                 query = query.Where(p => p.PreferredTime.Date == filter.Date.Value.Date);
 
-            query = query.Where(p => p.Status == MatchPostStatus.OPEN);
+            // If searching for own posts, show all statuses. Otherwise show only OPEN.
+            if (!filter.CreatorId.HasValue)
+            {
+                query = query.Where(p => p.Status == MatchPostStatus.OPEN);
+            }
 
             return query;
         }

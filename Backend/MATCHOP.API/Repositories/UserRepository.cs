@@ -19,6 +19,11 @@ namespace MATCHOP.API.Repositories
             return await _context.Users.FirstOrDefaultAsync(x => x.Id == id);
         }
 
+        public async Task<List<User>> GetAllAsync()
+        {
+            return await _context.Users.OrderByDescending(u => u.CreatedAt).ToListAsync();
+        }
+
         public async Task<User?> GetProfileAsync(Guid userId)
         {
             return await _context.Users

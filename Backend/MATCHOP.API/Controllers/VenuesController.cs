@@ -1,4 +1,4 @@
-﻿using MATCHOP.API.DTOs.Venues;
+using MATCHOP.API.DTOs.Venues;
 using MATCHOP.API.Helpers;
 using MATCHOP.API.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -76,6 +76,14 @@ public class VenuesController : ControllerBase
     }
 
     // ── Admin ─────────────────────────────────────────────────────────────────
+
+    [HttpGet("api/admin/venues")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> GetAllVenues()
+    {
+        var result = await _venueService.GetAllVenuesForAdminAsync();
+        return Ok(ApiResponse<List<VenueResponseDto>>.Ok(result));
+    }
 
     [HttpPatch("api/admin/venues/{id:guid}/approve")]
     [Authorize(Roles = "ADMIN")]

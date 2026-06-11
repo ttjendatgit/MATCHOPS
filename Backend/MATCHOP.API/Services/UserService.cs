@@ -261,6 +261,22 @@ namespace MATCHOP.API.Services
             var items = await _userRepository.GetFavoriteSportsAsync(userId);
             return items.Select(ToDto).ToList();
         }
+
+        public async Task<List<UserAdminResponseDto>> GetAllUsersForAdminAsync()
+        {
+            var users = await _userRepository.GetAllAsync();
+            return users.Select(u => new UserAdminResponseDto
+            {
+                Id = u.Id,
+                FullName = u.FullName,
+                Email = u.Email,
+                PhoneNumber = u.PhoneNumber,
+                Role = u.Role.ToString(),
+                Status = u.Status.ToString(),
+                EmailConfirmed = u.EmailConfirmed,
+                CreatedAt = u.CreatedAt
+            }).ToList();
+        }
     }
 }
 

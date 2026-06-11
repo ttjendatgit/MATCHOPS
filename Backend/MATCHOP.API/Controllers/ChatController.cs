@@ -42,5 +42,13 @@ namespace MATCHOP.API.Controllers
             var result = await _chatService.CreatePrivateConversationAsync(userId, targetUserId);
             return Ok(ApiResponse<ConversationDto>.Ok(result));
         }
+
+        [HttpPost("send")]
+        public async Task<IActionResult> SendMessage(SendMessageDto dto)
+        {
+            var userId = _currentUserService.UserId ?? throw new AppException(ErrorCodes.UNAUTHORIZED, "Unauthorized");
+            var result = await _chatService.SendMessageAsync(userId, dto);
+            return Ok(ApiResponse<MessageDto>.Ok(result));
+        }
     }
 }

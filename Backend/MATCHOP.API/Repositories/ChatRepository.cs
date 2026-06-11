@@ -1,4 +1,5 @@
 using MATCHOP.API.Entities;
+using MATCHOP.API.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace MATCHOP.API.Repositories
@@ -19,6 +20,7 @@ namespace MATCHOP.API.Repositories
         Task<List<Notification>> GetUserNotificationsAsync(Guid userId);
         Task AddNotificationAsync(Notification notification);
         Task UpdateNotificationAsync(Notification notification);
+        Task<Conversation> GetOrCreatePrivateConversationAsync(Guid userId1, Guid userId2);
     }
 
     public class ChatRepository : IChatRepository
@@ -137,6 +139,54 @@ namespace MATCHOP.API.Repositories
         {
             _context.Notifications.Update(notification);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<Conversation> GetOrCreatePrivateConversationAsync(Guid userId1, Guid userId2)
+        {
+            // Try to find existing private conversation between these two users
+            var existingConversation = await _context.Conversations
+                .Include(c => c.Participants)
+                .FirstOrDefaultAsync(c => c.Type == ConversationType.PRIVATE && 
+                    c.Participants.Count() == 2 && 
+                    c.Participants.All(p => p.UserId == userId1 || p.UserId == userId2));
+
+            if (existingConversation != null)
+            {
+                return existingConversation;
+            }
+
+            // Create new conversation if not found
+            var conversation = new Conversation
+            {
+                Id = Guid.NewGuid(),
+                Type = ConversationType.PRIVATE,
+                CreatedAt = DateTime.UtcNow,
+                LastMessageAt = DateTime.UtcNow
+            };
+
+            await _context.Conversations.AddAsync(conversation);
+
+            // Add both participants
+            var participant1 = new ConversationParticipant
+            {
+                ConversationId = conversation.Id,
+                UserId = userId1,
+                JoinedAt = DateTime.UtcNow,
+                LastReadAt = DateTime.UtcNow
+            };
+            var participant2 = new ConversationParticipant
+            {
+                ConversationId = conversation.Id,
+                UserId = userId2,
+                JoinedAt = DateTime.UtcNow,
+                LastReadAt = DateTime.UtcNow
+            };
+
+            await _context.ConversationParticipants.AddAsync(participant1);
+            await _context.ConversationParticipants.AddAsync(participant2);
+            await _context.SaveChangesAsync();
+
+            return conversation;
         }
     }
 }

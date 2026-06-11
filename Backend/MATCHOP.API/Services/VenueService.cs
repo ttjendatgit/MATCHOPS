@@ -1,4 +1,4 @@
-﻿using MATCHOP.API.DTOs.Venues;
+using MATCHOP.API.DTOs.Venues;
 using MATCHOP.API.Entities;
 using MATCHOP.API.Enums;
 using MATCHOP.API.Helpers;
@@ -248,6 +248,12 @@ public class VenueService : IVenueService
     }
 
     // ── Admin ─────────────────────────────────────────────────────────────────
+
+    public async Task<List<VenueResponseDto>> GetAllVenuesForAdminAsync()
+    {
+        var venues = await _venueRepo.GetAllAsync();
+        return venues.Select(ToDto).ToList();
+    }
 
     public async Task<VenueResponseDto> ApproveVenueAsync(Guid id)
     {

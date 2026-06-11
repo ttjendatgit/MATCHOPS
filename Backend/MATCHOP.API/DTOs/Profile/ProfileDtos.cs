@@ -40,6 +40,18 @@ namespace MATCHOP.API.DTOs.Profile
         public string SportType { get; set; } = string.Empty;
     }
 
+    public class UserAdminResponseDto
+    {
+        public Guid Id { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string? PhoneNumber { get; set; }
+        public string Role { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public bool EmailConfirmed { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
     public class UpdateFavoriteSportsRequestDto
     {
         public List<SportType> SportTypes { get; set; } = new();

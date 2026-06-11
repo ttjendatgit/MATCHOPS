@@ -33,14 +33,35 @@ namespace MATCHOP.API.Hubs
                 {
                     await Groups.AddToGroupAsync(Context.ConnectionId, conv.Id.ToString());
                 }
+                // Notify others that user is online
+                await Clients.All.SendAsync("UserOnline", userId);
             }
             await base.OnConnectedAsync();
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            await _chatRepository.RemoveConnectionAsync(Context.ConnectionId);
+            var userIdStr = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (Guid.TryParse(userIdStr, out var userId))
+            {
+                await _chatRepository.RemoveConnectionAsync(Context.ConnectionId);
+                
+                // Check if user still has other connections
+                var connections = await _chatRepository.GetUserConnectionsAsync(userId);
+                if (!connections.Any())
+                {
+                    await Clients.All.SendAsync("UserOffline", userId);
+                }
+            }
             await base.OnDisconnectedAsync(exception);
+        }
+
+        public async Task SendTyping(Guid conversationId, bool isTyping)
+        {
+            var userIdStr = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdStr, out var userId)) return;
+
+            await Clients.Group(conversationId.ToString()).SendAsync("UserTyping", new { conversationId, userId, isTyping });
         }
 
         public async Task SendMessage(SendMessageDto dto)

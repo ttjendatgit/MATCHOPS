@@ -4,6 +4,9 @@ using MATCHOP.API.Enums;
 using MATCHOP.API.Helpers;
 using MATCHOP.API.Repositories;
 
+using MATCHOP.API.Hubs;
+using Microsoft.AspNetCore.SignalR;
+
 namespace MATCHOP.API.Services
 {
     public class MatchQueueService : IMatchQueueService
@@ -11,15 +14,21 @@ namespace MATCHOP.API.Services
         private readonly IMatchQueueRepository _matchQueueRepository;
         private readonly IUserSkillRepository _userSkillRepository;
         private readonly IMatchRoomRepository _matchRoomRepository;
+        private readonly IHubContext<ChatHub> _hubContext;
+        private readonly IChatRepository _chatRepository;
 
         public MatchQueueService(
             IMatchQueueRepository matchQueueRepository,
             IUserSkillRepository userSkillRepository,
-            IMatchRoomRepository matchRoomRepository)
+            IMatchRoomRepository matchRoomRepository,
+            IHubContext<ChatHub> hubContext,
+            IChatRepository chatRepository)
         {
             _matchQueueRepository = matchQueueRepository;
             _userSkillRepository = userSkillRepository;
             _matchRoomRepository = matchRoomRepository;
+            _hubContext = hubContext;
+            _chatRepository = chatRepository;
         }
 
         public async Task JoinQueueAsync(Guid userId, JoinQueueDto dto)
@@ -127,6 +136,15 @@ namespace MATCHOP.API.Services
                 // Remove both from queue
                 await _matchQueueRepository.RemoveAsync(item);
                 await _matchQueueRepository.RemoveAsync(match);
+
+                // Notify both players via SignalR
+                var connections1 = await _chatRepository.GetUserConnectionsAsync(item.UserId);
+                var connections2 = await _chatRepository.GetUserConnectionsAsync(match.UserId);
+
+                foreach (var conn in connections1.Concat(connections2))
+                {
+                    await _hubContext.Clients.Client(conn).SendAsync("MatchFound", new { roomId = room.Id });
+                }
             }
         }
     }

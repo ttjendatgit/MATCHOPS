@@ -1,8 +1,10 @@
 using MATCHOP.API.DTOs.Chat;
 using MATCHOP.API.Entities;
 using MATCHOP.API.Enums;
+using MATCHOP.API.Helpers;
 using MATCHOP.API.Hubs;
 using MATCHOP.API.Repositories;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 
 namespace MATCHOP.API.Services
@@ -12,6 +14,7 @@ namespace MATCHOP.API.Services
         Task<List<ConversationDto>> GetUserConversationsAsync(Guid userId);
         Task<List<MessageDto>> GetConversationMessagesAsync(Guid conversationId, int skip, int take);
         Task<ConversationDto> CreatePrivateConversationAsync(Guid user1Id, Guid user2Id);
+        Task<MessageDto> SendMessageAsync(Guid senderId, SendMessageDto dto);
         Task<NotificationDto> SendNotificationAsync(Guid userId, string title, string content, NotificationType type, string? metadata = null);
     }
 
@@ -24,6 +27,38 @@ namespace MATCHOP.API.Services
         {
             _chatRepository = chatRepository;
             _hubContext = hubContext;
+        }
+
+        public async Task<MessageDto> SendMessageAsync(Guid senderId, SendMessageDto dto)
+        {
+            var participant = await _chatRepository.GetParticipantAsync(dto.ConversationId, senderId);
+            if (participant == null) throw new AppException(ErrorCodes.FORBIDDEN, "Bạn không thuộc hội thoại này.", StatusCodes.Status403Forbidden);
+
+            var message = new Message
+            {
+                Id = Guid.NewGuid(),
+                ConversationId = dto.ConversationId,
+                SenderId = senderId,
+                Content = dto.Content,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _chatRepository.AddMessageAsync(message);
+
+            var messageDto = new MessageDto
+            {
+                Id = message.Id,
+                ConversationId = message.ConversationId,
+                SenderId = senderId,
+                SenderName = (await _chatRepository.GetParticipantAsync(dto.ConversationId, senderId))?.User?.FullName ?? "User",
+                Content = message.Content,
+                CreatedAt = message.CreatedAt,
+                IsRead = false
+            };
+
+            await _hubContext.Clients.Group(dto.ConversationId.ToString()).SendAsync("ReceiveMessage", messageDto);
+
+            return messageDto;
         }
 
         public async Task<List<ConversationDto>> GetUserConversationsAsync(Guid userId)

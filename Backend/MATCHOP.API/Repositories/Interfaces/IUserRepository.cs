@@ -6,6 +6,7 @@ namespace MATCHOP.API.Repositories.Interfaces
     public interface IUserRepository
     {
         Task<User?> GetByIdAsync(Guid id);
+        Task<List<User>> GetAllAsync();
         Task<User?> GetProfileAsync(Guid userId);
         Task<User> UpdateAsync(User user);
         Task<User?> UploadAvatarAsync(Guid userId, string avatarUrl);

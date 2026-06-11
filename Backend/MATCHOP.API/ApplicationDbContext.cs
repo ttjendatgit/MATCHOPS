@@ -28,6 +28,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<MatchRoom> MatchRooms => Set<MatchRoom>();
     public DbSet<MatchRoomPlayer> MatchRoomPlayers => Set<MatchRoomPlayer>();
     public DbSet<MatchSuggestion> MatchSuggestions => Set<MatchSuggestion>();
+    public DbSet<MatchRequest> MatchRequests => Set<MatchRequest>();
     public DbSet<AIChatMessage> AIChatMessages => Set<AIChatMessage>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<ConversationParticipant> ConversationParticipants => Set<ConversationParticipant>();
