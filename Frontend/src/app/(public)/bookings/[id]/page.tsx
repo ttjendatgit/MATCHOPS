@@ -167,6 +167,26 @@ export default function BookingDetailPage() {
   const b = booking;
   const needsPayment = b.status === "PENDING_PAYMENT" && b.paymentStatus === "UNPAID";
 
+  async function handlePayNow() {
+    const token = getStoredToken();
+    if (!token) return;
+
+    try {
+      const payRes = await apiFetch<ApiResponse<{ paymentUrl: string }>>(`/my/bookings/${b.id}/pay/vnpay`, {
+        method: "POST",
+        token,
+      });
+
+      if (payRes.success && payRes.data?.paymentUrl) {
+        window.location.href = payRes.data.paymentUrl;
+      } else {
+        alert(payRes.message || "Không thể khởi tạo thanh toán VNPay.");
+      }
+    } catch (err) {
+      alert("Đã xảy ra lỗi khi khởi tạo thanh toán.");
+    }
+  }
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
 
@@ -313,19 +333,19 @@ export default function BookingDetailPage() {
       >
         {/* Pay now — only for PENDING_PAYMENT */}
         {needsPayment && (
-          <Link
-            href="/booking/payment"
+          <button
+            onClick={handlePayNow}
             className={cn(
               "flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold",
               "bg-[#FF8000] text-white",
               "transition-all duration-200",
-              "hover:bg-[#FF8000]/85 hover:shadow-[0_0_24px_rgba(255,128,0,0.45)]",
+              "hover:bg-[#FF8000]/85",
               "active:scale-[0.98]",
             )}
           >
-            Thanh toán ngay
+            Thanh toán ngay qua VNPay
             <ArrowRight className="h-4 w-4" aria-hidden />
-          </Link>
+          </button>
         )}
 
         {/* Back to bookings list */}

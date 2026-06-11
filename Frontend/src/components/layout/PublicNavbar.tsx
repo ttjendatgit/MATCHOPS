@@ -11,6 +11,7 @@ import {
   Menu,
   Settings,
   User as UserIcon,
+  Users,
   X,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
@@ -25,6 +26,7 @@ const navLinks = [
   { href: "/venues", label: "Sân thể thao",    exact: false },
   { href: "/coach",  label: "Huấn luyện viên", exact: false },
   { href: "/match",  label: "Ghép đối",        exact: false },
+  { href: "/match/rooms", label: "Phòng chờ", exact: false },
 ] as const;
 
 function checkActive(pathname: string, href: string, exact: boolean) {
@@ -92,6 +94,7 @@ type UserDropdownProps = {
 
 const dropdownMenuItems = [
   { href: "/profile",          label: "Trang cá nhân",     icon: UserIcon     },
+  { href: "/match/rooms",      label: "Phòng chờ ghép đối", icon: Users        },
   { href: "/bookings",         label: "Lịch đặt của tôi",  icon: CalendarCheck2 },
   { href: "/change-password",  label: "Đổi mật khẩu",      icon: KeyRound     },
   { href: "/account/settings", label: "Cài đặt tài khoản", icon: Settings     },

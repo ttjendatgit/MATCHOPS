@@ -15,6 +15,9 @@ const spaceGrotesk = Space_Grotesk({
   display: "swap",
 });
 
+import { SignalRProvider } from "@/providers/SignalRProvider";
+import ChatBubble from "@/components/chat/ChatBubble";
+
 export const metadata: Metadata = {
   title: {
     default: "MatchOps – Đặt sân thể thao trực tuyến",
@@ -31,8 +34,11 @@ export default function RootLayout({
   return (
     <html lang="vi" className={`${inter.variable} ${spaceGrotesk.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
-        {children}
-        <Toaster richColors position="top-right" />
+        <SignalRProvider>
+          {children}
+          <ChatBubble />
+          <Toaster richColors position="top-right" />
+        </SignalRProvider>
       </body>
     </html>
   );

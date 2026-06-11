@@ -13,6 +13,10 @@ import {
   Hash,
   Timer,
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
+
+// ─── Booking card ─────────────────────────────────────────────────────────────
 import { BookingStatusBadge, PaymentStatusBadge } from "@/components/shared/StatusBadge";
 import { cn, formatCurrency } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
@@ -171,6 +175,7 @@ function EmptyBookingState({ isFiltered }: { isFiltered: boolean }) {
 
 export default function BookingsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [bookings, setBookings] = useState<DisplayBooking[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<FilterKey>("ALL");
@@ -181,6 +186,11 @@ export default function BookingsPage() {
     if (!token) {
       router.replace("/login");
       return;
+    }
+
+    // Nếu có status=success từ VNPay callback cũ (nếu có redirect trực tiếp)
+    if (searchParams.get("status") === "success") {
+      toast.success("Thanh toán thành công!");
     }
 
     apiFetch<ApiResponse<Booking[]>>("/my/bookings", { token })

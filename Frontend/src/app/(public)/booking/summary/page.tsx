@@ -402,36 +402,45 @@ function SummaryPageInner() {
 
     setIsSubmitting(true);
 
-    const effectivePrice = calculatePriceFromRules(
-      summaryData.priceRules,
-      date,
-      start,
-      end
-    );
+    try {
+      const effectivePrice = calculatePriceFromRules(
+        summaryData.priceRules,
+        date,
+        start,
+        end
+      );
 
-    const draft: BookingDraft = {
-      venueId: summaryData.venue.id,
-      venueName: summaryData.venue.name,
-      courtId: summaryData.court.id,
-      courtName: summaryData.court.name,
-      sportId: summaryData.court.sportId,
-      sportName: summaryData.court.sportName,
-      date,
-      startTime: start,
-      endTime: end,
-      durationHours: duration,
-      pricePerHour:
-        duration > 0 && effectivePrice !== null
-          ? Math.round(effectivePrice / duration)
-          : 0,
-      totalPrice: effectivePrice ?? 0,
-      customerName: name.trim(),
-      customerPhone: phone.replace(/[\s-]/g, ""),
-      note: note.trim() || undefined,
-    };
+      const draft: BookingDraft = {
+        venueId: summaryData.venue.id,
+        venueName: summaryData.venue.name,
+        courtId: summaryData.court.id,
+        courtName: summaryData.court.name,
+        sportId: summaryData.court.sportId,
+        sportName: summaryData.court.sportName,
+        date,
+        startTime: start,
+        endTime: end,
+        durationHours: duration,
+        pricePerHour:
+          duration > 0 && effectivePrice !== null
+            ? Math.round(effectivePrice / duration)
+            : 0,
+        totalPrice: effectivePrice ?? 0,
+        customerName: name.trim(),
+        customerPhone: phone.replace(/[\s-]/g, ""),
+        note: note.trim() || undefined,
+      };
 
-    sessionStorage.setItem(BOOKING_SESSION_KEY, JSON.stringify(draft));
-    router.push("/booking/payment");
+      // 2. Clear previous session and write current draft to sessionStorage
+      // (This ensures payment page has latest info if redirected back)
+      sessionStorage.setItem("MATCHOP_BOOKING_DRAFT", JSON.stringify(draft));
+
+      router.push("/booking/payment");
+    } catch (err) {
+      alert("Đã xảy ra lỗi khi chuẩn bị đặt sân.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   // ── Loading state ────────────────────────────────────────────────────────────

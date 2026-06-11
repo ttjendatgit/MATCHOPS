@@ -19,6 +19,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn, formatCurrency } from "@/lib/utils";
+import { apiFetch } from "@/lib/api";
+import { getStoredToken } from "@/lib/auth";
+import type { ApiResponse } from "@/types/api";
 import {
   MOCK_PAYMENT_METHODS,
   BOOKING_SESSION_KEY,
@@ -173,7 +176,7 @@ export default function PaymentPage() {
   // ── Read draft from sessionStorage ──────────────────────────────────────
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(BOOKING_SESSION_KEY);
+      const raw = sessionStorage.getItem("MATCHOP_BOOKING_DRAFT");
       if (raw) {
         const parsed = JSON.parse(raw) as BookingDraft;
         // Minimal field check
@@ -200,38 +203,83 @@ export default function PaymentPage() {
   // ── Confirm handler ──────────────────────────────────────────────────────
   async function handleConfirm() {
     if (!selectedMethod || !draft || isConfirming) return;
+    
+    const token = getStoredToken();
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
     setIsConfirming(true);
 
-    // Simulate brief processing delay
-    await new Promise<void>((r) => setTimeout(r, CONFIRM_DELAY_MS));
-
-    const confirmation: BookingConfirmation = {
-      ...draft,
-      bookingId: generateBookingId(),
-      paymentMethod: selectedMethod,
-      status: "CONFIRMED",
-      paymentStatus: "PAID",
-      createdAt: new Date().toISOString(),
-    };
-
     try {
-      // Persist to localStorage mock list
-      const existing: BookingConfirmation[] = JSON.parse(
-        localStorage.getItem(LOCAL_BOOKINGS_KEY) ?? "[]",
-      );
-      existing.unshift(confirmation);
-      localStorage.setItem(LOCAL_BOOKINGS_KEY, JSON.stringify(existing));
+      // 1. Create the real booking in Backend
+      const createRes = await apiFetch<ApiResponse<{ id: string }>>("/bookings", {
+        method: "POST",
+        token,
+        body: JSON.stringify({
+          courtId: draft.courtId,
+          bookingDate: draft.date,
+          startTime: draft.startTime,
+          endTime: draft.endTime,
+          note: draft.note
+        }),
+      });
+
+      if (!createRes.success || !createRes.data) {
+        throw new Error(createRes.message || "Không thể tạo lịch đặt sân.");
+      }
+
+      const bookingId = createRes.data.id;
+
+      // 2. Tích hợp thanh toán VNPay thực tế nếu chọn VNPay
+      if (selectedMethod === "vnpay") {
+        const payRes = await apiFetch<ApiResponse<{ paymentUrl: string }>>(`/my/bookings/${bookingId}/pay/vnpay`, {
+          method: "POST",
+          token,
+        });
+
+        if (payRes.success && payRes.data?.paymentUrl) {
+          // Redirect user sang cổng thanh toán VNPay
+          window.location.href = payRes.data.paymentUrl;
+          return;
+        } else {
+          throw new Error(payRes.message || "Không thể khởi tạo thanh toán VNPay.");
+        }
+      }
+
+      // 3. Fallback cho các phương thức khác (Mock payment)
+      const payRes = await apiFetch<ApiResponse<any>>(`/my/bookings/${bookingId}/pay/mock`, {
+        method: "POST",
+        token,
+        body: JSON.stringify({ transactionCode: `MOCK-${Date.now()}` }),
+      });
+
+      if (!payRes.success) {
+        throw new Error(payRes.message || "Thanh toán không thành công.");
+      }
+
+      const confirmation: BookingConfirmation = {
+        ...draft,
+        bookingId: bookingId,
+        paymentMethod: selectedMethod,
+        status: "CONFIRMED",
+        paymentStatus: "PAID",
+        createdAt: new Date().toISOString(),
+      };
 
       // Write confirmation for success page
       sessionStorage.setItem(
         BOOKING_CONFIRMATION_KEY,
         JSON.stringify(confirmation),
       );
-    } catch {
-      // Storage quota or private-mode failure — non-fatal, still navigate
+      
+      router.push("/booking/success");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Đã xảy ra lỗi khi thanh toán.");
+    } finally {
+      setIsConfirming(false);
     }
-
-    router.push("/booking/success");
   }
 
   // ── Render states ────────────────────────────────────────────────────────
