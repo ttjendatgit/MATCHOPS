@@ -1,0 +1,144 @@
+{
+  "info": {
+    "title": "MatchOps API Documentation",
+    "version": "1.0.1",
+    "description": "Comprehensive API documentation generated directly from Backend Controllers for Frontend integration."
+  },
+  "basePath": "/api",
+  "endpoints": {
+    "Authentication": [
+      { "method": "POST", "path": "/auth/register", "description": "Register a new user", "auth": false },
+      { "method": "POST", "path": "/auth/login", "description": "Login and receive JWT token", "auth": false },
+      { "method": "GET", "path": "/auth/admin/users", "description": "Admin: Get all users", "auth": true, "roles": ["ADMIN"] }
+    ],
+    "Profile": [
+      { "method": "GET", "path": "/profile", "description": "Get current user profile", "auth": true },
+      { "method": "PUT", "path": "/profile", "description": "Update current user profile", "auth": true },
+      { "method": "POST", "path": "/profile/avatar", "description": "Upload avatar (multipart/form-data)", "auth": true },
+      { "method": "PUT", "path": "/profile/change-password", "description": "Change password", "auth": true },
+      { "method": "GET", "path": "/profile/favorite-sports", "description": "Get favorite sports", "auth": true },
+      { "method": "PUT", "path": "/profile/favorite-sports", "description": "Update favorite sports", "auth": true }
+    ],
+    "UserSkills": [
+      { "method": "GET", "path": "/user-skills", "description": "Get current user's skill levels", "auth": true },
+      { "method": "POST", "path": "/user-skills", "description": "Update user skill level", "auth": true }
+    ],
+    "Venues": {
+      "Public": [
+        { "method": "GET", "path": "/venues", "description": "Search active venues", "auth": false },
+        { "method": "GET", "path": "/venues/{id}", "description": "Get venue details", "auth": false }
+      ],
+      "Owner": [
+        { "method": "POST", "path": "/owner/venues", "description": "Create new venue (multipart/form-data)", "auth": true, "roles": ["OWNER"] },
+        { "method": "GET", "path": "/owner/venues", "description": "Get owner's venues", "auth": true, "roles": ["OWNER"] },
+        { "method": "GET", "path": "/owner/venues/{id}", "description": "Get owner's venue details", "auth": true, "roles": ["OWNER"] },
+        { "method": "PATCH", "path": "/owner/venues/{id}", "description": "Update venue (multipart/form-data)", "auth": true, "roles": ["OWNER"] }
+      ],
+      "Admin": [
+        { "method": "GET", "path": "/admin/venues", "description": "Get all venues for approval", "auth": true, "roles": ["ADMIN"] },
+        { "method": "PATCH", "path": "/admin/venues/{id}/approve", "description": "Approve a venue", "auth": true, "roles": ["ADMIN"] },
+        { "method": "PATCH", "path": "/admin/venues/{id}/reject", "description": "Reject a venue", "auth": true, "roles": ["ADMIN"] },
+        { "method": "PATCH", "path": "/admin/venues/{id}/suspend", "description": "Suspend a venue", "auth": true, "roles": ["ADMIN"] }
+      ]
+    },
+    "Courts": {
+      "Public": [
+        { "method": "GET", "path": "/venues/{venueId}/courts", "description": "Get active courts in a venue", "auth": false }
+      ],
+      "Owner": [
+        { "method": "POST", "path": "/owner/courts", "description": "Add court to venue", "auth": true, "roles": ["OWNER"] },
+        { "method": "GET", "path": "/owner/venues/{venueId}/courts", "description": "Get all courts in venue (owner view)", "auth": true, "roles": ["OWNER"] }
+      ]
+    },
+    "Bookings": {
+      "User": [
+        { "method": "GET", "path": "/my/bookings", "description": "Get current user's bookings", "auth": true, "roles": ["USER"] },
+        { "method": "POST", "path": "/bookings", "description": "Create new booking", "auth": true, "roles": ["USER"] },
+        { "method": "GET", "path": "/bookings/{id}", "description": "Get booking details", "auth": true },
+        { "method": "PATCH", "path": "/bookings/{id}/cancel", "description": "Cancel booking", "auth": true }
+      ],
+      "Owner": [
+        { "method": "GET", "path": "/owner/bookings", "description": "Get bookings for owner's venues", "auth": true, "roles": ["OWNER"] },
+        { "method": "PATCH", "path": "/owner/bookings/{id}/confirm", "description": "Confirm a booking", "auth": true, "roles": ["OWNER"] },
+        { "method": "PATCH", "path": "/owner/bookings/{id}/complete", "description": "Mark booking as completed", "auth": true, "roles": ["OWNER"] }
+      ]
+    },
+    "Matching": {
+      "Posts": [
+        { "method": "GET", "path": "/matching/posts", "description": "Search matchmaking posts", "auth": false },
+        { "method": "GET", "path": "/matching/posts/{id}", "description": "Get match post details", "auth": false },
+        { "method": "POST", "path": "/matching/posts", "description": "Create match post", "auth": true },
+        { "method": "PATCH", "path": "/matching/posts/{id}", "description": "Update match post", "auth": true },
+        { "method": "DELETE", "path": "/matching/posts/{id}", "description": "Delete match post", "auth": true }
+      ],
+      "Requests": [
+        { "method": "POST", "path": "/match-requests", "description": "Send match request", "auth": true },
+        { "method": "GET", "path": "/match-requests/pending", "description": "Get pending requests for user", "auth": true },
+        { "method": "PUT", "path": "/match-requests/{id}/accept", "description": "Accept match request", "auth": true },
+        { "method": "PUT", "path": "/match-requests/{id}/reject", "description": "Reject match request", "auth": true }
+      ],
+      "Queue": [
+        { "method": "POST", "path": "/matching/queue/join", "description": "Join quick match queue", "auth": true },
+        { "method": "POST", "path": "/matching/queue/leave/{sportId}", "description": "Leave match queue", "auth": true },
+        { "method": "GET", "path": "/matching/queue/status/{sportId}", "description": "Check queue status", "auth": true }
+      ],
+      "Rooms": [
+        { "method": "GET", "path": "/matching/rooms", "description": "Get user's match rooms", "auth": true },
+        { "method": "GET", "path": "/matching/rooms/{id}", "description": "Get room details", "auth": true },
+        { "method": "POST", "path": "/matching/rooms/{id}/accept", "description": "Accept match in room", "auth": true },
+        { "method": "POST", "path": "/matching/rooms/{id}/reject", "description": "Reject match in room", "auth": true }
+      ]
+    },
+    "Chat": [
+      { "method": "GET", "path": "/chat/conversations", "description": "Get all conversations", "auth": true },
+      { "method": "GET", "path": "/chat/conversations/{id}/messages", "description": "Get message history", "auth": true },
+      { "method": "POST", "path": "/chat/conversations/private/{targetUserId}", "description": "Start private chat", "auth": true },
+      { "method": "POST", "path": "/chat/send", "description": "Send message", "auth": true }
+    ],
+    "PriceRules": [
+      { "method": "GET", "path": "/courts/{courtId}/price-rules", "description": "Get public price rules for court", "auth": false },
+      { "method": "POST", "path": "/owner/price-rules", "description": "Owner: Create price rule", "auth": true, "roles": ["OWNER"] },
+      { "method": "GET", "path": "/owner/courts/{courtId}/price-rules", "description": "Owner: Get court price rules", "auth": true, "roles": ["OWNER"] },
+      { "method": "PATCH", "path": "/owner/price-rules/{id}", "description": "Owner: Update price rule", "auth": true, "roles": ["OWNER"] },
+      { "method": "PATCH", "path": "/owner/price-rules/{id}/status", "description": "Owner: Update price rule status", "auth": true, "roles": ["OWNER"] }
+    ],
+    "Payments": [
+      { "method": "POST", "path": "/my/bookings/{bookingId}/pay/vnpay", "description": "Create VNPay payment link", "auth": true, "roles": ["USER"] },
+      { "method": "GET", "path": "/payments/vnpay/return", "description": "VNPay Callback", "auth": false }
+    ],
+    "Sports": [
+      { "method": "GET", "path": "/sports", "description": "Get all active sports", "auth": false },
+      { "method": "GET", "path": "/sports/{id}", "description": "Get sport details", "auth": false },
+      { "method": "POST", "path": "/admin/sports", "description": "Admin: Create sport", "auth": true, "roles": ["ADMIN"] },
+      { "method": "PATCH", "path": "/admin/sports/{id}", "description": "Admin: Update sport", "auth": true, "roles": ["ADMIN"] },
+      { "method": "DELETE", "path": "/admin/sports/{id}", "description": "Admin: Delete sport", "auth": true, "roles": ["ADMIN"] }
+    ],
+    "AI": [
+      { "method": "POST", "path": "/ai/chat", "description": "Chat with AI Assistant", "auth": true }
+    ],
+    "CourtBlocks": [
+      { "method": "POST", "path": "/owner/court-blocks", "description": "Owner: Block court time", "auth": true, "roles": ["OWNER"] },
+      { "method": "GET", "path": "/owner/courts/{courtId}/blocks", "description": "Owner: Get court blocks", "auth": true, "roles": ["OWNER"] },
+      { "method": "DELETE", "path": "/owner/court-blocks/{id}", "description": "Owner: Remove block", "auth": true, "roles": ["OWNER"] }
+    ]
+  },
+  "signalR": {
+    "hubUrl": "/chatHub",
+    "clientMethods": {
+      "ReceiveMessage": "Receive new message",
+      "ReceiveNotification": "Receive system notification",
+      "ReceiveMatchRequest": "Notify receiver of new match request",
+      "MatchFound": "Notify users when an AI match is found (roomId provided)",
+      "MatchRequestAccepted": "Notify sender/receiver that request was accepted",
+      "MatchRequestRejected": "Notify sender that request was rejected",
+      "UserTyping": "User typing indicator",
+      "UserOnline": "User online status",
+      "UserOffline": "User offline status"
+    },
+    "serverMethods": {
+      "SendMessage": "Send message via SignalR",
+      "SendTyping": "Send typing status",
+      "MarkAsRead": "Mark conversation as read"
+    }
+  }
+}
