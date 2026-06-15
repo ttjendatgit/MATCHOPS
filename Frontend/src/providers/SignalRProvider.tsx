@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import * as signalR from "@microsoft/signalr";
-import { getStoredToken, isAuthenticated } from "@/lib/auth";
+import { getStoredToken } from "@/lib/auth";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
@@ -25,31 +25,47 @@ export const SignalRProvider = ({ children }: { children: React.ReactNode }) => 
   const router = useRouter();
 
   useEffect(() => {
-    if (!isAuthenticated()) return;
-
     const token = getStoredToken();
-    const hubUrl = process.env.NEXT_PUBLIC_API_URL 
+    if (!token) return; // No token — skip connection entirely
+
+    const hubUrl = process.env.NEXT_PUBLIC_API_URL
       ? process.env.NEXT_PUBLIC_API_URL.replace("/api", "/chatHub")
       : "http://localhost:5208/chatHub";
 
     const newConnection = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl, {
-        accessTokenFactory: () => token || "",
+        // Use a factory so reconnect attempts always read the latest token
+        accessTokenFactory: () => getStoredToken() || "",
       })
       .withAutomaticReconnect()
       .build();
 
+    let isMounted = true;
+
+    newConnection.onclose(() => {
+      if (isMounted) setIsConnected(false);
+    });
+
     newConnection
       .start()
       .then(() => {
-        console.log("Connected to SignalR");
+        if (!isMounted) return;
+        if (process.env.NODE_ENV === "development") {
+          console.log("[SignalR] Connected to chatHub");
+        }
         setIsConnected(true);
         setConnection(newConnection);
       })
-      .catch((err) => console.error("SignalR Connection Error: ", err));
+      .catch((err) => {
+        // 401 / negotiate failures — warn in dev, never throw to the UI
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[SignalR] Connection failed (auth or network):", err);
+        }
+      });
 
     return () => {
-      newConnection.stop();
+      isMounted = false;
+      newConnection.stop().catch(() => {}); // Ignore cleanup errors
     };
   }, []);
 

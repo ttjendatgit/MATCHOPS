@@ -5,15 +5,17 @@ export interface MatchPost {
   creatorAvatar: string | null;
   sportId: string;
   sportName: string;
-  minSkillLevel: number;
-  maxSkillLevel: number;
+  minSkillLevel: string;
+  maxSkillLevel: string;
   city: string;
   district: string;
   preferredTime: string;
   slotsNeeded: number;
   slotsFilled: number;
   note: string | null;
-  status: 'OPEN' | 'CANCELLED' | 'COMPLETED';
+  status: 'OPEN' | 'FILLED' | 'CANCELLED' | 'EXPIRED';
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface MatchRequest {
@@ -23,30 +25,34 @@ export interface MatchRequest {
   senderUserId: string;
   senderFullName: string;
   senderAvatar: string | null;
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  receiverUserId: string;
+  receiverFullName: string;
+  receiverAvatar: string | null;
+  postDistrict: string;
+  postCity: string;
+  postPreferredTime: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
   createdAt: string;
 }
 
 export interface MatchRoom {
   id: string;
+  sportId: string;
   sportName: string;
-  matchDate: string;
-  startTime: string;
-  endTime: string;
-  venueName: string;
-  address: string;
-  district: string;
-  city: string;
-  status: 'WAITING' | 'CONFIRMED' | 'CANCELLED';
-  conversationId?: string;
-  participants: MatchParticipant[];
+  matchPostId: string | null;
+  conversationId: string | null;
+  status: 'WAITING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+  createdAt: string;
+  players: MatchRoomPlayer[];
 }
 
-export interface MatchParticipant {
+export interface MatchRoomPlayer {
   userId: string;
   fullName: string;
   avatar: string | null;
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  isHost: boolean;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'LEFT';
+  joinedAt: string;
 }
 
 export interface CreateMatchPostDto {
@@ -69,6 +75,7 @@ export interface UserSkill {
 export interface UpdateMatchPostDto {
   minSkillLevel?: number;
   maxSkillLevel?: number;
+  city?: string;
   district?: string;
   preferredTime?: string;
   slotsNeeded?: number;

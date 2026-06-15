@@ -233,7 +233,7 @@ export default function PaymentPage() {
       const bookingId = createRes.data.id;
 
       // 2. Tích hợp thanh toán VNPay thực tế nếu chọn VNPay
-      if (selectedMethod === "vnpay") {
+      if (selectedMethod === "VNPAY") {
         const payRes = await apiFetch<ApiResponse<{ paymentUrl: string }>>(`/my/bookings/${bookingId}/pay/vnpay`, {
           method: "POST",
           token,

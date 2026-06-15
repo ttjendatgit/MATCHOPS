@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { 
-  Users, Calendar, MapPin, 
+import {
+  Users, Calendar,
   Loader2, CheckCircle2, XCircle,
-  Trophy, Building2, Clock, ChevronLeft,
-  ShieldCheck, Info
+  Trophy, ChevronLeft,
+  ShieldCheck, Info, MessageCircle
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
-import { getStoredToken, isAuthenticated } from "@/lib/auth";
+import { getStoredToken, getStoredUser, isAuthenticated } from "@/lib/auth";
 import type { ApiResponse } from "@/types/api";
 import type { MatchRoom } from "@/types/match";
 import { Button } from "@/components/ui/button";
@@ -19,30 +20,46 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+function formatMatchDateTime(isoString: string | null | undefined): string {
+  if (!isoString) return "—";
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return "—";
+    const days = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+    return d.toLocaleString("vi-VN", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "—";
+  }
+}
+
 export default function MatchRoomDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  
-  const [isMounted, setIsMounted] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<"accept" | "reject" | null>(null);
   const [room, setRoom] = useState<MatchRoom | null>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsMounted(true);
-    const user = localStorage.getItem("MATCHOP_USER");
-    if (user) {
-      setCurrentUser(JSON.parse(user));
-    }
+    const user = getStoredUser();
+    if (user?.id) setCurrentUserId(user.id);
 
     if (!isAuthenticated()) {
       router.push(`/login?redirect=/match/rooms/${id}`);
       return;
     }
     fetchRoomDetail();
-  }, [id, router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const fetchRoomDetail = async () => {
     setLoading(true);
@@ -64,7 +81,7 @@ export default function MatchRoomDetailPage() {
     setActionLoading(action);
     const token = getStoredToken();
     try {
-      const res = await apiFetch<ApiResponse<any>>(`/matching/rooms/${id}/${action}`, {
+      const res = await apiFetch<ApiResponse<unknown>>(`/matching/rooms/${id}/${action}`, {
         method: "POST",
         token
       });
@@ -72,8 +89,6 @@ export default function MatchRoomDetailPage() {
       if (res.success) {
         toast.success(action === "accept" ? "Đã chấp nhận trận đấu!" : "Đã từ chối trận đấu.");
         if (action === "accept") {
-          // If all accepted, maybe redirect to chat? 
-          // For now just refresh data
           fetchRoomDetail();
         } else {
           router.push("/match/rooms");
@@ -81,9 +96,9 @@ export default function MatchRoomDetailPage() {
       } else {
         toast.error(res.message || "Thao tác thất bại");
       }
-    } catch (err) {
-      console.error(err);
-      toast.error("Lỗi hệ thống khi thực hiện thao tác");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Lỗi hệ thống khi thực hiện thao tác";
+      toast.error(message);
     } finally {
       setActionLoading(null);
     }
@@ -108,7 +123,8 @@ export default function MatchRoomDetailPage() {
     );
   }
 
-  const myStatus = room.participants.find(p => p.userId === currentUser?.id)?.status;
+  const myPlayer = room.players.find(p => p.userId === currentUserId);
+  const myStatus = myPlayer?.status;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
@@ -128,7 +144,7 @@ export default function MatchRoomDetailPage() {
                     <Trophy className="h-5 w-5 text-[#FF8000]" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg font-bold text-white">Chi tiết trận đấu</CardTitle>
+                    <CardTitle className="text-lg font-bold text-white">Chi tiết phòng ghép</CardTitle>
                     <p className="text-xs text-slate-400">ID: {room.id.slice(0, 8)}</p>
                   </div>
                 </div>
@@ -143,21 +159,17 @@ export default function MatchRoomDetailPage() {
                   <div className="flex items-start gap-3">
                     <Calendar className="h-5 w-5 text-[#FF8000] shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Thời gian</p>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Phòng tạo lúc</p>
                       <p className="text-sm text-white font-medium">
-                        {new Date(room.matchDate).toLocaleDateString("vi-VN", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                      </p>
-                      <p className="text-sm text-slate-300 mt-1">
-                        {room.startTime.slice(0, 5)} - {room.endTime.slice(0, 5)} (60 phút)
+                        {formatMatchDateTime(room.createdAt)}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Building2 className="h-5 w-5 text-[#FF8000] shrink-0 mt-0.5" />
+                    <Users className="h-5 w-5 text-[#FF8000] shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Địa điểm</p>
-                      <p className="text-sm text-white font-medium">{room.venueName}</p>
-                      <p className="text-xs text-slate-400 mt-1">{room.address}, {room.district}, {room.city}</p>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Người chơi</p>
+                      <p className="text-sm text-white font-medium">{room.players.length} người</p>
                     </div>
                   </div>
                 </div>
@@ -171,22 +183,24 @@ export default function MatchRoomDetailPage() {
                 </div>
               </div>
 
-              {/* Status Section */}
+              {/* Player Status */}
               <div className="pt-6 border-t border-white/5">
                 <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Trạng thái xác nhận</h4>
                 <div className="space-y-3">
-                  {room.participants.map((p) => (
+                  {room.players.map((p) => (
                     <div key={p.userId} className="flex items-center justify-between p-3 rounded-xl bg-slate-950/50 border border-white/5">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8 border border-white/10">
                           <AvatarImage src={p.avatar || ""} />
                           <AvatarFallback className="bg-slate-800 text-xs text-white">
-                            {p.fullName.slice(0, 2).toUpperCase()}
+                            {(p.fullName || "?").slice(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="text-sm font-bold text-white">
-                            {p.fullName} {p.userId === currentUser?.id && "(Bạn)"}
+                            {p.fullName}
+                            {p.userId === currentUserId && <span className="ml-1 text-[#FF8000]">(Bạn)</span>}
+                            {p.isHost && <span className="ml-1 text-[10px] text-slate-400">(Host)</span>}
                           </p>
                         </div>
                       </div>
@@ -194,10 +208,12 @@ export default function MatchRoomDetailPage() {
                         "text-[10px]",
                         p.status === "ACCEPTED" ? "bg-[#86D232]/10 text-[#86D232]" :
                         p.status === "REJECTED" ? "bg-red-500/10 text-red-500" :
+                        p.status === "LEFT" ? "bg-slate-500/10 text-slate-400" :
                         "bg-amber-500/10 text-amber-500"
                       )}>
-                        {p.status === "ACCEPTED" ? "Đã xác nhận" : 
-                         p.status === "REJECTED" ? "Đã từ chối" : "Đang chờ"}
+                        {p.status === "ACCEPTED" ? "Đã xác nhận" :
+                         p.status === "REJECTED" ? "Đã từ chối" :
+                         p.status === "LEFT" ? "Đã rời phòng" : "Đang chờ"}
                       </Badge>
                     </div>
                   ))}
@@ -209,8 +225,8 @@ export default function MatchRoomDetailPage() {
           <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
             <Info className="h-5 w-5 text-blue-400 shrink-0" />
             <p className="text-xs text-slate-400 leading-relaxed">
-              Trận đấu chỉ chính thức diễn ra khi **tất cả** người chơi trong phòng bấm chấp nhận. 
-              Sau đó, hệ thống sẽ tự động tạo đơn đặt sân (nếu chưa có) và mở phòng chat.
+              Trận đấu chỉ chính thức diễn ra khi tất cả người chơi trong phòng bấm chấp nhận.
+              Sau đó, hệ thống sẽ tự động mở phòng chat.
             </p>
           </div>
         </div>
@@ -231,16 +247,18 @@ export default function MatchRoomDetailPage() {
                     <p className="text-lg font-bold text-white">Trận đấu đã xác nhận!</p>
                     <p className="text-sm text-slate-400 mt-2">Mọi người đã sẵn sàng tham gia.</p>
                   </div>
-                  <Button asChild className="w-full bg-[#FF8000] hover:bg-[#FF8000]/90 text-white font-bold py-6 h-auto gap-2">
-                    <Link href={`/chat?convId=${room.conversationId}`}>
-                      <MessageCircle className="h-5 w-5" />
-                      Trò chuyện ngay
-                    </Link>
-                  </Button>
+                  {room.conversationId && (
+                    <Button asChild className="w-full bg-[#FF8000] hover:bg-[#FF8000]/90 text-white font-bold py-6 h-auto gap-2">
+                      <Link href={`/chat?convId=${room.conversationId}`}>
+                        <MessageCircle className="h-5 w-5" />
+                        Trò chuyện ngay
+                      </Link>
+                    </Button>
+                  )}
                 </div>
               ) : myStatus === "PENDING" ? (
                 <>
-                  <Button 
+                  <Button
                     onClick={() => handleAction("accept")}
                     disabled={actionLoading !== null}
                     className="w-full bg-[#86D232] hover:bg-[#86D232]/90 text-slate-950 font-bold py-6 h-auto gap-2"
@@ -248,7 +266,7 @@ export default function MatchRoomDetailPage() {
                     {actionLoading === "accept" ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
                     Chấp nhận ghép trận
                   </Button>
-                  <Button 
+                  <Button
                     onClick={() => handleAction("reject")}
                     disabled={actionLoading !== null}
                     variant="outline"
@@ -282,5 +300,3 @@ export default function MatchRoomDetailPage() {
     </div>
   );
 }
-
-import { cn } from "@/lib/utils";

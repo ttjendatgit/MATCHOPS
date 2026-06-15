@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { Suspense, useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -173,7 +173,7 @@ function EmptyBookingState({ isFiltered }: { isFiltered: boolean }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-export default function BookingsPage() {
+function BookingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [bookings, setBookings] = useState<DisplayBooking[]>([]);
@@ -315,5 +315,19 @@ export default function BookingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function BookingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-700 border-t-[#FF8000]" />
+        </div>
+      }
+    >
+      <BookingsContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { 
   Send, Search, MoreVertical, 
   User, Loader2, MessageSquare,
@@ -47,7 +47,7 @@ interface Message {
   isRead: boolean;
 }
 
-export default function ChatPage() {
+function ChatContent() {
   const searchParams = useSearchParams();
   const convIdFromUrl = searchParams.get("convId");
   
@@ -321,7 +321,9 @@ export default function ChatPage() {
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 truncate">
-                      {conv.lastMessage?.content || "Chưa có tin nhắn"}
+                      {typeof conv.lastMessage === "string"
+                        ? conv.lastMessage
+                        : conv.lastMessage?.content || "Chưa có tin nhắn"}
                     </p>
                   </div>
                   {conv.unreadCount > 0 && (
@@ -459,5 +461,19 @@ export default function ChatPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[70vh] items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-700 border-t-[#FF8000]" />
+        </div>
+      }
+    >
+      <ChatContent />
+    </Suspense>
   );
 }

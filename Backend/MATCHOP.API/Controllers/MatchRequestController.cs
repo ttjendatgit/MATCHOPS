@@ -36,6 +36,14 @@ namespace MATCHOP.API.Controllers
             return Ok(ApiResponse<List<MatchRequestResponseDto>>.Ok(result));
         }
 
+        [HttpGet("sent")]
+        public async Task<IActionResult> GetSentRequests()
+        {
+            var userId = _currentUserService.UserId ?? throw new AppException(ErrorCodes.UNAUTHORIZED, "Unauthorized");
+            var result = await _requestService.GetSentRequestsAsync(userId);
+            return Ok(ApiResponse<List<MatchRequestResponseDto>>.Ok(result));
+        }
+
         [HttpPut("{id:guid}/accept")]
         public async Task<IActionResult> AcceptRequest(Guid id)
         {

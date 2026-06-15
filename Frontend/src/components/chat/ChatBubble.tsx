@@ -124,6 +124,7 @@ export default function ChatBubble() {
 
   const fetchConversations = async () => {
     const token = getStoredToken();
+    if (!token) return;
     try {
       const res = await apiFetch<ApiResponse<Conversation[]>>("/chat/conversations", { token });
       if (res.success && res.data) {
@@ -132,20 +133,28 @@ export default function ChatBubble() {
         setUnreadTotal(total);
       }
     } catch (err) {
-      console.error(err);
+      // 401 or network errors — clear state silently, do not crash the UI
+      setConversations([]);
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[ChatBubble] fetchConversations failed (auth or network):", err);
+      }
     }
   };
 
   const fetchMessages = async (convId: string) => {
-    setLoading(true);
     const token = getStoredToken();
+    if (!token) return;
+    setLoading(true);
     try {
       const res = await apiFetch<ApiResponse<ChatMessage[]>>(`/chat/conversations/${convId}/messages`, { token });
       if (res.success && res.data) {
         setMessages(res.data.reverse());
       }
     } catch (err) {
-      console.error(err);
+      setMessages([]);
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[ChatBubble] fetchMessages failed (auth or network):", err);
+      }
     } finally {
       setLoading(false);
     }
@@ -156,6 +165,8 @@ export default function ChatBubble() {
     if (!newMessage.trim() || !selectedConv) return;
 
     const token = getStoredToken();
+    if (!token) return;
+
     const content = newMessage;
     setNewMessage("");
 

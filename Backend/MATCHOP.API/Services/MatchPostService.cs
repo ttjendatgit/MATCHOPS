@@ -25,6 +25,11 @@ namespace MATCHOP.API.Services
                 throw new AppException(ErrorCodes.ValidationError, "Bạn cần cập nhật trình độ cho môn thể thao này trước khi tạo bài tìm trận.");
             }
 
+            if (dto.PreferredTime <= DateTime.UtcNow)
+            {
+                throw new AppException(ErrorCodes.ValidationError, "Thời gian tổ chức phải là thời gian trong tương lai.");
+            }
+
             var post = new MatchPost
             {
                 Id = Guid.NewGuid(),

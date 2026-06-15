@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { getStoredToken, isAuthenticated } from "@/lib/auth";
+import { getStoredToken, getStoredUser, isAuthenticated } from "@/lib/auth";
 import { useRouter, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -41,7 +41,7 @@ export default function MatchDetailPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [sports, setSports] = useState<{id: string, name: string}[]>([]);
 
-  // Edit form states
+  // Edit form states — skill levels stored as integers for PATCH payload
   const [editForm, setEditForm] = useState({
     minSkillLevel: 1,
     maxSkillLevel: 4,
@@ -52,24 +52,25 @@ export default function MatchDetailPage() {
     status: "OPEN"
   });
 
+  const skillNameToInt: Record<string, number> = {
+    Beginner: 1, Intermediate: 2, Advanced: 3, Professional: 4, Competitive: 4
+  };
+
   const fetchPost = useCallback(async () => {
     setLoading(true);
     try {
       const res = await apiFetch<ApiResponse<MatchPost>>(`/matching/posts/${id}`);
       if (res.success && res.data) {
         setPost(res.data);
-        
-        // Check if current user is creator
-        const userJson = localStorage.getItem("MATCHOP_USER");
-        if (userJson) {
-          const user = JSON.parse(userJson);
+
+        const user = getStoredUser();
+        if (user?.id) {
           setIsCreator(user.id === res.data.creatorId);
         }
 
-        // Init edit form
         setEditForm({
-          minSkillLevel: res.data.minSkillLevel,
-          maxSkillLevel: res.data.maxSkillLevel,
+          minSkillLevel: skillNameToInt[res.data.minSkillLevel] ?? 1,
+          maxSkillLevel: skillNameToInt[res.data.maxSkillLevel] ?? 4,
           district: res.data.district,
           preferredTime: new Date(res.data.preferredTime).toISOString().slice(0, 16),
           slotsNeeded: res.data.slotsNeeded,
@@ -104,8 +105,8 @@ export default function MatchDetailPage() {
       if (res.success && res.data) {
         setUserSkills(res.data);
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
+      // silently ignore
     }
   }, []);
 
@@ -120,7 +121,7 @@ export default function MatchDetailPage() {
     setActionLoading("update");
     const token = getStoredToken();
     try {
-      const res = await apiFetch<ApiResponse<any>>(`/matching/posts/${id}`, {
+      const res = await apiFetch<ApiResponse<unknown>>(`/matching/posts/${id}`, {
         method: "PATCH",
         token,
         body: JSON.stringify({
@@ -134,8 +135,9 @@ export default function MatchDetailPage() {
         setIsEditing(false);
         fetchPost();
       }
-    } catch (err) {
-      toast.error("Lỗi khi cập nhật bài đăng");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Lỗi khi cập nhật bài đăng";
+      toast.error(message);
     } finally {
       setActionLoading(null);
     }
@@ -146,7 +148,7 @@ export default function MatchDetailPage() {
     setActionLoading("delete");
     const token = getStoredToken();
     try {
-      const res = await apiFetch<ApiResponse<any>>(`/matching/posts/${id}`, {
+      const res = await apiFetch<ApiResponse<unknown>>(`/matching/posts/${id}`, {
         method: "DELETE",
         token
       });
@@ -154,8 +156,9 @@ export default function MatchDetailPage() {
         toast.success("Đã xóa bài đăng");
         router.push("/match");
       }
-    } catch (err) {
-      toast.error("Lỗi khi xóa bài đăng");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Lỗi khi xóa bài đăng";
+      toast.error(message);
     } finally {
       setActionLoading(null);
     }
@@ -180,20 +183,18 @@ export default function MatchDetailPage() {
     }
 
     try {
-      const res = await apiFetch<ApiResponse<any>>("/match-requests", {
+      const res = await apiFetch<ApiResponse<unknown>>("/match-requests", {
         method: "POST",
         token,
-        body: JSON.stringify({
-          postId: id,
-          receiverUserId: post?.creatorId
-        })
+        body: JSON.stringify({ postId: id })
       });
 
       if (res.success) {
         toast.success("Đã gửi yêu cầu tham gia!");
       }
-    } catch (err) {
-      toast.error("Lỗi khi gửi yêu cầu tham gia");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Lỗi khi gửi yêu cầu tham gia";
+      toast.error(message);
     } finally {
       setActionLoading(null);
     }

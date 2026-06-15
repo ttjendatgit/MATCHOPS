@@ -85,10 +85,10 @@ namespace MATCHOP.API.Repositories
             if (filter.Date.HasValue)
                 query = query.Where(p => p.PreferredTime.Date == filter.Date.Value.Date);
 
-            // If searching for own posts, show all statuses. Otherwise show only OPEN.
+            // If searching for own posts, show all statuses. Otherwise show only future OPEN posts.
             if (!filter.CreatorId.HasValue)
             {
-                query = query.Where(p => p.Status == MatchPostStatus.OPEN);
+                query = query.Where(p => p.Status == MatchPostStatus.OPEN && p.PreferredTime > DateTime.UtcNow);
             }
 
             return query;

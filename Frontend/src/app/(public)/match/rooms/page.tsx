@@ -1,21 +1,39 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { 
-  Users, Calendar, MapPin, 
-  Loader2, ArrowRight, MessageCircle,
-  Trophy, Building2, Clock
+import {
+  Users, Calendar,
+  Loader2, ArrowRight
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
 import { getStoredToken, isAuthenticated } from "@/lib/auth";
 import type { ApiResponse } from "@/types/api";
 import type { MatchRoom } from "@/types/match";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+function formatDateTime(isoString: string | null | undefined): string {
+  if (!isoString) return "—";
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleString("vi-VN", {
+      weekday: "short",
+      day: "numeric",
+      month: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "—";
+  }
+}
 
 export default function MatchRoomsPage() {
   const router = useRouter();
@@ -28,7 +46,8 @@ export default function MatchRoomsPage() {
       return;
     }
     fetchRooms();
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchRooms = async () => {
     setLoading(true);
@@ -72,49 +91,43 @@ export default function MatchRoomsPage() {
         <div className="grid gap-6 md:grid-cols-2">
           {rooms.map((room) => (
             <Card key={room.id} className="overflow-hidden border-white/10 bg-slate-900/50 hover:border-[#FF8000]/30 transition-all duration-300">
-              <CardHeader className="border-b border-white/5 bg-white/5">
-                <div className="flex items-center justify-between">
-                  <Badge className="bg-[#86D232]/10 text-[#86D232] border-[#86D232]/20">
-                    {room.sportName}
-                  </Badge>
-                  <span className={cn(
-                    "text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider",
-                    room.status === "WAITING" ? "bg-amber-500/10 text-amber-500" :
-                    room.status === "CONFIRMED" ? "bg-[#86D232]/10 text-[#86D232]" :
-                    "bg-slate-500/10 text-slate-500"
-                  )}>
-                    {room.status === "WAITING" ? "Chờ xác nhận" : 
-                     room.status === "CONFIRMED" ? "Đã xác nhận" : room.status}
-                  </span>
-                </div>
+              <CardHeader className="border-b border-white/5 bg-white/5 flex flex-row items-center justify-between py-3 px-5">
+                <Badge className="bg-[#86D232]/10 text-[#86D232] border-[#86D232]/20">
+                  {room.sportName}
+                </Badge>
+                <span className={cn(
+                  "text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider",
+                  room.status === "WAITING" ? "bg-amber-500/10 text-amber-500" :
+                  room.status === "CONFIRMED" ? "bg-[#86D232]/10 text-[#86D232]" :
+                  "bg-slate-500/10 text-slate-500"
+                )}>
+                  {room.status === "WAITING" ? "Chờ xác nhận" :
+                   room.status === "CONFIRMED" ? "Đã xác nhận" :
+                   room.status === "CANCELLED" ? "Đã hủy" : room.status}
+                </span>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="grid gap-4 mb-6">
+                <div className="grid gap-3 mb-6">
                   <div className="flex items-center gap-3 text-sm text-slate-300">
-                    <Calendar className="h-4 w-4 text-[#FF8000]" />
-                    <span>{new Date(room.matchDate).toLocaleDateString("vi-VN", { weekday: 'long', day: 'numeric', month: 'numeric' })}</span>
+                    <Calendar className="h-4 w-4 text-[#FF8000] shrink-0" />
+                    <span>Tạo lúc {formatDateTime(room.createdAt)}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm text-slate-300">
-                    <Clock className="h-4 w-4 text-[#FF8000]" />
-                    <span>{room.startTime.slice(0, 5)} - {room.endTime.slice(0, 5)}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm text-slate-300">
-                    <Building2 className="h-4 w-4 text-[#FF8000]" />
-                    <span className="truncate">{room.venueName}</span>
+                    <Users className="h-4 w-4 text-[#FF8000] shrink-0" />
+                    <span>{room.players.length} người tham gia</span>
                   </div>
                 </div>
 
                 <div className="mb-6">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Người tham gia</p>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Người chơi</p>
                   <div className="flex -space-x-2 overflow-hidden">
-                    {room.participants.map((p) => (
-                      <div key={p.userId} className="inline-block h-8 w-8 rounded-full ring-2 ring-slate-900 bg-slate-800 flex items-center justify-center text-[10px] font-bold text-white border border-white/10 overflow-hidden">
-                        {p.avatar ? (
-                          <img src={p.avatar} alt={p.fullName} className="h-full w-full object-cover" />
-                        ) : (
-                          p.fullName.slice(0, 2).toUpperCase()
-                        )}
-                      </div>
+                    {room.players.map((p) => (
+                      <Avatar key={p.userId} className="h-8 w-8 ring-2 ring-slate-900 border border-white/10">
+                        <AvatarImage src={p.avatar || ""} />
+                        <AvatarFallback className="bg-slate-800 text-[10px] font-bold text-white">
+                          {(p.fullName || "?").slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                     ))}
                   </div>
                 </div>
@@ -133,5 +146,3 @@ export default function MatchRoomsPage() {
     </div>
   );
 }
-
-import { cn } from "@/lib/utils";
