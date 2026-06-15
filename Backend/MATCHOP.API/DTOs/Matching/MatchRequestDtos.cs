@@ -23,5 +23,6 @@ namespace MATCHOP.API.DTOs.Matching
         public DateTime PostPreferredTime { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
+        public Guid? RoomId { get; set; }
     }
 }

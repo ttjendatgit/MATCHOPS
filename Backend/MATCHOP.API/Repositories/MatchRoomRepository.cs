@@ -16,16 +16,38 @@ namespace MATCHOP.API.Repositories
         {
             return await _context.MatchRooms
                 .Include(r => r.Sport)
+                .Include(r => r.MatchPost)
+                    .ThenInclude(p => p!.Creator)
+                .Include(r => r.MatchPost)
+                    .ThenInclude(p => p!.Sport)
                 .Include(r => r.Players)
                     .ThenInclude(p => p.User)
                 .FirstOrDefaultAsync(r => r.Id == id);
+        }
+
+        public async Task<MatchRoom?> GetByMatchPostIdAsync(Guid matchPostId)
+        {
+            return await _context.MatchRooms
+                .Include(r => r.Sport)
+                .Include(r => r.MatchPost)
+                    .ThenInclude(p => p!.Creator)
+                .Include(r => r.MatchPost)
+                    .ThenInclude(p => p!.Sport)
+                .Include(r => r.Players)
+                    .ThenInclude(p => p.User)
+                .FirstOrDefaultAsync(r => r.MatchPostId == matchPostId);
         }
 
         public async Task<List<MatchRoom>> GetUserRoomsAsync(Guid userId)
         {
             return await _context.MatchRooms
                 .Include(r => r.Sport)
+                .Include(r => r.MatchPost)
+                    .ThenInclude(p => p!.Creator)
+                .Include(r => r.MatchPost)
+                    .ThenInclude(p => p!.Sport)
                 .Include(r => r.Players)
+                    .ThenInclude(p => p.User)
                 .Where(r => r.Players.Any(p => p.UserId == userId))
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();

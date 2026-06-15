@@ -70,7 +70,7 @@ export default function MatchmakingPage() {
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<MatchPost[]>([]);
   const [pendingRequests, setPendingRequests] = useState<MatchRequest[]>([]);
-  const [sentRequestMap, setSentRequestMap] = useState<Map<string, string>>(new Map());
+  const [sentRequestMap, setSentRequestMap] = useState<Map<string, { status: string; roomId?: string }>>(new Map());
   const [sports, setSports] = useState<Sport[]>([]);
   const [userSkills, setUserSkills] = useState<UserSkill[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -124,10 +124,10 @@ export default function MatchmakingPage() {
       const res = await apiFetch<ApiResponse<MatchRequest[]>>("/match-requests/sent", { token });
       if (res.success && res.data) {
         // Backend returns sorted by createdAt DESC — first entry per postId is the most recent status
-        const map = new Map<string, string>();
+        const map = new Map<string, { status: string; roomId?: string }>();
         for (const r of res.data) {
           if (!map.has(r.postId)) {
-            map.set(r.postId, r.status);
+            map.set(r.postId, { status: r.status, roomId: r.roomId ?? undefined });
           }
         }
         setSentRequestMap(map);
@@ -428,8 +428,8 @@ export default function MatchmakingPage() {
       return;
     }
 
-    const currentSentStatus = sentRequestMap.get(post.id);
-    if (currentSentStatus === "PENDING" || currentSentStatus === "ACCEPTED") return;
+    const currentEntry = sentRequestMap.get(post.id);
+    if (currentEntry?.status === "PENDING" || currentEntry?.status === "ACCEPTED") return;
 
     const hasSkill = userSkills.some(s => s.sportId === post.sportId);
     if (!hasSkill) {
@@ -452,7 +452,7 @@ export default function MatchmakingPage() {
 
       if (res.success) {
         toast.success("Đã gửi yêu cầu tham gia. Vui lòng chờ phản hồi!");
-        setSentRequestMap(prev => new Map(prev).set(post.id, "PENDING"));
+        setSentRequestMap(prev => new Map(prev).set(post.id, { status: "PENDING" }));
         fetchSentRequests();
       } else {
         toast.error(res.message || "Không thể gửi yêu cầu");
@@ -516,7 +516,8 @@ export default function MatchmakingPage() {
   };
 
   const isOwnPost = (post: MatchPost) => isMounted && currentUserId && post.creatorId === currentUserId;
-  const getSentStatus = (post: MatchPost): string | undefined => isMounted ? sentRequestMap.get(post.id) : undefined;
+  const getSentStatus = (post: MatchPost): string | undefined => isMounted ? sentRequestMap.get(post.id)?.status : undefined;
+  const getSentRoomId = (post: MatchPost): string | undefined => isMounted ? sentRequestMap.get(post.id)?.roomId : undefined;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -677,6 +678,7 @@ export default function MatchmakingPage() {
               {posts.map((post) => {
                 const own = isOwnPost(post);
                 const sentStatus = getSentStatus(post);
+                const sentRoomId = getSentRoomId(post);
                 const full = post.slotsFilled >= post.slotsNeeded;
                 return (
                   <Card key={post.id} className="group overflow-hidden border-white/10 bg-slate-900/50 hover:border-[#FF8000]/30 transition-all duration-300 flex flex-col">
@@ -751,8 +753,8 @@ export default function MatchmakingPage() {
                               className="flex-1 bg-[#86D232] hover:bg-[#86D232]/90 text-slate-950 font-bold"
                               asChild
                             >
-                              <Link href={`/chat?userId=${post.creatorId}`}>
-                                Đã được duyệt ✓
+                              <Link href={sentRoomId ? `/match/rooms/${sentRoomId}` : "/match/rooms"}>
+                                Vào phòng →
                               </Link>
                             </Button>
                           ) : sentStatus === "PENDING" ? (

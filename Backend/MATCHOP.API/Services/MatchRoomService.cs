@@ -4,6 +4,7 @@ using MATCHOP.API.Enums;
 using MATCHOP.API.Helpers;
 using MATCHOP.API.Hubs;
 using MATCHOP.API.Repositories;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 
 namespace MATCHOP.API.Services
@@ -24,10 +25,15 @@ namespace MATCHOP.API.Services
             _chatRepository = chatRepository;
         }
 
-        public async Task<MatchRoomResponseDto> GetRoomByIdAsync(Guid roomId)
+        public async Task<MatchRoomResponseDto> GetRoomByIdAsync(Guid roomId, Guid requestingUserId)
         {
             var room = await _matchRoomRepository.GetByIdAsync(roomId);
-            if (room == null) throw new AppException(ErrorCodes.ValidationError, "Không tìm thấy phòng.");
+            if (room == null)
+                throw new AppException(ErrorCodes.ValidationError, "Không tìm thấy phòng.", StatusCodes.Status404NotFound);
+
+            if (!room.Players.Any(p => p.UserId == requestingUserId))
+                throw new AppException(ErrorCodes.ValidationError, "Bạn không có quyền xem phòng này.", StatusCodes.Status403Forbidden);
+
             return await MapToResponseAsync(room);
         }
 
@@ -103,19 +109,33 @@ namespace MATCHOP.API.Services
                 conversationId = conversation.Id;
             }
 
+            var post = room.MatchPost;
+            var hostPlayer = room.Players.FirstOrDefault(p => p.IsHost);
+
             return new MatchRoomResponseDto
             {
                 Id = room.Id,
                 SportId = room.SportId,
-                SportName = room.Sport?.Name ?? "Unknown",
+                SportName = room.Sport?.Name ?? post?.Sport?.Name ?? string.Empty,
                 MatchPostId = room.MatchPostId,
                 ConversationId = conversationId,
                 Status = room.Status.ToString(),
                 CreatedAt = room.CreatedAt,
+                // Post-linked fields (empty/zero for queue-based rooms)
+                PostCity = post?.City ?? string.Empty,
+                PostDistrict = post?.District ?? string.Empty,
+                PostPreferredTime = post?.PreferredTime,
+                PostMinSkillLevel = post?.MinSkillLevel.ToString() ?? string.Empty,
+                PostMaxSkillLevel = post?.MaxSkillLevel.ToString() ?? string.Empty,
+                SlotsNeeded = post?.SlotsNeeded ?? 0,
+                SlotsFilled = post?.SlotsFilled ?? 0,
+                PostStatus = post?.Status.ToString() ?? string.Empty,
+                OwnerUserId = hostPlayer?.UserId ?? post?.CreatorId,
+                OwnerName = hostPlayer?.User?.FullName ?? post?.Creator?.FullName ?? string.Empty,
                 Players = room.Players.Select(p => new MatchRoomPlayerDto
                 {
                     UserId = p.UserId,
-                    FullName = p.User?.FullName ?? "Unknown",
+                    FullName = p.User?.FullName ?? string.Empty,
                     Avatar = p.User?.AvatarUrl,
                     IsHost = p.IsHost,
                     Status = p.Status.ToString(),

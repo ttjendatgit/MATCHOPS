@@ -5,6 +5,7 @@ namespace MATCHOP.API.Repositories
     public interface IMatchRoomRepository
     {
         Task<MatchRoom?> GetByIdAsync(Guid id);
+        Task<MatchRoom?> GetByMatchPostIdAsync(Guid matchPostId);
         Task<List<MatchRoom>> GetUserRoomsAsync(Guid userId);
         Task AddAsync(MatchRoom room);
         Task UpdateAsync(MatchRoom room);

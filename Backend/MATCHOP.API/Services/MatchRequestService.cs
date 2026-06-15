@@ -22,6 +22,7 @@ namespace MATCHOP.API.Services
     {
         private readonly IMatchRequestRepository _requestRepo;
         private readonly IMatchPostRepository _matchPostRepo;
+        private readonly IMatchRoomRepository _roomRepo;
         private readonly IChatService _chatService;
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly IChatRepository _chatRepo;
@@ -29,12 +30,14 @@ namespace MATCHOP.API.Services
         public MatchRequestService(
             IMatchRequestRepository requestRepo,
             IMatchPostRepository matchPostRepo,
+            IMatchRoomRepository roomRepo,
             IChatService chatService,
             IHubContext<ChatHub> hubContext,
             IChatRepository chatRepo)
         {
             _requestRepo = requestRepo;
             _matchPostRepo = matchPostRepo;
+            _roomRepo = roomRepo;
             _chatService = chatService;
             _hubContext = hubContext;
             _chatRepo = chatRepo;
@@ -94,7 +97,18 @@ namespace MATCHOP.API.Services
         public async Task<List<MatchRequestResponseDto>> GetSentRequestsAsync(Guid userId)
         {
             var requests = await _requestRepo.GetSentRequestsAsync(userId);
-            return requests.Select(MapToDto).ToList();
+            var result = new List<MatchRequestResponseDto>();
+            foreach (var r in requests)
+            {
+                var dto = MapToDto(r);
+                if (r.Status == MatchRequestStatus.ACCEPTED)
+                {
+                    var room = await _roomRepo.GetByMatchPostIdAsync(r.PostId);
+                    dto.RoomId = room?.Id;
+                }
+                result.Add(dto);
+            }
+            return result;
         }
 
         public async Task AcceptRequestAsync(Guid userId, Guid requestId)
@@ -132,6 +146,9 @@ namespace MATCHOP.API.Services
 
             await _requestRepo.AcceptWithPostUpdateAsync(request, post);
 
+            // Create or update the MatchRoom for this post
+            await EnsureRoomForPostAsync(post, request.SenderUserId);
+
             var conversation = await _chatService.CreatePrivateConversationAsync(request.SenderUserId, request.ReceiverUserId);
 
             var senderConnections = await _chatRepo.GetUserConnectionsAsync(request.SenderUserId);
@@ -164,6 +181,63 @@ namespace MATCHOP.API.Services
             foreach (var conn in connections)
             {
                 await _hubContext.Clients.Client(conn).SendAsync("MatchRequestRejected", requestId);
+            }
+        }
+
+        private async Task EnsureRoomForPostAsync(MatchPost post, Guid acceptedSenderUserId)
+        {
+            var room = await _roomRepo.GetByMatchPostIdAsync(post.Id);
+
+            if (room == null)
+            {
+                // First acceptance: create the room
+                var newRoom = new MatchRoom
+                {
+                    Id = Guid.NewGuid(),
+                    SportId = post.SportId,
+                    MatchPostId = post.Id,
+                    Status = post.Status == MatchPostStatus.FILLED
+                        ? MatchRoomStatus.CONFIRMED
+                        : MatchRoomStatus.WAITING,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await _roomRepo.AddAsync(newRoom);
+                room = newRoom;
+            }
+            else if (post.Status == MatchPostStatus.FILLED && room.Status == MatchRoomStatus.WAITING)
+            {
+                // Post just became full: promote room to CONFIRMED
+                room.Status = MatchRoomStatus.CONFIRMED;
+                await _roomRepo.UpdateAsync(room);
+            }
+
+            // Add owner/host player if not already present (idempotent)
+            if (await _roomRepo.GetPlayerAsync(room.Id, post.CreatorId) == null)
+            {
+                await _roomRepo.AddPlayerAsync(new MatchRoomPlayer
+                {
+                    Id = Guid.NewGuid(),
+                    RoomId = room.Id,
+                    UserId = post.CreatorId,
+                    IsHost = true,
+                    Status = MatchRoomPlayerStatus.ACCEPTED,
+                    JoinedAt = DateTime.UtcNow
+                });
+            }
+
+            // Add accepted requester if not already present (idempotent)
+            if (await _roomRepo.GetPlayerAsync(room.Id, acceptedSenderUserId) == null)
+            {
+                await _roomRepo.AddPlayerAsync(new MatchRoomPlayer
+                {
+                    Id = Guid.NewGuid(),
+                    RoomId = room.Id,
+                    UserId = acceptedSenderUserId,
+                    IsHost = false,
+                    Status = MatchRoomPlayerStatus.ACCEPTED,
+                    JoinedAt = DateTime.UtcNow
+                });
             }
         }
 

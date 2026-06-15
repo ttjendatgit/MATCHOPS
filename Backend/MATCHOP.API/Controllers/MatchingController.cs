@@ -115,7 +115,8 @@ namespace MATCHOP.API.Controllers
         [HttpGet("rooms/{id:guid}")]
         public async Task<IActionResult> GetRoomById(Guid id)
         {
-            var result = await _matchRoomService.GetRoomByIdAsync(id);
+            var userId = _currentUserService.UserId ?? throw new AppException(ErrorCodes.UNAUTHORIZED, "Unauthorized");
+            var result = await _matchRoomService.GetRoomByIdAsync(id, userId);
             return Ok(ApiResponse<MatchRoomResponseDto>.Ok(result));
         }
 

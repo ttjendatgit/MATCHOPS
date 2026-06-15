@@ -33,6 +33,7 @@ export interface MatchRequest {
   postPreferredTime: string;
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
   createdAt: string;
+  roomId?: string;
 }
 
 export interface MatchRoom {
@@ -43,6 +44,16 @@ export interface MatchRoom {
   conversationId: string | null;
   status: 'WAITING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
   createdAt: string;
+  postCity: string;
+  postDistrict: string;
+  postPreferredTime: string | null;
+  postMinSkillLevel: string;
+  postMaxSkillLevel: string;
+  slotsNeeded: number;
+  slotsFilled: number;
+  postStatus: string;
+  ownerUserId: string | null;
+  ownerName: string;
   players: MatchRoomPlayer[];
 }
 

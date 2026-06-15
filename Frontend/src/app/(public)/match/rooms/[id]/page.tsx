@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  Users, Calendar,
+  Users, Calendar, MapPin, User,
   Loader2, CheckCircle2, XCircle,
   Trophy, ChevronLeft,
   ShieldCheck, Info, MessageCircle
@@ -159,19 +159,56 @@ export default function MatchRoomDetailPage() {
                   <div className="flex items-start gap-3">
                     <Calendar className="h-5 w-5 text-[#FF8000] shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Phòng tạo lúc</p>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Thời gian thi đấu</p>
                       <p className="text-sm text-white font-medium">
-                        {formatMatchDateTime(room.createdAt)}
+                        {formatMatchDateTime(room.postPreferredTime) !== "—"
+                          ? formatMatchDateTime(room.postPreferredTime)
+                          : formatMatchDateTime(room.createdAt)}
                       </p>
                     </div>
                   </div>
+                  {(room.postDistrict || room.postCity) && (
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-5 w-5 text-[#FF8000] shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Địa điểm</p>
+                        <p className="text-sm text-white font-medium">
+                          {[room.postDistrict, room.postCity].filter(Boolean).join(", ") || "Chưa cập nhật"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {(room.postMinSkillLevel || room.postMaxSkillLevel) && (
+                    <div className="flex items-start gap-3">
+                      <Trophy className="h-5 w-5 text-[#FF8000] shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Trình độ</p>
+                        <p className="text-sm text-white font-medium">
+                          {room.postMinSkillLevel || "—"} – {room.postMaxSkillLevel || "—"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-start gap-3">
                     <Users className="h-5 w-5 text-[#FF8000] shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Người chơi</p>
-                      <p className="text-sm text-white font-medium">{room.players.length} người</p>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Số người</p>
+                      <p className="text-sm text-white font-medium">
+                        {room.slotsNeeded > 0
+                          ? `${room.slotsFilled}/${room.slotsNeeded} người`
+                          : `${room.players.length} người tham gia`}
+                      </p>
                     </div>
                   </div>
+                  {room.ownerName && (
+                    <div className="flex items-start gap-3">
+                      <User className="h-5 w-5 text-[#FF8000] shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Chủ trận</p>
+                        <p className="text-sm text-white font-medium">{room.ownerName}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="rounded-2xl bg-white/5 border border-white/5 p-4 flex flex-col items-center justify-center text-center">

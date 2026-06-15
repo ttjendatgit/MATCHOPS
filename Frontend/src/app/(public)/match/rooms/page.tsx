@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  Users, Calendar,
+  Users, Calendar, MapPin, Trophy,
   Loader2, ArrowRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -110,11 +110,27 @@ export default function MatchRoomsPage() {
                 <div className="grid gap-3 mb-6">
                   <div className="flex items-center gap-3 text-sm text-slate-300">
                     <Calendar className="h-4 w-4 text-[#FF8000] shrink-0" />
-                    <span>Tạo lúc {formatDateTime(room.createdAt)}</span>
+                    <span>{room.postPreferredTime ? formatDateTime(room.postPreferredTime) : formatDateTime(room.createdAt)}</span>
                   </div>
+                  {(room.postDistrict || room.postCity) && (
+                    <div className="flex items-center gap-3 text-sm text-slate-300">
+                      <MapPin className="h-4 w-4 text-[#FF8000] shrink-0" />
+                      <span className="truncate">{[room.postDistrict, room.postCity].filter(Boolean).join(", ")}</span>
+                    </div>
+                  )}
+                  {(room.postMinSkillLevel || room.postMaxSkillLevel) && (
+                    <div className="flex items-center gap-3 text-sm text-slate-300">
+                      <Trophy className="h-4 w-4 text-[#FF8000] shrink-0" />
+                      <span>Trình độ: {room.postMinSkillLevel || "—"} – {room.postMaxSkillLevel || "—"}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-3 text-sm text-slate-300">
                     <Users className="h-4 w-4 text-[#FF8000] shrink-0" />
-                    <span>{room.players.length} người tham gia</span>
+                    <span>
+                      {room.slotsNeeded > 0
+                        ? `${room.slotsFilled}/${room.slotsNeeded} người`
+                        : `${room.players.length} người tham gia`}
+                    </span>
                   </div>
                 </div>
 
@@ -134,7 +150,7 @@ export default function MatchRoomsPage() {
 
                 <Button asChild className="w-full bg-[#FF8000] hover:bg-[#FF8000]/90 text-white font-bold">
                   <Link href={`/match/rooms/${room.id}`}>
-                    Xem chi tiết & Xác nhận
+                    Vào phòng
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
