@@ -457,7 +457,7 @@ export function RegisterForm() {
           ...(phone.trim() ? { phone: phone.trim() } : {}),
         }),
       });
-      router.push("/login?registered=1");
+      router.push(`/verify-email?email=${encodeURIComponent(emailTrimmed)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Đăng ký thất bại. Vui lòng thử lại.");
     } finally {
