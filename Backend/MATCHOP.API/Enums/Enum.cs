@@ -162,3 +162,19 @@ public enum NotificationType
     NEW_MESSAGE = 5,
     PAYMENT_SUCCESS = 6
 }
+
+public enum MembershipTier
+{
+    FREE     = 1,
+    STANDARD = 2,
+    PRO      = 3,
+    PREMIUM  = 4
+}
+
+public enum SubscriptionStatus
+{
+    ACTIVE    = 1,
+    CANCELLED = 2,
+    EXPIRED   = 3,
+    PENDING   = 4
+}

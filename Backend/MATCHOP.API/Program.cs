@@ -209,6 +209,9 @@ builder.Services.AddSignalR();
 builder.Services.AddScoped<ICourtBlockService, CourtBlockService>();
 builder.Services.AddHostedService<BookingExpirationHostedService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+
+// Membership
+builder.Services.AddScoped<IMembershipService, MembershipService>();
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

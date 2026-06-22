@@ -34,7 +34,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<ConversationParticipant> ConversationParticipants => Set<ConversationParticipant>();
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<Notification> Notifications => Set<Notification>();
-    public DbSet<UserConnection> UserConnections => Set<UserConnection>();
+    public DbSet<UserConnection>    UserConnections    => Set<UserConnection>();
+    public DbSet<MembershipPlan>    MembershipPlans    => Set<MembershipPlan>();
+    public DbSet<UserSubscription>  UserSubscriptions  => Set<UserSubscription>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -700,6 +702,142 @@ public class ApplicationDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
             e.HasOne(x => x.User).WithMany(u => u.Connections).HasForeignKey(x => x.UserId);
+        });
+
+        // ── MembershipPlan ────────────────────────────────────────────
+        modelBuilder.Entity<MembershipPlan>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.Code)
+             .IsRequired()
+             .HasMaxLength(50);
+
+            e.Property(x => x.Name)
+             .IsRequired()
+             .HasMaxLength(200);
+
+            e.Property(x => x.TargetRole)
+             .HasConversion<int>();
+
+            e.Property(x => x.Tier)
+             .HasConversion<int>();
+
+            e.Property(x => x.PricePerMonth)
+             .HasPrecision(18, 2);
+
+            e.Property(x => x.PricePerYear)
+             .HasPrecision(18, 2);
+
+            e.Property(x => x.CommissionRate)
+             .HasPrecision(5, 4);   // e.g. 0.0700
+
+            e.Property(x => x.FeaturesJson)
+             .HasMaxLength(2000);
+
+            e.HasIndex(x => x.Code)
+             .IsUnique()
+             .HasDatabaseName("ux_membership_plans_code");
+
+            e.HasIndex(x => new { x.TargetRole, x.IsActive })
+             .HasDatabaseName("ix_membership_plans_role_active");
+
+            // ── Seed: 7 default plans (idempotent via HasData) ────────
+            var seedDate = new DateTime(2026, 6, 22, 0, 0, 0, DateTimeKind.Utc);
+
+            e.HasData(
+                // USER plans
+                new MembershipPlan
+                {
+                    Id = Guid.Parse("10000000-0000-0000-0000-000000000001"),
+                    Code = "USER_FREE", Name = "Người dùng Miễn phí",
+                    TargetRole = UserRole.USER, Tier = MembershipTier.FREE,
+                    PricePerMonth = 0, MaxMatchPostsPerMonth = 3, MaxJoinRequestsPerMonth = 5,
+                    IsActive = true, SortOrder = 1, CreatedAt = seedDate, UpdatedAt = seedDate
+                },
+                new MembershipPlan
+                {
+                    Id = Guid.Parse("10000000-0000-0000-0000-000000000002"),
+                    Code = "USER_PRO", Name = "Người dùng Pro",
+                    TargetRole = UserRole.USER, Tier = MembershipTier.PRO,
+                    PricePerMonth = 49000, MaxMatchPostsPerMonth = 20,
+                    IsActive = true, SortOrder = 2, CreatedAt = seedDate, UpdatedAt = seedDate
+                },
+                new MembershipPlan
+                {
+                    Id = Guid.Parse("10000000-0000-0000-0000-000000000003"),
+                    Code = "USER_PREMIUM", Name = "Người dùng Premium",
+                    TargetRole = UserRole.USER, Tier = MembershipTier.PREMIUM,
+                    PricePerMonth = 99000,
+                    IsActive = true, SortOrder = 3, CreatedAt = seedDate, UpdatedAt = seedDate
+                },
+                // OWNER plans
+                new MembershipPlan
+                {
+                    Id = Guid.Parse("10000000-0000-0000-0000-000000000004"),
+                    Code = "OWNER_FREE", Name = "Chủ sân Miễn phí",
+                    TargetRole = UserRole.OWNER, Tier = MembershipTier.FREE,
+                    PricePerMonth = 0, CommissionRate = 0.07m, MaxVenues = 1, MaxCourts = 3,
+                    IsActive = true, SortOrder = 4, CreatedAt = seedDate, UpdatedAt = seedDate
+                },
+                new MembershipPlan
+                {
+                    Id = Guid.Parse("10000000-0000-0000-0000-000000000005"),
+                    Code = "OWNER_STANDARD", Name = "Chủ sân Standard",
+                    TargetRole = UserRole.OWNER, Tier = MembershipTier.STANDARD,
+                    PricePerMonth = 199000, CommissionRate = 0.05m, MaxVenues = 3, MaxCourts = 10,
+                    IsActive = true, SortOrder = 5, CreatedAt = seedDate, UpdatedAt = seedDate
+                },
+                new MembershipPlan
+                {
+                    Id = Guid.Parse("10000000-0000-0000-0000-000000000006"),
+                    Code = "OWNER_PRO", Name = "Chủ sân Pro",
+                    TargetRole = UserRole.OWNER, Tier = MembershipTier.PRO,
+                    PricePerMonth = 499000, CommissionRate = 0.03m, MaxVenues = 10,
+                    IsActive = true, SortOrder = 6, CreatedAt = seedDate, UpdatedAt = seedDate
+                },
+                new MembershipPlan
+                {
+                    Id = Guid.Parse("10000000-0000-0000-0000-000000000007"),
+                    Code = "OWNER_PREMIUM", Name = "Chủ sân Premium",
+                    TargetRole = UserRole.OWNER, Tier = MembershipTier.PREMIUM,
+                    PricePerMonth = 999000, CommissionRate = 0.02m,
+                    IsActive = true, SortOrder = 7, CreatedAt = seedDate, UpdatedAt = seedDate
+                }
+            );
+        });
+
+        // ── UserSubscription ──────────────────────────────────────────
+        modelBuilder.Entity<UserSubscription>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.Status)
+             .HasConversion<int>();
+
+            e.HasOne(x => x.User)
+             .WithMany()
+             .HasForeignKey(x => x.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.MembershipPlan)
+             .WithMany(p => p.Subscriptions)
+             .HasForeignKey(x => x.MembershipPlanId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            // One active subscription record per user
+            e.HasIndex(x => x.UserId)
+             .IsUnique()
+             .HasDatabaseName("ux_user_subscriptions_user_id");
+
+            e.HasIndex(x => new { x.Status, x.ExpiresAt })
+             .HasDatabaseName("ix_user_subscriptions_status_expiry");
         });
     }
 }
