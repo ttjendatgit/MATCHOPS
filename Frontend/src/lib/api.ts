@@ -6,16 +6,18 @@ if (!API_BASE_URL) {
 
 type RequestOptions = RequestInit & {
   token?: string | null;
+  signal?: AbortSignal;
 };
 
 export async function apiFetch<T>(
   path: string,
   options: RequestOptions = {}
 ): Promise<T> {
-  const { token, headers, ...rest } = options;
+  const { token, headers, signal, ...rest } = options;
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...rest,
+    signal,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

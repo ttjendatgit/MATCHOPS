@@ -5,7 +5,7 @@ namespace MATCHOP.API.Services
 {
     public interface IGroqService
     {
-        Task<string> GetChatCompletionAsync(List<GroqMessage> messages);
+        Task<string> GetChatCompletionAsync(List<GroqMessage> messages, CancellationToken cancellationToken = default);
     }
 
     public class GroqMessage
@@ -26,7 +26,7 @@ namespace MATCHOP.API.Services
             _configuration = configuration;
         }
 
-        public async Task<string> GetChatCompletionAsync(List<GroqMessage> messages)
+        public async Task<string> GetChatCompletionAsync(List<GroqMessage> messages, CancellationToken cancellationToken = default)
         {
             var apiKey = _configuration["Groq:ApiKey"];
             if (string.IsNullOrEmpty(apiKey))
@@ -46,10 +46,10 @@ namespace MATCHOP.API.Services
             request.Headers.Add("Authorization", $"Bearer {apiKey}");
             request.Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.SendAsync(request);
+            var response = await _httpClient.SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var responseContent = await response.Content.ReadAsStringAsync();
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
             using var doc = JsonDocument.Parse(responseContent);
             return doc.RootElement
                 .GetProperty("choices")[0]

@@ -10,7 +10,7 @@ namespace MATCHOP.API.Services
 {
     public interface IAIService
     {
-        Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage, Guid? conversationId = null);
+        Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage, Guid? conversationId = null, CancellationToken cancellationToken = default);
     }
 
     public class AIService : IAIService
@@ -38,7 +38,7 @@ namespace MATCHOP.API.Services
             _userSkillService = userSkillService;
         }
 
-        public async Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage, Guid? conversationId = null)
+        public async Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage, Guid? conversationId = null, CancellationToken cancellationToken = default)
         {
             AIConversation conversation;
             List<AIChatMessage> history;
@@ -46,9 +46,9 @@ namespace MATCHOP.API.Services
             // 1. Get or create conversation
             if (conversationId.HasValue)
             {
-                conversation = await _aiChatRepository.GetConversationAsync(conversationId.Value, userId) 
+                conversation = await _aiChatRepository.GetConversationAsync(conversationId.Value, userId, cancellationToken) 
                     ?? throw new AppException(ErrorCodes.NotFound, "Conversation not found");
-                history = await _aiChatRepository.GetMessagesByConversationAsync(conversationId.Value);
+                history = await _aiChatRepository.GetMessagesByConversationAsync(conversationId.Value, cancellationToken);
             }
             else
             {
@@ -58,12 +58,12 @@ namespace MATCHOP.API.Services
                     UserId = userId,
                     Title = userMessage.Length > 50 ? userMessage.Substring(0, 50) + "..." : userMessage
                 };
-                await _aiChatRepository.AddConversationAsync(conversation);
+                await _aiChatRepository.AddConversationAsync(conversation, cancellationToken);
                 history = new List<AIChatMessage>();
             }
 
             // 2. Get Context from Database
-            var context = await GetSystemContextAsync(userId);
+            var context = await GetSystemContextAsync(userId, cancellationToken);
 
             // 3. Prepare Messages for Groq
             var messages = new List<GroqMessage>();
@@ -97,21 +97,21 @@ Nếu người dùng hỏi về thông tin không có trong dữ liệu trên, h
             messages.Add(new GroqMessage { role = "user", content = userMessage });
 
             // 4. Call Groq API
-            var aiResponse = await _groqService.GetChatCompletionAsync(messages);
+            var aiResponse = await _groqService.GetChatCompletionAsync(messages, cancellationToken);
 
             // 5. Save History
             var userMessageEntity = new AIChatMessage { UserId = userId, Role = "user", Content = userMessage, ConversationId = conversation.Id };
-            await _aiChatRepository.AddMessageAsync(userMessageEntity);
+            await _aiChatRepository.AddMessageAsync(userMessageEntity, cancellationToken);
             
             var assistantMessageEntity = new AIChatMessage { UserId = userId, Role = "assistant", Content = aiResponse, ConversationId = conversation.Id };
-            await _aiChatRepository.AddMessageAsync(assistantMessageEntity);
+            await _aiChatRepository.AddMessageAsync(assistantMessageEntity, cancellationToken);
 
             // Update conversation
             conversation.UpdatedAt = DateTime.UtcNow;
-            await _aiChatRepository.UpdateConversationAsync(conversation);
+            await _aiChatRepository.UpdateConversationAsync(conversation, cancellationToken);
 
             // 6. Return Result
-            var updatedHistory = await _aiChatRepository.GetMessagesByConversationAsync(conversation.Id);
+            var updatedHistory = await _aiChatRepository.GetMessagesByConversationAsync(conversation.Id, cancellationToken);
             return new ChatResponseDto
             {
                 Response = aiResponse,
@@ -127,22 +127,22 @@ Nếu người dùng hỏi về thông tin không có trong dữ liệu trên, h
             };
         }
 
-        private async Task<string> GetSystemContextAsync(Guid userId)
+        private async Task<string> GetSystemContextAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             var sb = new StringBuilder();
 
             // Sports
-            var sports = await _sportService.GetActiveSportsAsync();
+            var sports = await _sportService.GetActiveSportsAsync(cancellationToken);
             sb.AppendLine("Môn thể thao:");
             foreach (var s in sports) sb.AppendLine($"- {s.Name} (ID: {s.Id})");
 
             // Venues
-            var venues = await _venueService.GetActiveVenuesAsync(null, null, null, null);
+            var venues = await _venueService.GetActiveVenuesAsync(null, null, null, null, cancellationToken);
             sb.AppendLine("\nĐịa điểm (Venues):");
             foreach (var v in venues.Take(10)) sb.AppendLine($"- {v.Name}: {v.Address}, {v.District}, {v.City}. Mở cửa: {v.OpeningTime}-{v.ClosingTime}");
 
             // User Skills
-            var skills = await _userSkillService.GetUserSkillsAsync(userId);
+            var skills = await _userSkillService.GetUserSkillsAsync(userId, cancellationToken);
             sb.AppendLine("\nTrình độ của bạn:");
             if (skills.Any())
             {
@@ -151,7 +151,7 @@ Nếu người dùng hỏi về thông tin không có trong dữ liệu trên, h
             else sb.AppendLine("- Bạn chưa cập nhật trình độ.");
 
             // User Bookings
-            var bookings = await _bookingService.GetMyBookingsAsync();
+            var bookings = await _bookingService.GetMyBookingsAsync(cancellationToken);
             sb.AppendLine("\nĐơn đặt sân của bạn:");
             if (bookings.Any())
             {

@@ -24,18 +24,18 @@ namespace MATCHOP.API.Controllers
         }
 
         [HttpPost("chat")]
-        public async Task<IActionResult> Chat(ChatRequestDto dto)
+        public async Task<IActionResult> Chat(ChatRequestDto dto, CancellationToken cancellationToken = default)
         {
             var userId = _currentUserService.UserId ?? throw new AppException(ErrorCodes.UNAUTHORIZED, "Unauthorized");
-            var result = await _aiService.ProcessMessageAsync(userId, dto.Message, dto.ConversationId);
+            var result = await _aiService.ProcessMessageAsync(userId, dto.Message, dto.ConversationId, cancellationToken);
             return Ok(ApiResponse<ChatResponseDto>.Ok(result));
         }
 
         [HttpGet("conversations")]
-        public async Task<IActionResult> GetConversations()
+        public async Task<IActionResult> GetConversations(CancellationToken cancellationToken = default)
         {
             var userId = _currentUserService.UserId ?? throw new AppException(ErrorCodes.UNAUTHORIZED, "Unauthorized");
-            var conversations = await _aiChatRepository.GetConversationsAsync(userId);
+            var conversations = await _aiChatRepository.GetConversationsAsync(userId, cancellationToken);
             var result = conversations.Select(c => new AIConversationDto
             {
                 Id = c.Id,
@@ -47,14 +47,14 @@ namespace MATCHOP.API.Controllers
         }
 
         [HttpGet("conversations/{id:guid}")]
-        public async Task<IActionResult> GetConversation(Guid id)
+        public async Task<IActionResult> GetConversation(Guid id, CancellationToken cancellationToken = default)
         {
             var userId = _currentUserService.UserId ?? throw new AppException(ErrorCodes.UNAUTHORIZED, "Unauthorized");
-            var conversation = await _aiChatRepository.GetConversationAsync(id, userId);
+            var conversation = await _aiChatRepository.GetConversationAsync(id, userId, cancellationToken);
             if (conversation == null)
                 return NotFound(ApiResponse<object>.Fail("Conversation not found"));
             
-            var messages = await _aiChatRepository.GetMessagesByConversationAsync(id);
+            var messages = await _aiChatRepository.GetMessagesByConversationAsync(id, cancellationToken);
             var result = new
             {
                 Conversation = conversation,
@@ -69,32 +69,32 @@ namespace MATCHOP.API.Controllers
         }
 
         [HttpDelete("conversations/{id:guid}")]
-        public async Task<IActionResult> DeleteConversation(Guid id)
+        public async Task<IActionResult> DeleteConversation(Guid id, CancellationToken cancellationToken = default)
         {
             var userId = _currentUserService.UserId ?? throw new AppException(ErrorCodes.UNAUTHORIZED, "Unauthorized");
-            await _aiChatRepository.DeleteConversationAsync(id, userId);
+            await _aiChatRepository.DeleteConversationAsync(id, userId, cancellationToken);
             return Ok(ApiResponse<object>.Ok("Đã xóa cuộc trò chuyện."));
         }
 
         [HttpPut("conversations/{id:guid}/rename")]
-        public async Task<IActionResult> RenameConversation(Guid id, [FromBody] RenameConversationDto dto)
+        public async Task<IActionResult> RenameConversation(Guid id, [FromBody] RenameConversationDto dto, CancellationToken cancellationToken = default)
         {
             var userId = _currentUserService.UserId ?? throw new AppException(ErrorCodes.UNAUTHORIZED, "Unauthorized");
-            var conversation = await _aiChatRepository.GetConversationAsync(id, userId);
+            var conversation = await _aiChatRepository.GetConversationAsync(id, userId, cancellationToken);
             if (conversation == null)
                 return NotFound(ApiResponse<object>.Fail("Conversation not found"));
             
             conversation.Title = dto.Title;
             conversation.UpdatedAt = DateTime.UtcNow;
-            await _aiChatRepository.UpdateConversationAsync(conversation);
+            await _aiChatRepository.UpdateConversationAsync(conversation, cancellationToken);
             return Ok(ApiResponse<object>.Ok("Đã đổi tên cuộc trò chuyện."));
         }
 
         [HttpGet("history")]
-        public async Task<IActionResult> GetHistory()
+        public async Task<IActionResult> GetHistory(CancellationToken cancellationToken = default)
         {
             var userId = _currentUserService.UserId ?? throw new AppException(ErrorCodes.UNAUTHORIZED, "Unauthorized");
-            var messages = await _aiChatRepository.GetHistoryAsync(userId);
+            var messages = await _aiChatRepository.GetHistoryAsync(userId, cancellationToken: cancellationToken);
             var result = messages.Select(m => new ChatMessageDto
             {
                 Role = m.Role,
@@ -105,10 +105,10 @@ namespace MATCHOP.API.Controllers
         }
 
         [HttpDelete("history")]
-        public async Task<IActionResult> ClearHistory()
+        public async Task<IActionResult> ClearHistory(CancellationToken cancellationToken = default)
         {
             var userId = _currentUserService.UserId ?? throw new AppException(ErrorCodes.UNAUTHORIZED, "Unauthorized");
-            await _aiChatRepository.ClearHistoryAsync(userId);
+            await _aiChatRepository.ClearHistoryAsync(userId, cancellationToken);
             return Ok(ApiResponse<object>.Ok("Đã xóa lịch sử chat."));
         }
     }

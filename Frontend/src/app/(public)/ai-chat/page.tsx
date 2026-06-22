@@ -1,28 +1,48 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Send, Bot, User, MessageSquare, Loader2, Plus, Trash2, ArrowLeft, Menu, Pencil, Check } from "lucide-react";
+import {
+  Send,
+  Bot,
+  User,
+  MessageSquare,
+  Loader2,
+  Plus,
+  Trash2,
+  ArrowLeft,
+  Menu,
+  Pencil,
+  Check,
+  RefreshCw,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apiFetch } from "@/lib/api";
-import { getStoredToken, isAuthenticated } from "@/lib/auth";
-import type { ApiResponse } from "@/types/api";
-import type { AiChatMessage, AiChatRequest, AiChatResponse, AiHistoryItem } from "@/types/ai";
-import { toast } from "sonner";
+import { isAuthenticated } from "@/lib/auth";
+import { useAiChat } from "@/hooks/useAiChat";
 
 export default function AiChatPage() {
   const router = useRouter();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [messages, setMessages] = useState<AiChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [conversations, setConversations] = useState<AiHistoryItem[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
+
+  const {
+    messages,
+    conversations,
+    currentConversationId,
+    isLoading,
+    isLoadingHistory,
+    error,
+    messagesEndRef,
+    fetchConversations,
+    sendMessage,
+    selectConversation,
+    newConversation,
+    deleteConversation,
+    renameConversation,
+  } = useAiChat();
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -31,165 +51,14 @@ export default function AiChatPage() {
     } else {
       fetchConversations();
     }
-  }, [router]);
+  }, [router, fetchConversations]);
 
-  // Fetch AI conversations
-  const fetchConversations = async () => {
-    setIsLoadingHistory(true);
-    try {
-      const token = getStoredToken();
-      const response = await apiFetch<ApiResponse<AiHistoryItem[]>>("/ai/conversations", { token });
-      if (response.success && response.data) {
-        setConversations(response.data);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  };
-
-  // Scroll to bottom of messages
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
-
-  // Handle sending messages
+  // Handle sending message
   const handleSendMessage = async () => {
-    if (!input.trim() || isLoading) return;
-
-    const userMessage: AiChatMessage = {
-      role: "user",
-      content: input,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    const userInput = input;
+    const content = input.trim();
+    if (!content) return;
     setInput("");
-    setIsLoading(true);
-
-    try {
-      const token = getStoredToken();
-      const reqBody: AiChatRequest = {
-        message: userInput,
-        ...(currentConversationId ? { conversationId: currentConversationId } : {}),
-      };
-      const response = await apiFetch<ApiResponse<AiChatResponse>>("/ai/chat", {
-        method: "POST",
-        token,
-        body: JSON.stringify(reqBody),
-      });
-
-      if (response.success && response.data) {
-        const assistantMessage: AiChatMessage = {
-          id: response.data.id,
-          role: "assistant",
-          content: response.data.response,
-          timestamp: new Date(response.data.timestamp),
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-        
-        // If it's a new conversation, update the history list
-        if (!currentConversationId) {
-          setCurrentConversationId(response.data.conversationId);
-          await fetchConversations();
-        } else {
-          // If existing, update last message locally
-          setConversations(prev =>
-            prev.map(c => c.id === response.data.conversationId
-              ? { ...c, lastMessage: response.data.response, timestamp: new Date().toISOString() }
-              : c
-            )
-          );
-        }
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Không thể gửi tin nhắn. Vui lòng thử lại.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle creating a new conversation
-  const handleNewConversation = () => {
-    setMessages([]);
-    setCurrentConversationId(null);
-    setInput("");
-  };
-
-  // Handle selecting a conversation from history
-  const handleSelectConversation = async (id: string) => {
-    setCurrentConversationId(id);
-    setIsLoadingHistory(true);
-    try {
-      const token = getStoredToken();
-      const response = await apiFetch<ApiResponse<any>>(`/ai/conversations/${id}`, { token });
-      if (response.success && response.data) {
-        const msgs = response.data.Messages.map((m: any) => ({
-          role: m.Role,
-          content: m.Content,
-          timestamp: new Date(m.CreatedAt)
-        }));
-        setMessages(msgs);
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Không thể tải cuộc trò chuyện.");
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  };
-
-  // Handle deleting a conversation
-  const handleDeleteConversation = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      const token = getStoredToken();
-      await apiFetch(`/ai/conversations/${id}`, {
-        method: "DELETE",
-        token
-      });
-      
-      if (currentConversationId === id) {
-        setCurrentConversationId(null);
-        setMessages([]);
-      }
-      
-      // Refresh conversations
-      await fetchConversations();
-      toast.success("Đã xóa cuộc trò chuyện");
-    } catch (err) {
-      console.error(err);
-      toast.error("Không thể xóa cuộc trò chuyện");
-    }
-  };
-
-  // Handle renaming a conversation
-  const handleRenameConversation = async (id: string) => {
-    if (!editTitle.trim()) return;
-    try {
-      const token = getStoredToken();
-      await apiFetch(`/ai/conversations/${id}/rename`, {
-        method: "PUT",
-        token,
-        body: JSON.stringify({ title: editTitle })
-      });
-      
-      setConversations(prev =>
-        prev.map(c => c.id === id ? { ...c, title: editTitle } : c)
-      );
-      setEditingId(null);
-      toast.success("Đã đổi tên cuộc trò chuyện");
-    } catch (err) {
-      console.error(err);
-      toast.error("Không thể đổi tên cuộc trò chuyện");
-    }
+    await sendMessage(content);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -197,6 +66,16 @@ export default function AiChatPage() {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  const handleRenameClick = (id: string, title: string) => {
+    setEditingId(id);
+    setEditTitle(title);
+  };
+
+  const handleConfirmRename = (id: string) => {
+    renameConversation(id, editTitle);
+    setEditingId(null);
   };
 
   return (
@@ -227,7 +106,7 @@ export default function AiChatPage() {
         <div className="p-3">
           <Button
             className="w-full bg-[#FF8000] hover:bg-[#FF8000]/85 text-white flex items-center gap-2"
-            onClick={handleNewConversation}
+            onClick={newConversation}
           >
             <Plus className="h-4 w-4" />
             Tạo cuộc trò chuyện mới
@@ -239,6 +118,19 @@ export default function AiChatPage() {
             <div className="flex justify-center p-4">
               <Loader2 className="h-6 w-6 animate-spin text-[#FF8000]" />
             </div>
+          ) : error ? (
+            <div className="p-4 text-center space-y-3">
+              <p className="text-red-400 text-sm">{error}</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={fetchConversations}
+                className="flex items-center gap-2 text-slate-300"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Thử lại
+              </Button>
+            </div>
           ) : conversations.length === 0 ? (
             <div className="p-4 text-center text-slate-500 text-sm">
               <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-20" />
@@ -248,7 +140,7 @@ export default function AiChatPage() {
             <>{conversations.map((conv) => (
               <button
                 key={conv.id}
-                onClick={() => !editingId && handleSelectConversation(conv.id)}
+                onClick={() => !editingId && selectConversation(conv.id)}
                 className={`w-full text-left p-3 rounded-lg border border-transparent hover:bg-white/5 transition-colors group ${
                   currentConversationId === conv.id ? "bg-white/5" : ""
                 }`}
@@ -264,7 +156,7 @@ export default function AiChatPage() {
                           autoFocus
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
-                              handleRenameConversation(conv.id);
+                              handleConfirmRename(conv.id);
                             } else if (e.key === "Escape") {
                               setEditingId(null);
                             }
@@ -276,7 +168,7 @@ export default function AiChatPage() {
                           className="h-7 w-7 text-green-400"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleRenameConversation(conv.id);
+                            handleConfirmRename(conv.id);
                           }}
                         >
                           <Check className="h-3 w-3" />
@@ -297,8 +189,7 @@ export default function AiChatPage() {
                         className="h-6 w-6 text-slate-500 hover:text-[#FF8000] opacity-0 group-hover:opacity-100"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setEditingId(conv.id);
-                          setEditTitle(conv.title);
+                          handleRenameClick(conv.id, conv.title);
                         }}
                       >
                         <Pencil className="h-3 w-3" />
@@ -307,7 +198,7 @@ export default function AiChatPage() {
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100"
-                        onClick={(e) => handleDeleteConversation(conv.id, e)}
+                        onClick={(e) => deleteConversation(conv.id, e)}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -347,6 +238,26 @@ export default function AiChatPage() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {error && (
+            <div className="p-4 text-center space-y-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+              <p className="text-red-400 text-sm">{error}</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  fetchConversations();
+                  if (currentConversationId) {
+                    selectConversation(currentConversationId);
+                  }
+                }}
+                className="flex items-center gap-2 text-slate-300"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Thử lại
+              </Button>
+            </div>
+          )}
+          
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
               <div className="h-20 w-20 rounded-full bg-gradient-to-br from-[#FF8000]/10 to-orange-600/10 flex items-center justify-center">
