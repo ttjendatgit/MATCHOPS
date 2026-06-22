@@ -2,15 +2,14 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MATCHOP.API.Entities
 {
-    public class AIChatMessage
+    public class AIConversation
     {
         public Guid Id { get; set; }
         public Guid UserId { get; set; }
         public User User { get; set; } = null!;
-        public Guid? ConversationId { get; set; }
-        public AIConversation? Conversation { get; set; }
-        public string Role { get; set; } = "user"; // user, assistant, system
-        public string Content { get; set; } = string.Empty;
+        public string Title { get; set; } = "Cuộc trò chuyện mới";
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public ICollection<AIChatMessage> Messages { get; set; } = new List<AIChatMessage>();
     }
 }

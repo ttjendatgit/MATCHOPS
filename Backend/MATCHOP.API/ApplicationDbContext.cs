@@ -30,6 +30,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<MatchSuggestion> MatchSuggestions => Set<MatchSuggestion>();
     public DbSet<MatchRequest> MatchRequests => Set<MatchRequest>();
     public DbSet<AIChatMessage> AIChatMessages => Set<AIChatMessage>();
+    public DbSet<AIConversation> AIConversations => Set<AIConversation>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<ConversationParticipant> ConversationParticipants => Set<ConversationParticipant>();
     public DbSet<Message> Messages => Set<Message>();
@@ -650,6 +651,21 @@ public class ApplicationDbContext : DbContext
             e.HasIndex(x => new { x.UserId, x.SuggestedUserId, x.SportId }).IsUnique().HasDatabaseName("ux_match_suggestions_unique");
         });
 
+        // ── AIConversation ─────────────────────────────────────────────
+        modelBuilder.Entity<AIConversation>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.Property(x => x.Title).IsRequired().HasMaxLength(200);
+            e.Property(x => x.CreatedAt).HasDefaultValueSql("NOW()");
+            e.Property(x => x.UpdatedAt).HasDefaultValueSql("NOW()");
+
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Messages).WithOne(x => x.Conversation).HasForeignKey(x => x.ConversationId).OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.UserId).HasDatabaseName("ix_ai_conversations_user");
+        });
+        
         // ── AIChatMessage ─────────────────────────────────────────────
         modelBuilder.Entity<AIChatMessage>(e =>
         {
@@ -660,8 +676,10 @@ public class ApplicationDbContext : DbContext
             e.Property(x => x.CreatedAt).HasDefaultValueSql("NOW()");
 
             e.HasOne(x => x.User).WithMany(u => u.AIChatMessages).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Conversation).WithMany(c => c.Messages).HasForeignKey(x => x.ConversationId).OnDelete(DeleteBehavior.Cascade);
 
             e.HasIndex(x => x.UserId).HasDatabaseName("ix_ai_chat_messages_user");
+            e.HasIndex(x => x.ConversationId).HasDatabaseName("ix_ai_chat_messages_conversation");
         });
 
         // ── Chat & Notifications ──────────────────────────────────────

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Send, Bot, User, MessageSquare, Loader2, Plus, Trash2, ArrowLeft, Menu } from "lucide-react";
+import { Send, Bot, User, MessageSquare, Loader2, Plus, Trash2, ArrowLeft, Menu, Pencil, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api";
@@ -21,22 +21,24 @@ export default function AiChatPage() {
   const [input, setInput] = useState("");
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<AiHistoryItem[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
 
   // Redirect if not authenticated
   useEffect(() => {
     if (!isAuthenticated()) {
       router.push("/login?redirect=/ai-chat");
     } else {
-      fetchAiHistory();
+      fetchConversations();
     }
   }, [router]);
 
-  // Fetch AI conversation history
-  const fetchAiHistory = async () => {
+  // Fetch AI conversations
+  const fetchConversations = async () => {
     setIsLoadingHistory(true);
     try {
       const token = getStoredToken();
-      const response = await apiFetch<ApiResponse<AiHistoryItem[]>>("/ai/history", { token });
+      const response = await apiFetch<ApiResponse<AiHistoryItem[]>>("/ai/conversations", { token });
       if (response.success && response.data) {
         setConversations(response.data);
       }
@@ -95,7 +97,7 @@ export default function AiChatPage() {
         // If it's a new conversation, update the history list
         if (!currentConversationId) {
           setCurrentConversationId(response.data.conversationId);
-          await fetchAiHistory();
+          await fetchConversations();
         } else {
           // If existing, update last message locally
           setConversations(prev =>
@@ -124,9 +126,24 @@ export default function AiChatPage() {
   // Handle selecting a conversation from history
   const handleSelectConversation = async (id: string) => {
     setCurrentConversationId(id);
-    // TODO: Load individual conversation messages if backend supports it
-    toast.info("Đang tải cuộc trò chuyện...");
-    setMessages([]);
+    setIsLoadingHistory(true);
+    try {
+      const token = getStoredToken();
+      const response = await apiFetch<ApiResponse<any>>(`/ai/conversations/${id}`, { token });
+      if (response.success && response.data) {
+        const msgs = response.data.Messages.map((m: any) => ({
+          role: m.Role,
+          content: m.Content,
+          timestamp: new Date(m.CreatedAt)
+        }));
+        setMessages(msgs);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Không thể tải cuộc trò chuyện.");
+    } finally {
+      setIsLoadingHistory(false);
+    }
   };
 
   // Handle deleting a conversation
@@ -134,11 +151,9 @@ export default function AiChatPage() {
     e.stopPropagation();
     try {
       const token = getStoredToken();
-      // Backend has DELETE /api/ai/history
-      await apiFetch("/ai/history", {
+      await apiFetch(`/ai/conversations/${id}`, {
         method: "DELETE",
-        token,
-        body: JSON.stringify({ id }) // Or maybe just delete all? Wait API docs just say DELETE /api/ai/history
+        token
       });
       
       if (currentConversationId === id) {
@@ -146,12 +161,34 @@ export default function AiChatPage() {
         setMessages([]);
       }
       
-      // Refresh history
-      await fetchAiHistory();
+      // Refresh conversations
+      await fetchConversations();
       toast.success("Đã xóa cuộc trò chuyện");
     } catch (err) {
       console.error(err);
       toast.error("Không thể xóa cuộc trò chuyện");
+    }
+  };
+
+  // Handle renaming a conversation
+  const handleRenameConversation = async (id: string) => {
+    if (!editTitle.trim()) return;
+    try {
+      const token = getStoredToken();
+      await apiFetch(`/ai/conversations/${id}/rename`, {
+        method: "PUT",
+        token,
+        body: JSON.stringify({ title: editTitle })
+      });
+      
+      setConversations(prev =>
+        prev.map(c => c.id === id ? { ...c, title: editTitle } : c)
+      );
+      setEditingId(null);
+      toast.success("Đã đổi tên cuộc trò chuyện");
+    } catch (err) {
+      console.error(err);
+      toast.error("Không thể đổi tên cuộc trò chuyện");
     }
   };
 
@@ -211,24 +248,71 @@ export default function AiChatPage() {
             <>{conversations.map((conv) => (
               <button
                 key={conv.id}
-                onClick={() => handleSelectConversation(conv.id)}
+                onClick={() => !editingId && handleSelectConversation(conv.id)}
                 className={`w-full text-left p-3 rounded-lg border border-transparent hover:bg-white/5 transition-colors group ${
                   currentConversationId === conv.id ? "bg-white/5" : ""
                 }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate text-white">{conv.title}</p>
-                    <p className="text-xs text-slate-500 truncate">{conv.lastMessage}</p>
+                    {editingId === conv.id ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          className="h-7 bg-slate-800 text-white text-sm"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleRenameConversation(conv.id);
+                            } else if (e.key === "Escape") {
+                              setEditingId(null);
+                            }
+                          }}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-green-400"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRenameConversation(conv.id);
+                          }}
+                        >
+                          <Check className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium truncate text-white">{conv.title}</p>
+                        <p className="text-xs text-slate-500 truncate">{conv.lastMessage}</p>
+                      </>
+                    )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100"
-                    onClick={(e) => handleDeleteConversation(conv.id, e)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  {!editingId && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-slate-500 hover:text-[#FF8000] opacity-0 group-hover:opacity-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingId(conv.id);
+                          setEditTitle(conv.title);
+                        }}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100"
+                        onClick={(e) => handleDeleteConversation(conv.id, e)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </button>
             ))}</>

@@ -10,7 +10,7 @@ namespace MATCHOP.API.Services
 {
     public interface IAIService
     {
-        Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage);
+        Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage, Guid? conversationId = null);
     }
 
     public class AIService : IAIService
@@ -38,14 +38,33 @@ namespace MATCHOP.API.Services
             _userSkillService = userSkillService;
         }
 
-        public async Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage)
+        public async Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage, Guid? conversationId = null)
         {
-            // 1. Get Context from Database
+            AIConversation conversation;
+            List<AIChatMessage> history;
+            
+            // 1. Get or create conversation
+            if (conversationId.HasValue)
+            {
+                conversation = await _aiChatRepository.GetConversationAsync(conversationId.Value, userId) 
+                    ?? throw new AppException(ErrorCodes.NotFound, "Conversation not found");
+                history = await _aiChatRepository.GetMessagesByConversationAsync(conversationId.Value);
+            }
+            else
+            {
+                // Create new conversation
+                conversation = new AIConversation
+                {
+                    UserId = userId,
+                    Title = userMessage.Length > 50 ? userMessage.Substring(0, 50) + "..." : userMessage
+                };
+                await _aiChatRepository.AddConversationAsync(conversation);
+                history = new List<AIChatMessage>();
+            }
+
+            // 2. Get Context from Database
             var context = await GetSystemContextAsync(userId);
 
-            // 2. Get Chat History
-            var history = await _aiChatRepository.GetHistoryAsync(userId);
-            
             // 3. Prepare Messages for Groq
             var messages = new List<GroqMessage>();
             
@@ -54,7 +73,7 @@ namespace MATCHOP.API.Services
             { 
                 role = "system", 
                 content = $@"Bạn là trợ lý AI thông minh của hệ thống MATCHOP - ứng dụng đặt sân và ghép trận thể thao (Cầu lông, Pickleball, Bóng bàn).
-                
+
 Dữ liệu hiện tại của hệ thống:
 {context}
 
@@ -81,14 +100,24 @@ Nếu người dùng hỏi về thông tin không có trong dữ liệu trên, h
             var aiResponse = await _groqService.GetChatCompletionAsync(messages);
 
             // 5. Save History
-            await _aiChatRepository.AddMessageAsync(new AIChatMessage { UserId = userId, Role = "user", Content = userMessage });
-            await _aiChatRepository.AddMessageAsync(new AIChatMessage { UserId = userId, Role = "assistant", Content = aiResponse });
+            var userMessageEntity = new AIChatMessage { UserId = userId, Role = "user", Content = userMessage, ConversationId = conversation.Id };
+            await _aiChatRepository.AddMessageAsync(userMessageEntity);
+            
+            var assistantMessageEntity = new AIChatMessage { UserId = userId, Role = "assistant", Content = aiResponse, ConversationId = conversation.Id };
+            await _aiChatRepository.AddMessageAsync(assistantMessageEntity);
+
+            // Update conversation
+            conversation.UpdatedAt = DateTime.UtcNow;
+            await _aiChatRepository.UpdateConversationAsync(conversation);
 
             // 6. Return Result
-            var updatedHistory = await _aiChatRepository.GetHistoryAsync(userId);
+            var updatedHistory = await _aiChatRepository.GetMessagesByConversationAsync(conversation.Id);
             return new ChatResponseDto
             {
                 Response = aiResponse,
+                ConversationId = conversation.Id,
+                Id = assistantMessageEntity.Id,
+                Timestamp = assistantMessageEntity.CreatedAt,
                 History = updatedHistory.Select(m => new ChatMessageDto
                 {
                     Role = m.Role,
