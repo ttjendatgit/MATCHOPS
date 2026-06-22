@@ -11,6 +11,7 @@ const columns = [
       { label: "Sân thể thao",     href: "/venues"  },
       { label: "Huấn luyện viên",  href: "/coach"   },
       { label: "Ghép đối",         href: "/match"   },
+      { label: "Gói thành viên",   href: "/pricing" },
     ],
   },
   {

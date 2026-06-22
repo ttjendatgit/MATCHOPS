@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   Settings,
+  Star,
   User as UserIcon,
   Users,
   X,
@@ -22,11 +23,11 @@ import type { User } from "@/types/auth";
 // ─── Nav data ─────────────────────────────────────────────────────────────────
 
 const navLinks = [
-  { href: "/",       label: "Trang chủ",      exact: true  },
-  { href: "/venues", label: "Sân thể thao",    exact: false },
-  { href: "/coach",  label: "Huấn luyện viên", exact: false },
-  { href: "/match",  label: "Ghép đối",        exact: false },
-  { href: "/match/rooms", label: "Phòng chờ", exact: false },
+  { href: "/",        label: "Trang chủ",      exact: true  },
+  { href: "/venues",  label: "Sân thể thao",    exact: false },
+  { href: "/coach",   label: "Huấn luyện viên", exact: false },
+  { href: "/match",   label: "Ghép đối",        exact: false },
+  { href: "/pricing", label: "Gói thành viên",  exact: false },
 ] as const;
 
 function checkActive(pathname: string, href: string, exact: boolean) {
@@ -93,11 +94,12 @@ type UserDropdownProps = {
 };
 
 const dropdownMenuItems = [
-  { href: "/profile",          label: "Trang cá nhân",     icon: UserIcon     },
-  { href: "/match/rooms",      label: "Phòng chờ ghép đối", icon: Users        },
-  { href: "/bookings",         label: "Lịch đặt của tôi",  icon: CalendarCheck2 },
-  { href: "/change-password",  label: "Đổi mật khẩu",      icon: KeyRound     },
-  { href: "/account/settings", label: "Cài đặt tài khoản", icon: Settings     },
+  { href: "/profile",          label: "Trang cá nhân",      icon: UserIcon      },
+  { href: "/pricing",          label: "Gói của tôi",        icon: Star          },
+  { href: "/match/rooms",      label: "Phòng chờ ghép đối", icon: Users         },
+  { href: "/bookings",         label: "Lịch đặt của tôi",   icon: CalendarCheck2},
+  { href: "/change-password",  label: "Đổi mật khẩu",       icon: KeyRound      },
+  { href: "/account/settings", label: "Cài đặt tài khoản",  icon: Settings      },
 ];
 
 function UserDropdown({ user, onLogout }: UserDropdownProps) {

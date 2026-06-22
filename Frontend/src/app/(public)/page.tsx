@@ -19,6 +19,7 @@ import { SportsSection } from "@/components/home/SportsSection";
 import { FeaturedVenuesBento } from "@/components/home/FeaturedVenuesBento";
 import { FinalCTASection } from "@/components/home/FinalCTASection";
 import { HeroIntro } from "@/components/home/HeroIntro";
+import { PricingTeaserSection } from "@/components/home/PricingTeaserSection";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -191,8 +192,8 @@ export default function HomePage() {
                     className="gap-2 rounded-xl bg-[#030303]/70 border border-white/15 text-white shadow-lg backdrop-blur-md text-sm transition-all duration-200 hover:bg-[#FF8000]/10 hover:border-[#FF8000]/40 hover:text-white hover:shadow-[0_0_16px_rgba(255,128,0,0.18)] focus-visible:ring-2 focus-visible:ring-[#FF8000]/50"
                     asChild
                   >
-                    <Link href="/register">
-                      Đăng ký làm chủ sân
+                    <Link href="/pricing">
+                      Xem gói thành viên
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
@@ -209,6 +210,7 @@ export default function HomePage() {
       <StatsBar />
       <SportsSection />
       <FeaturedVenuesBento />
+      <PricingTeaserSection />
       <FinalCTASection />
     </>
   );
