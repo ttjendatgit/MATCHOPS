@@ -10,12 +10,12 @@ import {
   TrendingUp,
   UserCircle,
   LogOut,
-  Zap,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { clearAuthData } from "@/lib/auth";
+import { BrandLogo } from "@/components/branding";
 import type { User } from "@/types/auth";
 
 const navItems = [
@@ -65,14 +65,11 @@ export function OwnerSidebar({ user, open, onClose }: OwnerSidebarProps) {
       {/* Logo area */}
       <div className="relative flex h-16 shrink-0 items-center gap-2.5 border-b border-[rgba(134,210,50,0.15)] px-5 overflow-hidden">
         {/* Subtle orange glow behind logo */}
-        <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-[#FF8000]/60 via-[#FF8000]/30 to-transparent" />
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#FF8000] shadow-[0_0_14px_rgba(255,128,0,0.4)]">
-          <Zap className="h-4 w-4 text-white" />
-        </div>
-        <span className="text-base font-bold tracking-tight text-white font-heading">
-          MatchOps
-        </span>
-        <span className="ml-auto rounded-md bg-[rgba(255,128,0,0.15)] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#FF8000]">
+        <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-[#FF6A00]/60 via-[#FF6A00]/30 to-transparent" />
+        <Link href="/owner" aria-label="MatchOps Owner — Dashboard">
+          <BrandLogo size="sm" />
+        </Link>
+        <span className="ml-auto rounded-md bg-[rgba(255,106,0,0.15)] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#FF6A00]">
           OWNER
         </span>
         <button

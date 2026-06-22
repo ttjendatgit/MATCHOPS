@@ -18,6 +18,7 @@ import {
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { getStoredUser, clearAuthData, verifySession } from "@/lib/auth";
+import { BrandLogo } from "@/components/branding";
 import type { User } from "@/types/auth";
 
 // ─── Nav data ─────────────────────────────────────────────────────────────────
@@ -38,16 +39,12 @@ function checkActive(pathname: string, href: string, exact: boolean) {
 
 function LogoMark() {
   return (
-    <Link href="/" className="flex items-center gap-2 md:gap-2.5 group shrink-0">
-      <div className="flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-xl bg-[#FF8000] shadow-lg shadow-[#FF8000]/35 transition-all duration-200 group-hover:scale-105 group-hover:shadow-xl group-hover:shadow-[#FF8000]/55">
-        <span className="brand-wordmark select-none italic text-[18px] md:text-[20px] text-white leading-none" aria-hidden>M</span>
-      </div>
-      <span className="brand-wordmark select-none text-[16px] md:text-[18px] uppercase leading-none text-white drop-shadow-[0_0_14px_rgba(255,128,0,0.22)] transition-opacity duration-200 group-hover:opacity-90">
-        Match
-        <span className="bg-gradient-to-r from-[#FF8000] via-[#FF9A20] to-[#86D232] bg-clip-text text-transparent">
-          Ops
-        </span>
-      </span>
+    <Link href="/" className="group flex shrink-0 items-center" aria-label="MatchOps — Trang chủ">
+      <BrandLogo
+        size="md"
+        glow
+        className="transition-transform duration-200 group-hover:scale-[1.03]"
+      />
     </Link>
   );
 }

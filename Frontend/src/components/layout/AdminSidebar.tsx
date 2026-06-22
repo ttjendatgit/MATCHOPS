@@ -4,10 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Building2, Users, Dumbbell,
-  MapPin, ChevronRight, LogOut, ShieldCheck,
+  ChevronRight, LogOut, ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { BrandLogo } from "@/components/branding";
 
 const navItems = [
   { href: "/admin",          icon: LayoutDashboard, label: "Tổng quan" },
@@ -26,10 +27,9 @@ export function AdminSidebar() {
     <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r border-slate-100 bg-white">
       {/* Logo */}
       <div className="flex h-16 items-center gap-2 border-b border-slate-100 px-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900">
-          <MapPin className="h-4 w-4 text-white" />
-        </div>
-        <span className="text-base font-bold text-slate-900">MatchOps</span>
+        <Link href="/admin" aria-label="MatchOps Admin">
+          <BrandLogo size="sm" tone="dark" />
+        </Link>
         <span className="ml-auto rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
           ADMIN
         </span>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { BrandLogo } from "@/components/branding";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -24,16 +25,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </div>
 
       {/* MatchOps logo */}
-      <Link href="/" className="group relative z-10 mb-2 flex items-center gap-2.5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FF8000] shadow-lg shadow-[#FF8000]/35 transition-all duration-200 group-hover:scale-105 group-hover:shadow-xl group-hover:shadow-[#FF8000]/55">
-          <span className="brand-wordmark select-none italic text-[20px] text-white leading-none" aria-hidden>M</span>
-        </div>
-        <span className="brand-wordmark select-none text-xl uppercase leading-none text-white drop-shadow-[0_0_14px_rgba(255,128,0,0.22)] transition-opacity duration-200 group-hover:opacity-90">
-          Match
-          <span className="bg-gradient-to-r from-[#FF8000] via-[#FF9A20] to-[#86D232] bg-clip-text text-transparent">
-            Ops
-          </span>
-        </span>
+      <Link
+        href="/"
+        className="group relative z-10 mb-2 flex items-center transition-transform duration-200 hover:scale-[1.03]"
+        aria-label="MatchOps — Trang chủ"
+      >
+        <BrandLogo size="lg" glow />
       </Link>
 
       {/* Brand slogan */}

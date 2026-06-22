@@ -512,3 +512,26 @@ html {
   font-weight: 900;
   letter-spacing: 0.06em;
 }
+
+/* ── MatchOps brand system tokens ───────────────────────────────────────────
+   Mirrors src/components/branding/tokens.ts. Use for raw colours where Tailwind
+   theme tokens are not convenient (gradients, glows, inline styles).
+   ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --brand-orange: #FF6A00;
+  --brand-orange-bright: #FF8A2A;
+  --brand-orange-deep: #E55F00;
+  --brand-charcoal: #0A0D12;
+  --brand-slate: #1A1F26;
+  --brand-off-white: #F5F6F7;
+  --brand-green: #7BC043;
+
+  --brand-border: rgba(245, 246, 247, 0.08);
+  --brand-border-accent: rgba(255, 106, 0, 0.35);
+}
+
+/* Indeterminate progress bar used by <BrandSplash /> */
+@keyframes brand-loadbar {
+  0%   { transform: translateX(-110%); }
+  100% { transform: translateX(320%); }
+}
