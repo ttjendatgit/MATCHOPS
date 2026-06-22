@@ -1,4 +1,4 @@
-﻿using MATCHOP.API.DTOs.Courts;
+using MATCHOP.API.DTOs.Courts;
 using MATCHOP.API.Entities;
 using MATCHOP.API.Enums;
 using MATCHOP.API.Helpers;
@@ -299,10 +299,9 @@ public class CourtService : ICourtService
 
         if (dto.Type != null)
         {
-            ValidationHelper.ValidateOptionalName(
+            ValidationHelper.ValidateOptionalDescription(
                 dto.Type,
                 "Loại sân",
-                minLength: 2,
                 maxLength: 100);
 
             court.Type = ValidationHelper.NormalizeOptionalText(dto.Type);
@@ -412,10 +411,9 @@ public class CourtService : ICourtService
             minLength: 2,
             maxLength: 200);
 
-        ValidationHelper.ValidateOptionalName(
+        ValidationHelper.ValidateOptionalDescription(
             dto.Type,
             "Loại sân",
-            minLength: 2,
             maxLength: 100);
 
         ValidationHelper.ValidatePositiveNumber(

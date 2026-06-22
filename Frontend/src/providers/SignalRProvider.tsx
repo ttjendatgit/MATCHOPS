@@ -97,7 +97,6 @@ export const SignalRProvider = ({ children }: { children: React.ReactNode }) => 
           onClick: () => router.push(`/chat?convId=${data.conversationId}`),
         },
       });
-      // Redirect to chat if on the same page or desired
       router.push(`/chat?convId=${data.conversationId}`);
     });
 
@@ -130,12 +129,47 @@ export const SignalRProvider = ({ children }: { children: React.ReactNode }) => 
       });
     });
 
+    // Receive Notification
+    connection.on("ReceiveNotification", (notification: any) => {
+      toast(notification.title, {
+        description: notification.message,
+      });
+    });
+
+    // User Online
+    connection.on("UserOnline", (userId: string) => {
+      // Optionally update user status
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[SignalR] User ${userId} online`);
+      }
+    });
+
+    // User Offline
+    connection.on("UserOffline", (userId: string) => {
+      // Optionally update user status
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[SignalR] User ${userId} offline`);
+      }
+    });
+
+    // User Typing
+    connection.on("UserTyping", (data: { conversationId: string; userId: string; isTyping: boolean }) => {
+      // Can be handled in chat components
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[SignalR] User ${data.userId} typing in ${data.conversationId}`, data.isTyping);
+      }
+    });
+
     return () => {
       connection.off("ReceiveMatchRequest");
       connection.off("MatchRequestAccepted");
       connection.off("MatchRequestRejected");
       connection.off("MatchFound");
       connection.off("MatchConfirmed");
+      connection.off("ReceiveNotification");
+      connection.off("UserOnline");
+      connection.off("UserOffline");
+      connection.off("UserTyping");
     };
   }, [connection, router]);
 

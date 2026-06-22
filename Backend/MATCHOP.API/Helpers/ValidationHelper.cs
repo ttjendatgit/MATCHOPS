@@ -1,11 +1,11 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 
 namespace MATCHOP.API.Helpers
 {
     public static class ValidationHelper
     {
         private static readonly Regex SafeNameRegex = new(
-            @"^[\p{L}\p{N}\s\.\-_\&\(\)\/]+$",
+            @"^[\p{L}\p{N}\s\.\-_\&\(\)\/,':;]+$",
             RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         private static readonly Regex DangerousContentRegex = new(

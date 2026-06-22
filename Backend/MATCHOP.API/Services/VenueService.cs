@@ -144,6 +144,19 @@ public class VenueService : IVenueService
     public async Task<VenueResponseDto> CreateVenueAsync(CreateVenueDto dto)
     {
         ValidateOpeningClosingTime(dto.OpeningTime, dto.ClosingTime);
+        
+        ValidationHelper.ValidateRequiredText(dto.Name, "Tên venue", minLength: 2, maxLength: 200);
+        ValidationHelper.ValidateRequiredAddress(dto.Address, "Địa chỉ", minLength: 5, maxLength: 500);
+        ValidationHelper.ValidateRequiredText(dto.City, "Tỉnh/Thành phố", minLength: 1, maxLength: 100);
+        ValidationHelper.ValidateRequiredText(dto.District, "Quận/Huyện", minLength: 1, maxLength: 100);
+        if (dto.Ward != null)
+        {
+            ValidationHelper.ValidateOptionalDescription(dto.Ward, "Phường/Xã", maxLength: 100);
+        }
+        if (dto.Description != null)
+        {
+            ValidationHelper.ValidateOptionalDescription(dto.Description, "Mô tả", maxLength: 2000);
+        }
 
         var ownerId = GetCurrentUserId();
         string? coverImageUrl = null;
@@ -201,6 +214,31 @@ public class VenueService : IVenueService
     public async Task<VenueResponseDto> UpdateVenueAsync(Guid id, UpdateVenueDto dto)
     {
         var venue = await GetOwnedVenueOrThrowAsync(id);
+        
+        if (dto.Name != null)
+        {
+            ValidationHelper.ValidateRequiredText(dto.Name, "Tên venue", minLength: 2, maxLength: 200);
+        }
+        if (dto.Address != null)
+        {
+            ValidationHelper.ValidateRequiredAddress(dto.Address, "Địa chỉ", minLength: 5, maxLength: 500);
+        }
+        if (dto.City != null)
+        {
+            ValidationHelper.ValidateRequiredText(dto.City, "Tỉnh/Thành phố", minLength: 1, maxLength: 100);
+        }
+        if (dto.District != null)
+        {
+            ValidationHelper.ValidateRequiredText(dto.District, "Quận/Huyện", minLength: 1, maxLength: 100);
+        }
+        if (dto.Ward != null)
+        {
+            ValidationHelper.ValidateOptionalDescription(dto.Ward, "Phường/Xã", maxLength: 100);
+        }
+        if (dto.Description != null)
+        {
+            ValidationHelper.ValidateOptionalDescription(dto.Description, "Mô tả", maxLength: 2000);
+        }
 
         // Validate thời gian với giá trị hiện tại nếu chỉ update 1 trong 2
         var opening = dto.OpeningTime ?? venue.OpeningTime;

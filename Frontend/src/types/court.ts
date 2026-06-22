@@ -28,6 +28,14 @@ export interface PriceRule {
   status: "ACTIVE" | "INACTIVE";
 }
 
+export interface CreatePriceRuleRequest {
+  courtId: string;
+  dayType: DayType;
+  startTime: string;
+  endTime: string;
+  pricePerHour: number;
+}
+
 export interface Sport {
   id: string;
   name: string;

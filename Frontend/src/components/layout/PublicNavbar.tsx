@@ -27,6 +27,8 @@ const navLinks = [
   { href: "/venues",  label: "Sân thể thao",    exact: false },
   { href: "/coach",   label: "Huấn luyện viên", exact: false },
   { href: "/match",   label: "Ghép đối",        exact: false },
+  { href: "/match/rooms", label: "Phòng chờ", exact: false },
+  { href: "/ai-chat", label: "AI Trợ lý", exact: false },
   { href: "/pricing", label: "Gói thành viên",  exact: false },
 ] as const;
 
