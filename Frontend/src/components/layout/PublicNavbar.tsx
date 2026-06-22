@@ -95,7 +95,7 @@ type UserDropdownProps = {
 
 const dropdownMenuItems = [
   { href: "/profile",          label: "Trang cá nhân",      icon: UserIcon      },
-  { href: "/pricing",          label: "Gói của tôi",        icon: Star          },
+  { href: "/account/subscription", label: "Gói của tôi",     icon: Star          },
   { href: "/match/rooms",      label: "Phòng chờ ghép đối", icon: Users         },
   { href: "/bookings",         label: "Lịch đặt của tôi",   icon: CalendarCheck2},
   { href: "/change-password",  label: "Đổi mật khẩu",       icon: KeyRound      },
