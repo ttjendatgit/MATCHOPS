@@ -1,5 +1,7 @@
 using MATCHOP.API.Entities;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
+using System.Text.Json;
 
 namespace MATCHOP.API.Repositories
 {
@@ -7,6 +9,7 @@ namespace MATCHOP.API.Repositories
     {
         Task<List<AIConversation>> GetConversationsAsync(Guid userId, CancellationToken cancellationToken = default);
         Task<AIConversation?> GetConversationAsync(Guid conversationId, Guid userId, CancellationToken cancellationToken = default);
+        Task<AIConversation?> GetConversationWithMessagesAsync(Guid conversationId, Guid userId, CancellationToken cancellationToken = default);
         Task<List<AIChatMessage>> GetMessagesByConversationAsync(Guid conversationId, CancellationToken cancellationToken = default);
         Task<List<AIChatMessage>> GetHistoryAsync(Guid userId, int limit = 20, CancellationToken cancellationToken = default);
         Task AddMessageAsync(AIChatMessage message, CancellationToken cancellationToken = default);
@@ -44,16 +47,58 @@ namespace MATCHOP.API.Repositories
 
         public async Task<AIConversation?> GetConversationAsync(Guid conversationId, Guid userId, CancellationToken cancellationToken = default)
         {
-            return await _context.AIConversations
+            // #region debug-point G:repo-get-conversation
+            _ = ReportAiDebugAsync("G", "AIChatRepository.GetConversationAsync started", new
+            {
+                conversationId,
+                userId
+            });
+            // #endregion
+            var conversation = await _context.AIConversations
                 .FirstOrDefaultAsync(c => c.Id == conversationId && c.UserId == userId, cancellationToken);
+            // #region debug-point G:repo-get-conversation-result
+            _ = ReportAiDebugAsync("G", "AIChatRepository.GetConversationAsync finished", new
+            {
+                conversationId,
+                userId,
+                found = conversation != null,
+                title = conversation?.Title
+            });
+            // #endregion
+            return conversation;
+        }
+
+        public async Task<AIConversation?> GetConversationWithMessagesAsync(Guid conversationId, Guid userId, CancellationToken cancellationToken = default)
+        {
+            var conversation = await _context.AIConversations
+                .Include(c => c.Messages.OrderBy(m => m.CreatedAt))
+                .FirstOrDefaultAsync(c => c.Id == conversationId && c.UserId == userId, cancellationToken);
+            // #region debug-point G:repo-get-conversation-with-messages
+            _ = ReportAiDebugAsync("G", "AIChatRepository.GetConversationWithMessagesAsync finished", new
+            {
+                conversationId,
+                userId,
+                found = conversation != null,
+                messageCount = conversation?.Messages.Count ?? 0
+            });
+            // #endregion
+            return conversation;
         }
 
         public async Task<List<AIChatMessage>> GetMessagesByConversationAsync(Guid conversationId, CancellationToken cancellationToken = default)
         {
-            return await _context.AIChatMessages
+            var messages = await _context.AIChatMessages
                 .Where(m => m.ConversationId == conversationId)
                 .OrderBy(m => m.CreatedAt)
                 .ToListAsync(cancellationToken);
+            // #region debug-point G:repo-get-messages-result
+            _ = ReportAiDebugAsync("G", "AIChatRepository.GetMessagesByConversationAsync finished", new
+            {
+                conversationId,
+                count = messages.Count
+            });
+            // #endregion
+            return messages;
         }
 
         public async Task<List<AIChatMessage>> GetHistoryAsync(Guid userId, int limit = 20, CancellationToken cancellationToken = default)
@@ -101,5 +146,29 @@ namespace MATCHOP.API.Repositories
                 await _context.SaveChangesAsync(cancellationToken);
             }
         }
+
+        // #region debug-point G:repo-report-helper
+        private static async Task ReportAiDebugAsync(string hypothesisId, string message, object data)
+        {
+            try
+            {
+                using var client = new HttpClient();
+                using var content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    sessionId = "ai-chat-history",
+                    runId = "pre-fix",
+                    hypothesisId,
+                    location = "Backend/MATCHOP.API/Repositories/AIChatRepository.cs",
+                    msg = $"[DEBUG] {message}",
+                    data,
+                    ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                }), Encoding.UTF8, "application/json");
+                await client.PostAsync("http://127.0.0.1:7777/event", content);
+            }
+            catch
+            {
+            }
+        }
+        // #endregion
     }
 }

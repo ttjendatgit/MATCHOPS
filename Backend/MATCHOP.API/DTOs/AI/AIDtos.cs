@@ -3,7 +3,6 @@ namespace MATCHOP.API.DTOs.AI
     public class ChatRequestDto
     {
         public string Message { get; set; } = string.Empty;
-        public Guid? ConversationId { get; set; }
     }
 
     public class ChatResponseDto
@@ -28,6 +27,18 @@ namespace MATCHOP.API.DTOs.AI
         public string Title { get; set; } = string.Empty;
         public string? LastMessage { get; set; }
         public DateTime UpdatedAt { get; set; }
+    }
+
+    public class AIConversationSummaryDto
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+    }
+
+    public class AIConversationDetailDto
+    {
+        public AIConversationSummaryDto Conversation { get; set; } = new();
+        public List<ChatMessageDto> Messages { get; set; } = new();
     }
     
     public class RenameConversationDto

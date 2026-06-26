@@ -1,4 +1,4 @@
-﻿namespace MATCHOP.API.Helpers
+namespace MATCHOP.API.Helpers
 {
     public static class ErrorCodes
     {
@@ -49,6 +49,7 @@
         public const string InvalidCourtStatus = "INVALID_COURT_STATUS";
         public const string InvalidCapacity = "INVALID_CAPACITY";
         public const string InvalidImageUrl = "INVALID_IMAGE_URL";
+        public const string ConversationNotFound = "CONVERSATION_NOT_FOUND";
         
     }
 }

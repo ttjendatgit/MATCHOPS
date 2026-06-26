@@ -21,33 +21,33 @@ public class PaymentsController : ControllerBase
     /// FE redirect user sang URL đó
     /// </summary>
     [HttpPost("api/my/bookings/{bookingId:guid}/pay/vnpay")]
-    [Authorize(Roles = "USER")]
-    public async Task<IActionResult> CreateVNPayPayment(Guid bookingId)
-    {
-        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
-            ?? "127.0.0.1";
+        [Authorize(Roles = "USER")]
+        public async Task<IActionResult> CreateVNPayPayment(Guid bookingId, CancellationToken cancellationToken = default)
+        {
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
+                ?? "127.0.0.1";
 
-        var result = await _paymentService.CreateVNPayPaymentAsync(bookingId, ipAddress);
-        return Ok(ApiResponse<CreateVNPayPaymentResponseDto>.Ok(
-            result,
-            "Tạo link thanh toán thành công."));
-    }
-
-    /// <summary>
-    /// VNPay gọi callback về đây sau khi user thanh toán xong
-    /// Không cần auth — VNPay gọi trực tiếp
-    /// </summary>
-    [HttpGet("api/payments/vnpay/return")]
-    [AllowAnonymous]
-    public async Task<IActionResult> VNPayReturn()
-    {
-        var result = await _paymentService.HandleVNPayReturnAsync(Request.Query);
-
-        if (result.Success)
-            return Ok(ApiResponse<VNPayReturnDto>.Ok(
+            var result = await _paymentService.CreateVNPayPaymentAsync(bookingId, ipAddress, cancellationToken);
+            return Ok(ApiResponse<CreateVNPayPaymentResponseDto>.Ok(
                 result,
-                "Thanh toán thành công."));
+                "Tạo link thanh toán thành công."));
+        }
 
-        return BadRequest(ApiResponse<VNPayReturnDto>.Fail(result.Message));
-    }
+        /// <summary>
+        /// VNPay gọi callback về đây sau khi user thanh toán xong
+        /// Không cần auth — VNPay gọi trực tiếp
+        /// </summary>
+        [HttpGet("api/payments/vnpay/return")]
+        [AllowAnonymous]
+        public async Task<IActionResult> VNPayReturn(CancellationToken cancellationToken = default)
+        {
+            var result = await _paymentService.HandleVNPayReturnAsync(Request.Query, cancellationToken);
+
+            if (result.Success)
+                return Ok(ApiResponse<VNPayReturnDto>.Ok(
+                    result,
+                    "Thanh toán thành công."));
+
+            return BadRequest(ApiResponse<VNPayReturnDto>.Fail(result.Message));
+        }
 }

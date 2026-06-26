@@ -19,9 +19,9 @@ public class CourtBlocksController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(CreateCourtBlockDto dto)
+    public async Task<IActionResult> Create(CreateCourtBlockDto dto, CancellationToken cancellationToken = default)
     {
-        var result = await _courtBlockService.CreateAsync(dto);
+        var result = await _courtBlockService.CreateAsync(dto, cancellationToken);
         return StatusCode(
             StatusCodes.Status201Created,
             ApiResponse<CourtBlockResponseDto>.Ok(result, "Khóa sân thành công."));
@@ -31,16 +31,17 @@ public class CourtBlocksController : ControllerBase
     public async Task<IActionResult> GetOwnerBlocks(
         [FromQuery] DateOnly? date,
         [FromQuery] Guid? venueId,
-        [FromQuery] Guid? courtId)
+        [FromQuery] Guid? courtId,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _courtBlockService.GetOwnerBlocksAsync(date, venueId, courtId);
+        var result = await _courtBlockService.GetOwnerBlocksAsync(date, venueId, courtId, cancellationToken);
         return Ok(ApiResponse<List<CourtBlockResponseDto>>.Ok(result));
     }
 
     [HttpPatch("{id:guid}/cancel")]
-    public async Task<IActionResult> Cancel(Guid id, CancelCourtBlockDto dto)
+    public async Task<IActionResult> Cancel(Guid id, CancelCourtBlockDto dto, CancellationToken cancellationToken = default)
     {
-        var result = await _courtBlockService.CancelAsync(id, dto);
+        var result = await _courtBlockService.CancelAsync(id, dto, cancellationToken);
         return Ok(ApiResponse<CourtBlockResponseDto>.Ok(result, "Hủy khóa sân thành công."));
     }
 }

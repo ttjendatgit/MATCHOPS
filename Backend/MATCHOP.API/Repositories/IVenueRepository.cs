@@ -9,12 +9,13 @@ public interface IVenueRepository
         string? city,
         string? district,
         Guid? sportId,
-        string? keyword);
+        string? keyword,
+        CancellationToken cancellationToken = default);
 
-    Task<Venue?> GetActiveByIdAsync(Guid id);
-    Task<Venue?> GetByIdAsync(Guid id);
-    Task<List<Venue>> GetAllAsync();
-    Task<List<Venue>> GetByOwnerIdAsync(Guid ownerId);
-    Task<Venue> CreateAsync(Venue venue);
-    Task<Venue> UpdateAsync(Venue venue);
+    Task<Venue?> GetActiveByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Venue?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<List<Venue>> GetAllAsync(CancellationToken cancellationToken = default);
+    Task<List<Venue>> GetByOwnerIdAsync(Guid ownerId, CancellationToken cancellationToken = default);
+    Task<Venue> CreateAsync(Venue venue, CancellationToken cancellationToken = default);
+    Task<Venue> UpdateAsync(Venue venue, CancellationToken cancellationToken = default);
 }

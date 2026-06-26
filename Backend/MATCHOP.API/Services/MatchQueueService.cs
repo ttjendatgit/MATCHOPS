@@ -31,15 +31,15 @@ namespace MATCHOP.API.Services
             _chatRepository = chatRepository;
         }
 
-        public async Task JoinQueueAsync(Guid userId, JoinQueueDto dto)
+        public async Task JoinQueueAsync(Guid userId, JoinQueueDto dto, CancellationToken cancellationToken = default)
         {
-            var userSkill = await _userSkillRepository.GetAsync(userId, dto.SportId);
+            var userSkill = await _userSkillRepository.GetAsync(userId, dto.SportId, cancellationToken);
             if (userSkill == null)
             {
                 throw new AppException(ErrorCodes.ValidationError, "Bạn cần cập nhật trình độ cho môn thể thao này trước khi vào hàng chờ.");
             }
 
-            var existing = await _matchQueueRepository.GetByUserAndSportAsync(userId, dto.SportId);
+            var existing = await _matchQueueRepository.GetByUserAndSportAsync(userId, dto.SportId, cancellationToken);
             if (existing != null)
             {
                 throw new AppException(ErrorCodes.ValidationError, "Bạn đã ở trong hàng chờ cho môn thể thao này rồi.");
@@ -58,24 +58,24 @@ namespace MATCHOP.API.Services
                 JoinedAt = DateTime.UtcNow
             };
 
-            await _matchQueueRepository.AddAsync(queueItem);
+            await _matchQueueRepository.AddAsync(queueItem, cancellationToken);
 
             // Trigger auto-matching algorithm
-            await TryMatchAsync(queueItem);
+            await TryMatchAsync(queueItem, cancellationToken);
         }
 
-        public async Task LeaveQueueAsync(Guid userId, Guid sportId)
+        public async Task LeaveQueueAsync(Guid userId, Guid sportId, CancellationToken cancellationToken = default)
         {
-            var existing = await _matchQueueRepository.GetByUserAndSportAsync(userId, sportId);
+            var existing = await _matchQueueRepository.GetByUserAndSportAsync(userId, sportId, cancellationToken);
             if (existing != null)
             {
-                await _matchQueueRepository.RemoveAsync(existing);
+                await _matchQueueRepository.RemoveAsync(existing, cancellationToken);
             }
         }
 
-        public async Task<MatchQueueResponseDto?> GetUserQueueStatusAsync(Guid userId, Guid sportId)
+        public async Task<MatchQueueResponseDto?> GetUserQueueStatusAsync(Guid userId, Guid sportId, CancellationToken cancellationToken = default)
         {
-            var item = await _matchQueueRepository.GetByUserAndSportAsync(userId, sportId);
+            var item = await _matchQueueRepository.GetByUserAndSportAsync(userId, sportId, cancellationToken);
             if (item == null) return null;
 
             return new MatchQueueResponseDto
@@ -92,9 +92,9 @@ namespace MATCHOP.API.Services
             };
         }
 
-        private async Task TryMatchAsync(MatchQueue item)
+        private async Task TryMatchAsync(MatchQueue item, CancellationToken cancellationToken = default)
         {
-            var matches = await _matchQueueRepository.FindMatchesAsync(item);
+            var matches = await _matchQueueRepository.FindMatchesAsync(item, cancellationToken);
             if (matches.Any())
             {
                 // Simple logic: Match with the first one found
@@ -110,7 +110,7 @@ namespace MATCHOP.API.Services
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                await _matchRoomRepository.AddAsync(room);
+                await _matchRoomRepository.AddAsync(room, cancellationToken);
 
                 // Add both players
                 await _matchRoomRepository.AddPlayerAsync(new MatchRoomPlayer
@@ -121,7 +121,7 @@ namespace MATCHOP.API.Services
                     IsHost = true,
                     JoinedAt = DateTime.UtcNow,
                     Status = MatchRoomPlayerStatus.ACCEPTED
-                });
+                }, cancellationToken);
 
                 await _matchRoomRepository.AddPlayerAsync(new MatchRoomPlayer
                 {
@@ -131,19 +131,19 @@ namespace MATCHOP.API.Services
                     IsHost = false,
                     JoinedAt = DateTime.UtcNow,
                     Status = MatchRoomPlayerStatus.PENDING
-                });
+                }, cancellationToken);
 
                 // Remove both from queue
-                await _matchQueueRepository.RemoveAsync(item);
-                await _matchQueueRepository.RemoveAsync(match);
+                await _matchQueueRepository.RemoveAsync(item, cancellationToken);
+                await _matchQueueRepository.RemoveAsync(match, cancellationToken);
 
                 // Notify both players via SignalR
-                var connections1 = await _chatRepository.GetUserConnectionsAsync(item.UserId);
-                var connections2 = await _chatRepository.GetUserConnectionsAsync(match.UserId);
+                var connections1 = await _chatRepository.GetUserConnectionsAsync(item.UserId, cancellationToken);
+                var connections2 = await _chatRepository.GetUserConnectionsAsync(match.UserId, cancellationToken);
 
                 foreach (var conn in connections1.Concat(connections2))
                 {
-                    await _hubContext.Clients.Client(conn).SendAsync("MatchFound", new { roomId = room.Id });
+                    await _hubContext.Clients.Client(conn).SendAsync("MatchFound", new { roomId = room.Id }, cancellationToken);
                 }
             }
         }

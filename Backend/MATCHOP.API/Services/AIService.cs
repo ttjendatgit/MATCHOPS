@@ -1,8 +1,10 @@
 using MATCHOP.API.DTOs.AI;
 using MATCHOP.API.Entities;
+using MATCHOP.API.Helpers;
 using MATCHOP.API.Repositories;
 using MATCHOP.API.Services;
 using MATCHOP.API.Services.Interfaces;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 
@@ -10,7 +12,7 @@ namespace MATCHOP.API.Services
 {
     public interface IAIService
     {
-        Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage, Guid? conversationId = null, CancellationToken cancellationToken = default);
+        Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage, CancellationToken cancellationToken = default);
     }
 
     public class AIService : IAIService
@@ -38,29 +40,35 @@ namespace MATCHOP.API.Services
             _userSkillService = userSkillService;
         }
 
-        public async Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage, Guid? conversationId = null, CancellationToken cancellationToken = default)
+        public async Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage, CancellationToken cancellationToken = default)
         {
+            var normalizedUserMessage = string.IsNullOrWhiteSpace(userMessage) ? string.Empty : userMessage.Trim();
             AIConversation conversation;
             List<AIChatMessage> history;
+            // #region debug-point F:service-process-start
+            _ = ReportAiDebugAsync("F", "AIService.ProcessMessageAsync started", new
+            {
+                userId,
+                messageLength = normalizedUserMessage.Length
+            });
+            // #endregion
             
-            // 1. Get or create conversation
-            if (conversationId.HasValue)
+            // 1. Always create a new conversation for each send request
+            conversation = new AIConversation
             {
-                conversation = await _aiChatRepository.GetConversationAsync(conversationId.Value, userId, cancellationToken) 
-                    ?? throw new AppException(ErrorCodes.NotFound, "Conversation not found");
-                history = await _aiChatRepository.GetMessagesByConversationAsync(conversationId.Value, cancellationToken);
-            }
-            else
+                UserId = userId,
+                Title = normalizedUserMessage.Length > 50 ? normalizedUserMessage.Substring(0, 50) + "..." : normalizedUserMessage
+            };
+            await _aiChatRepository.AddConversationAsync(conversation, cancellationToken);
+            history = new List<AIChatMessage>();
+            // #region debug-point F:service-new-conversation
+            _ = ReportAiDebugAsync("F", "AIService created new conversation", new
             {
-                // Create new conversation
-                conversation = new AIConversation
-                {
-                    UserId = userId,
-                    Title = userMessage.Length > 50 ? userMessage.Substring(0, 50) + "..." : userMessage
-                };
-                await _aiChatRepository.AddConversationAsync(conversation, cancellationToken);
-                history = new List<AIChatMessage>();
-            }
+                userId,
+                conversationId = conversation.Id,
+                title = conversation.Title
+            });
+            // #endregion
 
             // 2. Get Context from Database
             var context = await GetSystemContextAsync(userId, cancellationToken);
@@ -94,13 +102,13 @@ Nếu người dùng hỏi về thông tin không có trong dữ liệu trên, h
             }
 
             // Current User Message
-            messages.Add(new GroqMessage { role = "user", content = userMessage });
+            messages.Add(new GroqMessage { role = "user", content = normalizedUserMessage });
 
             // 4. Call Groq API
-            var aiResponse = await _groqService.GetChatCompletionAsync(messages, cancellationToken);
+            var aiResponse = await _groqService.GetChatCompletionAsync(messages, cancellationToken) ?? string.Empty;
 
             // 5. Save History
-            var userMessageEntity = new AIChatMessage { UserId = userId, Role = "user", Content = userMessage, ConversationId = conversation.Id };
+            var userMessageEntity = new AIChatMessage { UserId = userId, Role = "user", Content = normalizedUserMessage, ConversationId = conversation.Id };
             await _aiChatRepository.AddMessageAsync(userMessageEntity, cancellationToken);
             
             var assistantMessageEntity = new AIChatMessage { UserId = userId, Role = "assistant", Content = aiResponse, ConversationId = conversation.Id };
@@ -112,6 +120,15 @@ Nếu người dùng hỏi về thông tin không có trong dữ liệu trên, h
 
             // 6. Return Result
             var updatedHistory = await _aiChatRepository.GetMessagesByConversationAsync(conversation.Id, cancellationToken);
+            // #region debug-point F:service-process-success
+            _ = ReportAiDebugAsync("F", "AIService.ProcessMessageAsync succeeded", new
+            {
+                userId,
+                conversationId = conversation.Id,
+                updatedHistoryCount = updatedHistory.Count,
+                assistantMessageId = assistantMessageEntity.Id
+            });
+            // #endregion
             return new ChatResponseDto
             {
                 Response = aiResponse,
@@ -126,6 +143,30 @@ Nếu người dùng hỏi về thông tin không có trong dữ liệu trên, h
                 }).ToList()
             };
         }
+
+        // #region debug-point F:service-report-helper
+        private static async Task ReportAiDebugAsync(string hypothesisId, string message, object data)
+        {
+            try
+            {
+                using var client = new HttpClient();
+                using var content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    sessionId = "ai-chat-history",
+                    runId = "pre-fix",
+                    hypothesisId,
+                    location = "Backend/MATCHOP.API/Services/AIService.cs",
+                    msg = $"[DEBUG] {message}",
+                    data,
+                    ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                }), Encoding.UTF8, "application/json");
+                await client.PostAsync("http://127.0.0.1:7777/event", content);
+            }
+            catch
+            {
+            }
+        }
+        // #endregion
 
         private async Task<string> GetSystemContextAsync(Guid userId, CancellationToken cancellationToken = default)
         {

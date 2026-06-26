@@ -30,12 +30,12 @@ public class CourtBlockService : ICourtBlockService
         _slotMinutes = configuration.GetValue("Booking:SlotMinutes", 30);
     }
 
-    public async Task<CourtBlockResponseDto> CreateAsync(CreateCourtBlockDto dto)
+    public async Task<CourtBlockResponseDto> CreateAsync(CreateCourtBlockDto dto, CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
         ValidateBlockInput(dto.CourtId, dto.BlockDate, dto.StartTime, dto.EndTime);
 
-        var court = await _courtRepository.GetOwnerCourtByIdAsync(dto.CourtId, ownerId);
+        var court = await _courtRepository.GetOwnerCourtByIdAsync(dto.CourtId, ownerId, cancellationToken);
         if (court is null)
         {
             throw new AppException(
@@ -58,14 +58,15 @@ public class CourtBlockService : ICourtBlockService
 
         var slotStartTimes = GenerateSlotStartTimes(dto.StartTime, dto.EndTime);
 
-        await using var transaction = await _context.Database.BeginTransactionAsync();
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
         try
         {
             var hasConflict = await _bookingSlotRepository.HasConflictAsync(
                 court.Id,
                 dto.BlockDate,
-                slotStartTimes);
+                slotStartTimes,
+                cancellationToken);
 
             if (hasConflict)
             {
@@ -107,18 +108,18 @@ public class CourtBlockService : ICourtBlockService
             });
 
             _context.BookingSlots.AddRange(slots);
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
 
             var created = await GetOwnerBlockQuery(ownerId)
-                .FirstAsync(x => x.Id == block.Id);
+                .FirstAsync(x => x.Id == block.Id, cancellationToken);
 
             return MapToResponse(created);
         }
         catch (DbUpdateException ex)
             when (ex.InnerException?.Message.Contains("ux_booking_slots_active", StringComparison.OrdinalIgnoreCase) == true)
         {
-            await transaction.RollbackAsync();
+            await transaction.RollbackAsync(cancellationToken);
             throw new AppException(
                 ErrorCodes.SlotAlreadyBooked,
                 "Khung giờ này vừa được đặt hoặc khóa bởi thao tác khác.",
@@ -126,7 +127,7 @@ public class CourtBlockService : ICourtBlockService
         }
         catch
         {
-            await transaction.RollbackAsync();
+            await transaction.RollbackAsync(cancellationToken);
             throw;
         }
     }
@@ -134,7 +135,8 @@ public class CourtBlockService : ICourtBlockService
     public async Task<List<CourtBlockResponseDto>> GetOwnerBlocksAsync(
         DateOnly? date,
         Guid? venueId,
-        Guid? courtId)
+        Guid? courtId,
+        CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
         var query = GetOwnerBlockQuery(ownerId);
@@ -157,12 +159,12 @@ public class CourtBlockService : ICourtBlockService
         var blocks = await query
             .OrderByDescending(x => x.BlockDate)
             .ThenBy(x => x.StartTime)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return blocks.Select(MapToResponse).ToList();
     }
 
-    public async Task<CourtBlockResponseDto> CancelAsync(Guid id, CancelCourtBlockDto dto)
+    public async Task<CourtBlockResponseDto> CancelAsync(Guid id, CancelCourtBlockDto dto, CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
         if (id == Guid.Empty)
@@ -171,7 +173,7 @@ public class CourtBlockService : ICourtBlockService
         }
 
         var block = await GetOwnerBlockQuery(ownerId)
-            .FirstOrDefaultAsync(x => x.Id == id);
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (block is null)
         {
@@ -190,7 +192,8 @@ public class CourtBlockService : ICourtBlockService
         var slots = await _bookingSlotRepository.GetActiveSlotsAsync(
             block.CourtId,
             block.BlockDate,
-            slotStartTimes);
+            slotStartTimes,
+            cancellationToken);
 
         block.Status = CourtBlockStatus.CANCELLED;
         block.Reason = AppendReason(block.Reason, dto.Reason);
@@ -202,7 +205,7 @@ public class CourtBlockService : ICourtBlockService
             slot.UpdatedAt = DateTime.UtcNow;
         }
 
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         return MapToResponse(block);
     }
 

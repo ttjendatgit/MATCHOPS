@@ -1,4 +1,4 @@
-﻿using MATCHOP.API.Entities;
+using MATCHOP.API.Entities;
 using MATCHOP.API.Enums;
 using MATCHOP.API.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +14,7 @@ public class BookingSlotRepository : IBookingSlotRepository
         _context = context;
     }
 
-    public async Task<List<BookingSlot>> GetSlotsByCourtAndDateAsync(Guid courtId, DateOnly date)
+    public async Task<List<BookingSlot>> GetSlotsByCourtAndDateAsync(Guid courtId, DateOnly date, CancellationToken cancellationToken = default)
     {
         return await _context.BookingSlots
             .AsNoTracking()
@@ -24,13 +24,14 @@ public class BookingSlotRepository : IBookingSlotRepository
                 (s.Status == BookingSlotStatus.HOLDING ||
                  s.Status == BookingSlotStatus.BOOKED ||
                  s.Status == BookingSlotStatus.BLOCKED))
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<bool> HasConflictAsync(
         Guid courtId,
         DateOnly date,
-        List<TimeOnly> slotStartTimes)
+        List<TimeOnly> slotStartTimes,
+        CancellationToken cancellationToken = default)
     {
         return await _context.BookingSlots.AnyAsync(s =>
             s.CourtId == courtId &&
@@ -38,13 +39,14 @@ public class BookingSlotRepository : IBookingSlotRepository
             slotStartTimes.Contains(s.SlotStartTime) &&
             (s.Status == BookingSlotStatus.HOLDING ||
              s.Status == BookingSlotStatus.BOOKED ||
-             s.Status == BookingSlotStatus.BLOCKED));
+             s.Status == BookingSlotStatus.BLOCKED), cancellationToken);
     }
 
     public async Task<List<BookingSlot>> GetActiveSlotsAsync(
         Guid courtId,
         DateOnly date,
-        List<TimeOnly> slotStartTimes)
+        List<TimeOnly> slotStartTimes,
+        CancellationToken cancellationToken = default)
     {
         return await _context.BookingSlots
             .Where(s =>
@@ -54,6 +56,6 @@ public class BookingSlotRepository : IBookingSlotRepository
                 (s.Status == BookingSlotStatus.HOLDING ||
                  s.Status == BookingSlotStatus.BOOKED ||
                  s.Status == BookingSlotStatus.BLOCKED))
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 }

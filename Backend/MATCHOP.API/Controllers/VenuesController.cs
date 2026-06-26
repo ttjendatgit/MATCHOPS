@@ -24,17 +24,18 @@ public class VenuesController : ControllerBase
         [FromQuery] string? city,
         [FromQuery] string? district,
         [FromQuery] Guid? sportId,
-        [FromQuery] string? keyword)
+        [FromQuery] string? keyword,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _venueService.GetActiveVenuesAsync(city, district, sportId, keyword);
+        var result = await _venueService.GetActiveVenuesAsync(city, district, sportId, keyword, cancellationToken);
         return Ok(ApiResponse<List<VenueResponseDto>>.Ok(result));
     }
 
     [HttpGet("api/venues/{id:guid}")]
     [AllowAnonymous]
-    public async Task<IActionResult> GetActiveVenueById(Guid id)
+    public async Task<IActionResult> GetActiveVenueById(Guid id, CancellationToken cancellationToken = default)
     {
-        var result = await _venueService.GetActiveVenueByIdAsync(id);
+        var result = await _venueService.GetActiveVenueByIdAsync(id, cancellationToken);
         return Ok(ApiResponse<VenueResponseDto>.Ok(result));
     }
 
@@ -43,35 +44,35 @@ public class VenuesController : ControllerBase
     [HttpPost("api/owner/venues")]
     [Authorize(Roles = "OWNER")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> CreateVenue([FromForm] CreateVenueDto dto)
+    public async Task<IActionResult> CreateVenue([FromForm] CreateVenueDto dto, CancellationToken cancellationToken = default)
     {
-        var result = await _venueService.CreateVenueAsync(dto);
+        var result = await _venueService.CreateVenueAsync(dto, cancellationToken);
         return StatusCode(201, ApiResponse<VenueResponseDto>.Ok(
             result, "Tạo venue thành công. Chờ admin duyệt."));
     }
 
     [HttpGet("api/owner/venues")]
     [Authorize(Roles = "OWNER")]
-    public async Task<IActionResult> GetMyVenues()
+    public async Task<IActionResult> GetMyVenues(CancellationToken cancellationToken = default)
     {
-        var result = await _venueService.GetOwnerVenuesAsync();
+        var result = await _venueService.GetOwnerVenuesAsync(cancellationToken);
         return Ok(ApiResponse<List<VenueResponseDto>>.Ok(result));
     }
 
     [HttpGet("api/owner/venues/{id:guid}")]
     [Authorize(Roles = "OWNER")]
-    public async Task<IActionResult> GetMyVenueById(Guid id)
+    public async Task<IActionResult> GetMyVenueById(Guid id, CancellationToken cancellationToken = default)
     {
-        var result = await _venueService.GetOwnerVenueByIdAsync(id);
+        var result = await _venueService.GetOwnerVenueByIdAsync(id, cancellationToken);
         return Ok(ApiResponse<VenueResponseDto>.Ok(result));
     }
 
     [HttpPatch("api/owner/venues/{id:guid}")]
     [Authorize(Roles = "OWNER")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> UpdateVenue(Guid id, [FromForm] UpdateVenueDto dto)
+    public async Task<IActionResult> UpdateVenue(Guid id, [FromForm] UpdateVenueDto dto, CancellationToken cancellationToken = default)
     {
-        var result = await _venueService.UpdateVenueAsync(id, dto);
+        var result = await _venueService.UpdateVenueAsync(id, dto, cancellationToken);
         return Ok(ApiResponse<VenueResponseDto>.Ok(result, "Cập nhật venue thành công."));
     }
 
@@ -79,33 +80,33 @@ public class VenuesController : ControllerBase
 
     [HttpGet("api/admin/venues")]
     [Authorize(Roles = "ADMIN")]
-    public async Task<IActionResult> GetAllVenues()
+    public async Task<IActionResult> GetAllVenues(CancellationToken cancellationToken = default)
     {
-        var result = await _venueService.GetAllVenuesForAdminAsync();
+        var result = await _venueService.GetAllVenuesForAdminAsync(cancellationToken);
         return Ok(ApiResponse<List<VenueResponseDto>>.Ok(result));
     }
 
     [HttpPatch("api/admin/venues/{id:guid}/approve")]
     [Authorize(Roles = "ADMIN")]
-    public async Task<IActionResult> ApproveVenue(Guid id)
+    public async Task<IActionResult> ApproveVenue(Guid id, CancellationToken cancellationToken = default)
     {
-        var result = await _venueService.ApproveVenueAsync(id);
+        var result = await _venueService.ApproveVenueAsync(id, cancellationToken);
         return Ok(ApiResponse<VenueResponseDto>.Ok(result, "Venue đã được duyệt."));
     }
 
     [HttpPatch("api/admin/venues/{id:guid}/reject")]
     [Authorize(Roles = "ADMIN")]
-    public async Task<IActionResult> RejectVenue(Guid id)
+    public async Task<IActionResult> RejectVenue(Guid id, CancellationToken cancellationToken = default)
     {
-        var result = await _venueService.RejectVenueAsync(id);
+        var result = await _venueService.RejectVenueAsync(id, cancellationToken);
         return Ok(ApiResponse<VenueResponseDto>.Ok(result, "Venue đã bị từ chối."));
     }
 
     [HttpPatch("api/admin/venues/{id:guid}/suspend")]
     [Authorize(Roles = "ADMIN")]
-    public async Task<IActionResult> SuspendVenue(Guid id)
+    public async Task<IActionResult> SuspendVenue(Guid id, CancellationToken cancellationToken = default)
     {
-        var result = await _venueService.SuspendVenueAsync(id);
+        var result = await _venueService.SuspendVenueAsync(id, cancellationToken);
         return Ok(ApiResponse<VenueResponseDto>.Ok(result, "Venue đã bị tạm khóa."));
     }
 }

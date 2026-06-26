@@ -9,19 +9,20 @@ public interface IVenueService
         string? city,
         string? district,
         Guid? sportId,
-        string? keyword);
+        string? keyword,
+        CancellationToken cancellationToken = default);
 
-    Task<VenueResponseDto> GetActiveVenueByIdAsync(Guid id);
+    Task<VenueResponseDto> GetActiveVenueByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     // Owner
-    Task<VenueResponseDto> CreateVenueAsync(CreateVenueDto dto);
-    Task<List<VenueResponseDto>> GetOwnerVenuesAsync();
-    Task<VenueResponseDto> GetOwnerVenueByIdAsync(Guid id);
-    Task<VenueResponseDto> UpdateVenueAsync(Guid id, UpdateVenueDto dto);
+    Task<VenueResponseDto> CreateVenueAsync(CreateVenueDto dto, CancellationToken cancellationToken = default);
+    Task<List<VenueResponseDto>> GetOwnerVenuesAsync(CancellationToken cancellationToken = default);
+    Task<VenueResponseDto> GetOwnerVenueByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<VenueResponseDto> UpdateVenueAsync(Guid id, UpdateVenueDto dto, CancellationToken cancellationToken = default);
 
     // Admin
-    Task<List<VenueResponseDto>> GetAllVenuesForAdminAsync();
-    Task<VenueResponseDto> ApproveVenueAsync(Guid id);
-    Task<VenueResponseDto> RejectVenueAsync(Guid id);
-    Task<VenueResponseDto> SuspendVenueAsync(Guid id);
+    Task<List<VenueResponseDto>> GetAllVenuesForAdminAsync(CancellationToken cancellationToken = default);
+    Task<VenueResponseDto> ApproveVenueAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<VenueResponseDto> RejectVenueAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<VenueResponseDto> SuspendVenueAsync(Guid id, CancellationToken cancellationToken = default);
 }

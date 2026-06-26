@@ -25,87 +25,87 @@ namespace MATCHOP.API.Services
             _chatRepository = chatRepository;
         }
 
-        public async Task<MatchRoomResponseDto> GetRoomByIdAsync(Guid roomId, Guid requestingUserId)
+        public async Task<MatchRoomResponseDto> GetRoomByIdAsync(Guid roomId, Guid requestingUserId, CancellationToken cancellationToken = default)
         {
-            var room = await _matchRoomRepository.GetByIdAsync(roomId);
+            var room = await _matchRoomRepository.GetByIdAsync(roomId, cancellationToken);
             if (room == null)
                 throw new AppException(ErrorCodes.ValidationError, "Không tìm thấy phòng.", StatusCodes.Status404NotFound);
 
             if (!room.Players.Any(p => p.UserId == requestingUserId))
                 throw new AppException(ErrorCodes.ValidationError, "Bạn không có quyền xem phòng này.", StatusCodes.Status403Forbidden);
 
-            return await MapToResponseAsync(room);
+            return await MapToResponseAsync(room, cancellationToken);
         }
 
-        public async Task<List<MatchRoomResponseDto>> GetUserRoomsAsync(Guid userId)
+        public async Task<List<MatchRoomResponseDto>> GetUserRoomsAsync(Guid userId, CancellationToken cancellationToken = default)
         {
-            var rooms = await _matchRoomRepository.GetUserRoomsAsync(userId);
+            var rooms = await _matchRoomRepository.GetUserRoomsAsync(userId, cancellationToken);
             var results = new List<MatchRoomResponseDto>();
             foreach (var room in rooms)
             {
-                results.Add(await MapToResponseAsync(room));
+                results.Add(await MapToResponseAsync(room, cancellationToken));
             }
             return results;
         }
 
-        public async Task AcceptMatchAsync(Guid userId, Guid roomId)
+        public async Task AcceptMatchAsync(Guid userId, Guid roomId, CancellationToken cancellationToken = default)
         {
-            var player = await _matchRoomRepository.GetPlayerAsync(roomId, userId);
+            var player = await _matchRoomRepository.GetPlayerAsync(roomId, userId, cancellationToken);
             if (player == null) throw new AppException(ErrorCodes.ValidationError, "Bạn không có trong phòng này.");
             
             player.Status = MatchRoomPlayerStatus.ACCEPTED;
-            await _matchRoomRepository.UpdatePlayerAsync(player);
+            await _matchRoomRepository.UpdatePlayerAsync(player, cancellationToken);
 
             // If all players accepted, confirm the room
-            var room = await _matchRoomRepository.GetByIdAsync(roomId);
+            var room = await _matchRoomRepository.GetByIdAsync(roomId, cancellationToken);
             if (room != null && room.Players.All(p => p.Status == MatchRoomPlayerStatus.ACCEPTED))
             {
                 room.Status = MatchRoomStatus.CONFIRMED;
-                await _matchRoomRepository.UpdateAsync(room);
+                await _matchRoomRepository.UpdateAsync(room, cancellationToken);
 
                 // Create a conversation for the players
                 var participantIds = room.Players.Select(p => p.UserId).ToList();
-                var conversation = await _chatRepository.GetOrCreatePrivateConversationAsync(participantIds[0], participantIds[1]);
+                var conversation = await _chatRepository.GetOrCreatePrivateConversationAsync(participantIds[0], participantIds[1], cancellationToken);
 
                 // Notify all players
                 foreach (var playerId in participantIds)
                 {
-                    var connections = await _chatRepository.GetUserConnectionsAsync(playerId);
+                    var connections = await _chatRepository.GetUserConnectionsAsync(playerId, cancellationToken);
                     foreach (var conn in connections)
                     {
                         await _hubContext.Clients.Client(conn).SendAsync("MatchConfirmed", new 
                         { 
                             roomId = room.Id, 
                             conversationId = conversation.Id 
-                        });
+                        }, cancellationToken);
                     }
                 }
             }
         }
 
-        public async Task RejectMatchAsync(Guid userId, Guid roomId)
+        public async Task RejectMatchAsync(Guid userId, Guid roomId, CancellationToken cancellationToken = default)
         {
-            var player = await _matchRoomRepository.GetPlayerAsync(roomId, userId);
+            var player = await _matchRoomRepository.GetPlayerAsync(roomId, userId, cancellationToken);
             if (player == null) throw new AppException(ErrorCodes.ValidationError, "Bạn không có trong phòng này.");
 
             player.Status = MatchRoomPlayerStatus.REJECTED;
-            await _matchRoomRepository.UpdatePlayerAsync(player);
+            await _matchRoomRepository.UpdatePlayerAsync(player, cancellationToken);
 
-            var room = await _matchRoomRepository.GetByIdAsync(roomId);
+            var room = await _matchRoomRepository.GetByIdAsync(roomId, cancellationToken);
             if (room != null)
             {
                 room.Status = MatchRoomStatus.CANCELLED;
-                await _matchRoomRepository.UpdateAsync(room);
+                await _matchRoomRepository.UpdateAsync(room, cancellationToken);
             }
         }
 
-        private async Task<MatchRoomResponseDto> MapToResponseAsync(MatchRoom room)
+        private async Task<MatchRoomResponseDto> MapToResponseAsync(MatchRoom room, CancellationToken cancellationToken = default)
         {
             Guid? conversationId = null;
             if (room.Status == MatchRoomStatus.CONFIRMED && room.Players.Count >= 2)
             {
                 var playerIds = room.Players.Select(p => p.UserId).ToList();
-                var conversation = await _chatRepository.GetOrCreatePrivateConversationAsync(playerIds[0], playerIds[1]);
+                var conversation = await _chatRepository.GetOrCreatePrivateConversationAsync(playerIds[0], playerIds[1], cancellationToken);
                 conversationId = conversation.Id;
             }
 

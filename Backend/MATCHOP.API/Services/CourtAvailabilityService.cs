@@ -1,4 +1,4 @@
-﻿using MATCHOP.API.DTOs.Courts;
+using MATCHOP.API.DTOs.Courts;
 using MATCHOP.API.Entities;
 using MATCHOP.API.Enums;
 using MATCHOP.API.Helpers;
@@ -24,10 +24,10 @@ public class CourtAvailabilityService : ICourtAvailabilityService
     }
 
     public async Task<CourtAvailabilityResponseDto> GetAvailabilityAsync(
-        Guid courtId, DateOnly date)
+        Guid courtId, DateOnly date, CancellationToken cancellationToken = default)
     {
         // ── 1. Validate court + venue + sport ─────────────────────────────────
-        var court = await _courtRepository.GetPublicCourtByIdAsync(courtId);
+        var court = await _courtRepository.GetPublicCourtByIdAsync(courtId, cancellationToken);
 
         if (court is null)
             throw new AppException(
@@ -36,8 +36,8 @@ public class CourtAvailabilityService : ICourtAvailabilityService
                 StatusCodes.Status404NotFound);
 
         // ── 2. Load price rules then booking slots (sequential — shared DbContext is not thread-safe)
-        var priceRules = await _priceRuleRepository.GetPublicCourtPriceRulesAsync(courtId);
-        var existingSlots = await _bookingSlotRepository.GetSlotsByCourtAndDateAsync(courtId, date);
+        var priceRules = await _priceRuleRepository.GetPublicCourtPriceRulesAsync(courtId, cancellationToken);
+        var existingSlots = await _bookingSlotRepository.GetSlotsByCourtAndDateAsync(courtId, date, cancellationToken);
 
         // ── 3. Build lookup: startTime → status ───────────────────────────────
         // Nếu 1 slot có nhiều bản ghi (không nên xảy ra nhưng phòng thủ)

@@ -28,11 +28,12 @@ public class PaymentService : IPaymentService
 
     public async Task<CreateVNPayPaymentResponseDto> CreateVNPayPaymentAsync(
         Guid bookingId,
-        string ipAddress)
+        string ipAddress,
+        CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserIdOrThrow();
 
-        var booking = await _bookingRepository.GetByIdAndUserIdAsync(bookingId, userId);
+        var booking = await _bookingRepository.GetByIdAndUserIdAsync(bookingId, userId, cancellationToken);
         if (booking is null)
             throw new AppException(
                 ErrorCodes.BookingNotFound,
@@ -107,7 +108,7 @@ public class PaymentService : IPaymentService
         };
     }
 
-    public async Task<VNPayReturnDto> HandleVNPayReturnAsync(IQueryCollection query)
+    public async Task<VNPayReturnDto> HandleVNPayReturnAsync(IQueryCollection query, CancellationToken cancellationToken = default)
     {
         var hashSecret = _config["VNPay:HashSecret"]!;
 
@@ -135,7 +136,7 @@ public class PaymentService : IPaymentService
                 Message = "Không xác định được booking."
             };
 
-        var booking = await _bookingRepository.GetByIdAsync(bookingId);
+        var booking = await _bookingRepository.GetByIdAsync(bookingId, cancellationToken);
         if (booking is null)
             return new VNPayReturnDto
             {
@@ -166,7 +167,7 @@ public class PaymentService : IPaymentService
                     BookingStatus = booking.Status.ToString()
                 };
 
-            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
             try
             {
                 // Cập nhật booking
@@ -198,12 +199,12 @@ public class PaymentService : IPaymentService
                     UpdatedAt       = DateTime.UtcNow
                 });
 
-                await _bookingRepository.SaveChangesAsync();
-                await transaction.CommitAsync();
+                await _bookingRepository.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
             }
             catch
             {
-                await transaction.RollbackAsync();
+                await transaction.RollbackAsync(cancellationToken);
                 throw;
             }
 

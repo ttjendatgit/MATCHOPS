@@ -11,11 +11,11 @@ namespace MATCHOP.API.Services
 {
     public interface IChatService
     {
-        Task<List<ConversationDto>> GetUserConversationsAsync(Guid userId);
-        Task<List<MessageDto>> GetConversationMessagesAsync(Guid conversationId, int skip, int take);
-        Task<ConversationDto> CreatePrivateConversationAsync(Guid user1Id, Guid user2Id);
-        Task<MessageDto> SendMessageAsync(Guid senderId, SendMessageDto dto);
-        Task<NotificationDto> SendNotificationAsync(Guid userId, string title, string content, NotificationType type, string? metadata = null);
+        Task<List<ConversationDto>> GetUserConversationsAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task<List<MessageDto>> GetConversationMessagesAsync(Guid conversationId, int skip, int take, CancellationToken cancellationToken = default);
+        Task<ConversationDto> CreatePrivateConversationAsync(Guid user1Id, Guid user2Id, CancellationToken cancellationToken = default);
+        Task<MessageDto> SendMessageAsync(Guid senderId, SendMessageDto dto, CancellationToken cancellationToken = default);
+        Task<NotificationDto> SendNotificationAsync(Guid userId, string title, string content, NotificationType type, string? metadata = null, CancellationToken cancellationToken = default);
     }
 
     public class ChatService : IChatService
@@ -29,9 +29,9 @@ namespace MATCHOP.API.Services
             _hubContext = hubContext;
         }
 
-        public async Task<MessageDto> SendMessageAsync(Guid senderId, SendMessageDto dto)
+        public async Task<MessageDto> SendMessageAsync(Guid senderId, SendMessageDto dto, CancellationToken cancellationToken = default)
         {
-            var participant = await _chatRepository.GetParticipantAsync(dto.ConversationId, senderId);
+            var participant = await _chatRepository.GetParticipantAsync(dto.ConversationId, senderId, cancellationToken);
             if (participant == null) throw new AppException(ErrorCodes.FORBIDDEN, "Bạn không thuộc hội thoại này.", StatusCodes.Status403Forbidden);
 
             var message = new Message
@@ -43,27 +43,27 @@ namespace MATCHOP.API.Services
                 CreatedAt = DateTime.UtcNow
             };
 
-            await _chatRepository.AddMessageAsync(message);
+            await _chatRepository.AddMessageAsync(message, cancellationToken);
 
             var messageDto = new MessageDto
             {
                 Id = message.Id,
                 ConversationId = message.ConversationId,
                 SenderId = senderId,
-                SenderName = (await _chatRepository.GetParticipantAsync(dto.ConversationId, senderId))?.User?.FullName ?? "User",
+                SenderName = (await _chatRepository.GetParticipantAsync(dto.ConversationId, senderId, cancellationToken))?.User?.FullName ?? "User",
                 Content = message.Content,
                 CreatedAt = message.CreatedAt,
                 IsRead = false
             };
 
-            await _hubContext.Clients.Group(dto.ConversationId.ToString()).SendAsync("ReceiveMessage", messageDto);
+            await _hubContext.Clients.Group(dto.ConversationId.ToString()).SendAsync("ReceiveMessage", messageDto, cancellationToken);
 
             return messageDto;
         }
 
-        public async Task<List<ConversationDto>> GetUserConversationsAsync(Guid userId)
+        public async Task<List<ConversationDto>> GetUserConversationsAsync(Guid userId, CancellationToken cancellationToken = default)
         {
-            var conversations = await _chatRepository.GetUserConversationsAsync(userId);
+            var conversations = await _chatRepository.GetUserConversationsAsync(userId, cancellationToken);
             return conversations.Select(c => new ConversationDto
             {
                 Id = c.Id,
@@ -86,9 +86,9 @@ namespace MATCHOP.API.Services
             }).ToList();
         }
 
-        public async Task<List<MessageDto>> GetConversationMessagesAsync(Guid conversationId, int skip, int take)
+        public async Task<List<MessageDto>> GetConversationMessagesAsync(Guid conversationId, int skip, int take, CancellationToken cancellationToken = default)
         {
-            var messages = await _chatRepository.GetMessagesAsync(conversationId, skip, take);
+            var messages = await _chatRepository.GetMessagesAsync(conversationId, skip, take, cancellationToken);
             return messages.Select(m => new MessageDto
             {
                 Id = m.Id,
@@ -101,15 +101,15 @@ namespace MATCHOP.API.Services
             }).ToList();
         }
 
-        public async Task<ConversationDto> CreatePrivateConversationAsync(Guid user1Id, Guid user2Id)
+        public async Task<ConversationDto> CreatePrivateConversationAsync(Guid user1Id, Guid user2Id, CancellationToken cancellationToken = default)
         {
             // Check if exists
-            var user1Convs = await _chatRepository.GetUserConversationsAsync(user1Id);
+            var user1Convs = await _chatRepository.GetUserConversationsAsync(user1Id, cancellationToken);
             var existing = user1Convs.FirstOrDefault(c => 
                 c.Type == ConversationType.PRIVATE && 
                 c.Participants.Any(p => p.UserId == user2Id));
 
-            if (existing != null) return (await GetUserConversationsAsync(user1Id)).First(c => c.Id == existing.Id);
+            if (existing != null) return (await GetUserConversationsAsync(user1Id, cancellationToken)).First(c => c.Id == existing.Id);
 
             var conversation = new Conversation
             {
@@ -117,23 +117,23 @@ namespace MATCHOP.API.Services
                 Type = ConversationType.PRIVATE
             };
 
-            await _chatRepository.CreateConversationAsync(conversation);
+            await _chatRepository.CreateConversationAsync(conversation, cancellationToken);
 
-            await _chatRepository.AddParticipantAsync(new ConversationParticipant { ConversationId = conversation.Id, UserId = user1Id });
-            await _chatRepository.AddParticipantAsync(new ConversationParticipant { ConversationId = conversation.Id, UserId = user2Id });
+            await _chatRepository.AddParticipantAsync(new ConversationParticipant { ConversationId = conversation.Id, UserId = user1Id }, cancellationToken);
+            await _chatRepository.AddParticipantAsync(new ConversationParticipant { ConversationId = conversation.Id, UserId = user2Id }, cancellationToken);
 
             // Notify user2 via SignalR about new conversation if online
-            var connections = await _chatRepository.GetUserConnectionsAsync(user2Id);
+            var connections = await _chatRepository.GetUserConnectionsAsync(user2Id, cancellationToken);
             foreach (var conn in connections)
             {
                 // In real app, we might need a dedicated NotificationHub or use ChatHub
-                await _hubContext.Clients.Client(conn).SendAsync("NewConversation", conversation.Id);
+                await _hubContext.Clients.Client(conn).SendAsync("NewConversation", conversation.Id, cancellationToken);
             }
 
-            return (await GetUserConversationsAsync(user1Id)).First(c => c.Id == conversation.Id);
+            return (await GetUserConversationsAsync(user1Id, cancellationToken)).First(c => c.Id == conversation.Id);
         }
 
-        public async Task<NotificationDto> SendNotificationAsync(Guid userId, string title, string content, NotificationType type, string? metadata = null)
+        public async Task<NotificationDto> SendNotificationAsync(Guid userId, string title, string content, NotificationType type, string? metadata = null, CancellationToken cancellationToken = default)
         {
             var notification = new Notification
             {
@@ -147,7 +147,7 @@ namespace MATCHOP.API.Services
                 CreatedAt = DateTime.UtcNow
             };
 
-            await _chatRepository.AddNotificationAsync(notification);
+            await _chatRepository.AddNotificationAsync(notification, cancellationToken);
 
             var dto = new NotificationDto
             {
@@ -161,10 +161,10 @@ namespace MATCHOP.API.Services
             };
 
             // Real-time via SignalR
-            var connections = await _chatRepository.GetUserConnectionsAsync(userId);
+            var connections = await _chatRepository.GetUserConnectionsAsync(userId, cancellationToken);
             foreach (var conn in connections)
             {
-                await _hubContext.Clients.Client(conn).SendAsync("ReceiveNotification", dto);
+                await _hubContext.Clients.Client(conn).SendAsync("ReceiveNotification", dto, cancellationToken);
             }
 
             return dto;

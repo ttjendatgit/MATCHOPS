@@ -18,37 +18,37 @@ public class MembershipService : IMembershipService
 
     // ── Plans ─────────────────────────────────────────────────────────────────
 
-    public async Task<List<MembershipPlanResponseDto>> GetActivePlansAsync()
+    public async Task<List<MembershipPlanResponseDto>> GetActivePlansAsync(CancellationToken cancellationToken = default)
     {
         var plans = await _context.MembershipPlans
             .AsNoTracking()
             .Where(p => p.IsActive)
             .OrderBy(p => p.TargetRole)
             .ThenBy(p => p.SortOrder)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return plans.Select(MapPlan).ToList();
     }
 
-    public async Task<List<MembershipPlanResponseDto>> GetPlansByRoleAsync(UserRole role)
+    public async Task<List<MembershipPlanResponseDto>> GetPlansByRoleAsync(UserRole role, CancellationToken cancellationToken = default)
     {
         var plans = await _context.MembershipPlans
             .AsNoTracking()
             .Where(p => p.IsActive && p.TargetRole == role)
             .OrderBy(p => p.SortOrder)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return plans.Select(MapPlan).ToList();
     }
 
     // ── Subscription ──────────────────────────────────────────────────────────
 
-    public async Task<MySubscriptionResponseDto?> GetMySubscriptionAsync(Guid userId)
+    public async Task<MySubscriptionResponseDto?> GetMySubscriptionAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var user = await _context.Users
             .AsNoTracking()
             .Select(u => new { u.Id, u.Role })
-            .FirstOrDefaultAsync(u => u.Id == userId);
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
 
         if (user is null)
             throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);
@@ -61,7 +61,7 @@ public class MembershipService : IMembershipService
         var sub = await _context.UserSubscriptions
             .AsNoTracking()
             .Include(s => s.MembershipPlan)
-            .FirstOrDefaultAsync(s => s.UserId == userId);
+            .FirstOrDefaultAsync(s => s.UserId == userId, cancellationToken);
 
         if (sub is not null)
         {
@@ -78,7 +78,7 @@ public class MembershipService : IMembershipService
         }
 
         // No subscription row → return FREE plan as fallback
-        var freePlan = await GetFreePlanForRoleAsync(user.Role);
+        var freePlan = await GetFreePlanForRoleAsync(user.Role, cancellationToken);
 
         if (freePlan is null)
             return null;  // Defensive: should never happen with seed data
@@ -95,7 +95,7 @@ public class MembershipService : IMembershipService
         };
     }
 
-    public async Task<MembershipPlan?> GetEffectivePlanAsync(Guid userId, UserRole role)
+    public async Task<MembershipPlan?> GetEffectivePlanAsync(Guid userId, UserRole role, CancellationToken cancellationToken = default)
     {
         // Check for active subscription
         var sub = await _context.UserSubscriptions
@@ -103,23 +103,23 @@ public class MembershipService : IMembershipService
             .Include(s => s.MembershipPlan)
             .FirstOrDefaultAsync(s =>
                 s.UserId == userId &&
-                s.Status == SubscriptionStatus.ACTIVE);
+                s.Status == SubscriptionStatus.ACTIVE, cancellationToken);
 
         if (sub is not null)
             return sub.MembershipPlan;
 
         // Fall back to FREE plan for the role
-        return await GetFreePlanForRoleAsync(role);
+        return await GetFreePlanForRoleAsync(role, cancellationToken);
     }
 
-    public async Task<MembershipPlan?> GetFreePlanForRoleAsync(UserRole role)
+    public async Task<MembershipPlan?> GetFreePlanForRoleAsync(UserRole role, CancellationToken cancellationToken = default)
     {
         return await _context.MembershipPlans
             .AsNoTracking()
             .FirstOrDefaultAsync(p =>
                 p.TargetRole == role &&
                 p.Tier == MembershipTier.FREE &&
-                p.IsActive);
+                p.IsActive, cancellationToken);
     }
 
     // ── Mapping ───────────────────────────────────────────────────────────────

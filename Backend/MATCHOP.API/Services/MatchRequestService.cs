@@ -11,11 +11,11 @@ namespace MATCHOP.API.Services
 {
     public interface IMatchRequestService
     {
-        Task<MatchRequestResponseDto> CreateRequestAsync(Guid senderId, CreateMatchRequestDto dto);
-        Task<List<MatchRequestResponseDto>> GetPendingRequestsAsync(Guid userId);
-        Task<List<MatchRequestResponseDto>> GetSentRequestsAsync(Guid userId);
-        Task AcceptRequestAsync(Guid userId, Guid requestId);
-        Task RejectRequestAsync(Guid userId, Guid requestId);
+        Task<MatchRequestResponseDto> CreateRequestAsync(Guid senderId, CreateMatchRequestDto dto, CancellationToken cancellationToken = default);
+        Task<List<MatchRequestResponseDto>> GetPendingRequestsAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task<List<MatchRequestResponseDto>> GetSentRequestsAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task AcceptRequestAsync(Guid userId, Guid requestId, CancellationToken cancellationToken = default);
+        Task RejectRequestAsync(Guid userId, Guid requestId, CancellationToken cancellationToken = default);
     }
 
     public class MatchRequestService : IMatchRequestService
@@ -43,9 +43,9 @@ namespace MATCHOP.API.Services
             _chatRepo = chatRepo;
         }
 
-        public async Task<MatchRequestResponseDto> CreateRequestAsync(Guid senderId, CreateMatchRequestDto dto)
+        public async Task<MatchRequestResponseDto> CreateRequestAsync(Guid senderId, CreateMatchRequestDto dto, CancellationToken cancellationToken = default)
         {
-            var post = await _matchPostRepo.GetByIdAsync(dto.PostId);
+            var post = await _matchPostRepo.GetByIdAsync(dto.PostId, cancellationToken);
             if (post == null)
                 throw new AppException(ErrorCodes.ValidationError, "Bài đăng không tồn tại.", StatusCodes.Status404NotFound);
 
@@ -61,7 +61,7 @@ namespace MATCHOP.API.Services
             if (post.SlotsFilled >= post.SlotsNeeded)
                 throw new AppException(ErrorCodes.ValidationError, "Bài đăng này đã đủ người tham gia.");
 
-            if (await _requestRepo.ExistsAsync(dto.PostId, senderId))
+            if (await _requestRepo.ExistsAsync(dto.PostId, senderId, cancellationToken))
                 throw new AppException(ErrorCodes.ValidationError, "Bạn đã gửi yêu cầu tham gia trận này rồi.");
 
             var request = new MatchRequest
@@ -74,36 +74,36 @@ namespace MATCHOP.API.Services
                 CreatedAt = DateTime.UtcNow
             };
 
-            await _requestRepo.AddAsync(request);
+            await _requestRepo.AddAsync(request, cancellationToken);
 
-            var result = await _requestRepo.GetByIdAsync(request.Id);
+            var result = await _requestRepo.GetByIdAsync(request.Id, cancellationToken);
             var response = MapToDto(result!);
 
-            var connections = await _chatRepo.GetUserConnectionsAsync(post.CreatorId);
+            var connections = await _chatRepo.GetUserConnectionsAsync(post.CreatorId, cancellationToken);
             foreach (var conn in connections)
             {
-                await _hubContext.Clients.Client(conn).SendAsync("ReceiveMatchRequest", response);
+                await _hubContext.Clients.Client(conn).SendAsync("ReceiveMatchRequest", response, cancellationToken);
             }
 
             return response;
         }
 
-        public async Task<List<MatchRequestResponseDto>> GetPendingRequestsAsync(Guid userId)
+        public async Task<List<MatchRequestResponseDto>> GetPendingRequestsAsync(Guid userId, CancellationToken cancellationToken = default)
         {
-            var requests = await _requestRepo.GetPendingRequestsForUserAsync(userId);
+            var requests = await _requestRepo.GetPendingRequestsForUserAsync(userId, cancellationToken);
             return requests.Select(MapToDto).ToList();
         }
 
-        public async Task<List<MatchRequestResponseDto>> GetSentRequestsAsync(Guid userId)
+        public async Task<List<MatchRequestResponseDto>> GetSentRequestsAsync(Guid userId, CancellationToken cancellationToken = default)
         {
-            var requests = await _requestRepo.GetSentRequestsAsync(userId);
+            var requests = await _requestRepo.GetSentRequestsAsync(userId, cancellationToken);
             var result = new List<MatchRequestResponseDto>();
             foreach (var r in requests)
             {
                 var dto = MapToDto(r);
                 if (r.Status == MatchRequestStatus.ACCEPTED)
                 {
-                    var room = await _roomRepo.GetByMatchPostIdAsync(r.PostId);
+                    var room = await _roomRepo.GetByMatchPostIdAsync(r.PostId, cancellationToken);
                     dto.RoomId = room?.Id;
                 }
                 result.Add(dto);
@@ -111,9 +111,9 @@ namespace MATCHOP.API.Services
             return result;
         }
 
-        public async Task AcceptRequestAsync(Guid userId, Guid requestId)
+        public async Task AcceptRequestAsync(Guid userId, Guid requestId, CancellationToken cancellationToken = default)
         {
-            var request = await _requestRepo.GetByIdAsync(requestId);
+            var request = await _requestRepo.GetByIdAsync(requestId, cancellationToken);
             if (request == null || request.ReceiverUserId != userId)
                 throw new AppException(ErrorCodes.ValidationError, "Yêu cầu không tồn tại.", StatusCodes.Status404NotFound);
 
@@ -123,7 +123,7 @@ namespace MATCHOP.API.Services
             if (request.Status != MatchRequestStatus.PENDING)
                 throw new AppException(ErrorCodes.ValidationError, "Chỉ có thể chấp nhận yêu cầu đang ở trạng thái chờ xử lý.");
 
-            var post = await _matchPostRepo.GetByIdAsync(request.PostId);
+            var post = await _matchPostRepo.GetByIdAsync(request.PostId, cancellationToken);
             if (post == null)
                 throw new AppException(ErrorCodes.ValidationError, "Bài đăng liên quan không còn tồn tại.", StatusCodes.Status404NotFound);
 
@@ -144,29 +144,29 @@ namespace MATCHOP.API.Services
             if (post.SlotsFilled >= post.SlotsNeeded)
                 post.Status = MatchPostStatus.FILLED;
 
-            await _requestRepo.AcceptWithPostUpdateAsync(request, post);
+            await _requestRepo.AcceptWithPostUpdateAsync(request, post, cancellationToken);
 
             // Create or update the MatchRoom for this post
-            await EnsureRoomForPostAsync(post, request.SenderUserId);
+            await EnsureRoomForPostAsync(post, request.SenderUserId, cancellationToken);
 
-            var conversation = await _chatService.CreatePrivateConversationAsync(request.SenderUserId, request.ReceiverUserId);
+            var conversation = await _chatService.CreatePrivateConversationAsync(request.SenderUserId, request.ReceiverUserId, cancellationToken);
 
-            var senderConnections = await _chatRepo.GetUserConnectionsAsync(request.SenderUserId);
-            var receiverConnections = await _chatRepo.GetUserConnectionsAsync(request.ReceiverUserId);
+            var senderConnections = await _chatRepo.GetUserConnectionsAsync(request.SenderUserId, cancellationToken);
+            var receiverConnections = await _chatRepo.GetUserConnectionsAsync(request.ReceiverUserId, cancellationToken);
 
             foreach (var conn in senderConnections)
             {
-                await _hubContext.Clients.Client(conn).SendAsync("MatchRequestAccepted", new { requestId, conversationId = conversation.Id });
+                await _hubContext.Clients.Client(conn).SendAsync("MatchRequestAccepted", new { requestId, conversationId = conversation.Id }, cancellationToken);
             }
             foreach (var conn in receiverConnections)
             {
-                await _hubContext.Clients.Client(conn).SendAsync("MatchRequestAccepted", new { requestId, conversationId = conversation.Id });
+                await _hubContext.Clients.Client(conn).SendAsync("MatchRequestAccepted", new { requestId, conversationId = conversation.Id }, cancellationToken);
             }
         }
 
-        public async Task RejectRequestAsync(Guid userId, Guid requestId)
+        public async Task RejectRequestAsync(Guid userId, Guid requestId, CancellationToken cancellationToken = default)
         {
-            var request = await _requestRepo.GetByIdAsync(requestId);
+            var request = await _requestRepo.GetByIdAsync(requestId, cancellationToken);
             if (request == null || request.ReceiverUserId != userId)
                 throw new AppException(ErrorCodes.ValidationError, "Yêu cầu không tồn tại.", StatusCodes.Status404NotFound);
 
@@ -175,18 +175,18 @@ namespace MATCHOP.API.Services
 
             request.Status = MatchRequestStatus.REJECTED;
             request.RespondedAt = DateTime.UtcNow;
-            await _requestRepo.UpdateAsync(request);
+            await _requestRepo.UpdateAsync(request, cancellationToken);
 
-            var connections = await _chatRepo.GetUserConnectionsAsync(request.SenderUserId);
+            var connections = await _chatRepo.GetUserConnectionsAsync(request.SenderUserId, cancellationToken);
             foreach (var conn in connections)
             {
-                await _hubContext.Clients.Client(conn).SendAsync("MatchRequestRejected", requestId);
+                await _hubContext.Clients.Client(conn).SendAsync("MatchRequestRejected", requestId, cancellationToken);
             }
         }
 
-        private async Task EnsureRoomForPostAsync(MatchPost post, Guid acceptedSenderUserId)
+        private async Task EnsureRoomForPostAsync(MatchPost post, Guid acceptedSenderUserId, CancellationToken cancellationToken = default)
         {
-            var room = await _roomRepo.GetByMatchPostIdAsync(post.Id);
+            var room = await _roomRepo.GetByMatchPostIdAsync(post.Id, cancellationToken);
 
             if (room == null)
             {
@@ -202,18 +202,18 @@ namespace MATCHOP.API.Services
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
-                await _roomRepo.AddAsync(newRoom);
+                await _roomRepo.AddAsync(newRoom, cancellationToken);
                 room = newRoom;
             }
             else if (post.Status == MatchPostStatus.FILLED && room.Status == MatchRoomStatus.WAITING)
             {
                 // Post just became full: promote room to CONFIRMED
                 room.Status = MatchRoomStatus.CONFIRMED;
-                await _roomRepo.UpdateAsync(room);
+                await _roomRepo.UpdateAsync(room, cancellationToken);
             }
 
             // Add owner/host player if not already present (idempotent)
-            if (await _roomRepo.GetPlayerAsync(room.Id, post.CreatorId) == null)
+            if (await _roomRepo.GetPlayerAsync(room.Id, post.CreatorId, cancellationToken) == null)
             {
                 await _roomRepo.AddPlayerAsync(new MatchRoomPlayer
                 {
@@ -223,11 +223,11 @@ namespace MATCHOP.API.Services
                     IsHost = true,
                     Status = MatchRoomPlayerStatus.ACCEPTED,
                     JoinedAt = DateTime.UtcNow
-                });
+                }, cancellationToken);
             }
 
             // Add accepted requester if not already present (idempotent)
-            if (await _roomRepo.GetPlayerAsync(room.Id, acceptedSenderUserId) == null)
+            if (await _roomRepo.GetPlayerAsync(room.Id, acceptedSenderUserId, cancellationToken) == null)
             {
                 await _roomRepo.AddPlayerAsync(new MatchRoomPlayer
                 {
@@ -237,7 +237,7 @@ namespace MATCHOP.API.Services
                     IsHost = false,
                     Status = MatchRoomPlayerStatus.ACCEPTED,
                     JoinedAt = DateTime.UtcNow
-                });
+                }, cancellationToken);
             }
         }
 

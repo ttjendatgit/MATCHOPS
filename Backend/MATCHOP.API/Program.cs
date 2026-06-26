@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿using MATCHOP.API;
+﻿﻿﻿﻿﻿using MATCHOP.API;
 using MATCHOP.API.Middlewares;
 using MATCHOP.API.Services;
 using Microsoft.EntityFrameworkCore;
@@ -36,6 +36,11 @@ if (configuredOrigins.Length == 0)
 
 
 builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    })
     .ConfigureApiBehaviorOptions(options =>
     {
         options.InvalidModelStateResponseFactory = context =>
@@ -198,6 +203,9 @@ builder.Services.AddScoped<IMatchRequestService, MatchRequestService>();
 builder.Services.AddHttpClient<IGroqService, GroqService>();
 builder.Services.AddScoped<IAIChatRepository, AIChatRepository>();
 builder.Services.AddScoped<IAIService, AIService>();
+builder.Services.AddScoped<IDashboardStatisticsService, DashboardStatisticsService>();
+builder.Services.AddScoped<IGroqAnalyticsService, GroqAnalyticsService>();
+builder.Services.AddScoped<IAIAnalyticsService, AIAnalyticsService>();
 
 // Real-time Chat & Notifications
 builder.Services.AddScoped<IChatRepository, ChatRepository>();

@@ -13,21 +13,21 @@ namespace MATCHOP.API.Repositories
             _context = context;
         }
 
-        public async Task<MatchQueue?> GetByIdAsync(Guid id)
+        public async Task<MatchQueue?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             return await _context.MatchQueues
                 .Include(q => q.User)
                 .Include(q => q.Sport)
-                .FirstOrDefaultAsync(q => q.Id == id);
+                .FirstOrDefaultAsync(q => q.Id == id, cancellationToken);
         }
 
-        public async Task<MatchQueue?> GetByUserAndSportAsync(Guid userId, Guid sportId)
+        public async Task<MatchQueue?> GetByUserAndSportAsync(Guid userId, Guid sportId, CancellationToken cancellationToken = default)
         {
             return await _context.MatchQueues
-                .FirstOrDefaultAsync(q => q.UserId == userId && q.SportId == sportId);
+                .FirstOrDefaultAsync(q => q.UserId == userId && q.SportId == sportId, cancellationToken);
         }
 
-        public async Task<List<MatchQueue>> FindMatchesAsync(MatchQueue item)
+        public async Task<List<MatchQueue>> FindMatchesAsync(MatchQueue item, CancellationToken cancellationToken = default)
         {
             // Logic auto matching:
             // 1. Cùng Sport
@@ -44,19 +44,19 @@ namespace MATCHOP.API.Repositories
                             Math.Abs((int)q.SkillLevel - (int)item.SkillLevel) <= 1 &&
                             q.PreferredTimeStart < item.PreferredTimeEnd &&
                             q.PreferredTimeEnd > item.PreferredTimeStart)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
         }
 
-        public async Task AddAsync(MatchQueue item)
+        public async Task AddAsync(MatchQueue item, CancellationToken cancellationToken = default)
         {
-            await _context.MatchQueues.AddAsync(item);
-            await _context.SaveChangesAsync();
+            await _context.MatchQueues.AddAsync(item, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task RemoveAsync(MatchQueue item)
+        public async Task RemoveAsync(MatchQueue item, CancellationToken cancellationToken = default)
         {
             _context.MatchQueues.Remove(item);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
     }
 }

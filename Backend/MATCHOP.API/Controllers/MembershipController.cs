@@ -28,40 +28,40 @@ public class MembershipController : ControllerBase
     /// Public — no authentication required (used by public pricing page).
     /// </summary>
     [HttpGet("plans")]
-    [AllowAnonymous]
-    public async Task<IActionResult> GetPlans([FromQuery] string? role = null)
-    {
-        if (!string.IsNullOrWhiteSpace(role) &&
-            Enum.TryParse<MATCHOP.API.Enums.UserRole>(role, ignoreCase: true, out var parsedRole))
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPlans([FromQuery] string? role = null, CancellationToken cancellationToken = default)
         {
-            var byRole = await _membershipService.GetPlansByRoleAsync(parsedRole);
-            return Ok(ApiResponse<List<MembershipPlanResponseDto>>.Ok(byRole));
+            if (!string.IsNullOrWhiteSpace(role) &&
+                Enum.TryParse<MATCHOP.API.Enums.UserRole>(role, ignoreCase: true, out var parsedRole))
+            {
+                var byRole = await _membershipService.GetPlansByRoleAsync(parsedRole, cancellationToken);
+                return Ok(ApiResponse<List<MembershipPlanResponseDto>>.Ok(byRole));
+            }
+
+            var all = await _membershipService.GetActivePlansAsync(cancellationToken);
+            return Ok(ApiResponse<List<MembershipPlanResponseDto>>.Ok(all));
         }
 
-        var all = await _membershipService.GetActivePlansAsync();
-        return Ok(ApiResponse<List<MembershipPlanResponseDto>>.Ok(all));
-    }
+        /// <summary>
+        /// GET /api/membership/my-subscription
+        /// Returns the authenticated user's current subscription.
+        /// If no subscription exists, returns the implicit FREE plan with isFallbackFreePlan = true.
+        /// ADMIN users receive null data with a 200 OK.
+        /// </summary>
+        [HttpGet("my-subscription")]
+        [Authorize]
+        public async Task<IActionResult> GetMySubscription(CancellationToken cancellationToken = default)
+        {
+            var userId = _currentUser.UserId
+                ?? throw new AppException(ErrorCodes.AuthRequired, "Bạn chưa đăng nhập.", StatusCodes.Status401Unauthorized);
 
-    /// <summary>
-    /// GET /api/membership/my-subscription
-    /// Returns the authenticated user's current subscription.
-    /// If no subscription exists, returns the implicit FREE plan with isFallbackFreePlan = true.
-    /// ADMIN users receive null data with a 200 OK.
-    /// </summary>
-    [HttpGet("my-subscription")]
-    [Authorize]
-    public async Task<IActionResult> GetMySubscription()
-    {
-        var userId = _currentUser.UserId
-            ?? throw new AppException(ErrorCodes.AuthRequired, "Bạn chưa đăng nhập.", StatusCodes.Status401Unauthorized);
+            var result = await _membershipService.GetMySubscriptionAsync(userId, cancellationToken);
 
-        var result = await _membershipService.GetMySubscriptionAsync(userId);
+            if (result is null)
+                return Ok(ApiResponse<MySubscriptionResponseDto?>.Ok(
+                    null,
+                    "Không áp dụng membership cho tài khoản này."));
 
-        if (result is null)
-            return Ok(ApiResponse<MySubscriptionResponseDto?>.Ok(
-                null,
-                "Không áp dụng membership cho tài khoản này."));
-
-        return Ok(ApiResponse<MySubscriptionResponseDto>.Ok(result));
-    }
+            return Ok(ApiResponse<MySubscriptionResponseDto>.Ok(result));
+        }
 }

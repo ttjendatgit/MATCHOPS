@@ -4,7 +4,7 @@ namespace MATCHOP.API.Services
 {
     public interface IUserSkillService
     {
-        Task<List<UserSkillResponseDto>> GetUserSkillsAsync(Guid userId);
-        Task<UserSkillResponseDto> UpdateUserSkillAsync(Guid userId, UpdateUserSkillDto dto);
+        Task<List<UserSkillResponseDto>> GetUserSkillsAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task<UserSkillResponseDto> UpdateUserSkillAsync(Guid userId, UpdateUserSkillDto dto, CancellationToken cancellationToken = default);
     }
 }

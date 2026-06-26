@@ -1,4 +1,4 @@
-﻿using CloudinaryDotNet;
+using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using MATCHOP.API.DTOs.Uploads;
 
@@ -7,21 +7,22 @@ namespace MATCHOP.API.Helpers;
 public interface ICloudinaryService
 {
     // Giữ method cũ để Venue hiện tại không bị lỗi
-    Task<string> UploadImageAsync(IFormFile file, string folder);
+    Task<string> UploadImageAsync(IFormFile file, string folder, CancellationToken cancellationToken = default);
 
-    Task DeleteImageAsync(string? imageUrl);
+    Task DeleteImageAsync(string? imageUrl, CancellationToken cancellationToken = default);
 
     // Method mới dùng cho production
-    Task<UploadImageResultDto> UploadImageWithResultAsync(IFormFile file, string folder);
+    Task<UploadImageResultDto> UploadImageWithResultAsync(IFormFile file, string folder, CancellationToken cancellationToken = default);
 
     Task<List<UploadImageResultDto>> UploadImagesAsync(
         List<IFormFile>? files,
         string folder,
-        int maxCount = 5);
+        int maxCount = 5,
+        CancellationToken cancellationToken = default);
 
-    Task DeleteImageByPublicIdAsync(string? publicId);
+    Task DeleteImageByPublicIdAsync(string? publicId, CancellationToken cancellationToken = default);
 
-    Task DeleteImagesByPublicIdsAsync(IEnumerable<string?> publicIds);
+    Task DeleteImagesByPublicIdsAsync(IEnumerable<string?> publicIds, CancellationToken cancellationToken = default);
 }
 
 public class CloudinaryService : ICloudinaryService
@@ -61,14 +62,14 @@ public class CloudinaryService : ICloudinaryService
         _cloudinary.Api.Secure = true;
     }
 
-    public async Task<string> UploadImageAsync(IFormFile file, string folder)
+    public async Task<string> UploadImageAsync(IFormFile file, string folder, CancellationToken cancellationToken = default)
     {
-        var result = await UploadImageWithResultAsync(file, folder);
+        var result = await UploadImageWithResultAsync(file, folder, cancellationToken);
 
         return result.Url;
     }
 
-    public async Task<UploadImageResultDto> UploadImageWithResultAsync(IFormFile file, string folder)
+    public async Task<UploadImageResultDto> UploadImageWithResultAsync(IFormFile file, string folder, CancellationToken cancellationToken = default)
     {
         ValidateImage(file);
 
@@ -114,7 +115,8 @@ public class CloudinaryService : ICloudinaryService
     public async Task<List<UploadImageResultDto>> UploadImagesAsync(
         List<IFormFile>? files,
         string folder,
-        int maxCount = 5)
+        int maxCount = 5,
+        CancellationToken cancellationToken = default)
     {
         if (files == null || files.Count == 0)
         {
@@ -129,7 +131,7 @@ public class CloudinaryService : ICloudinaryService
         {
             foreach (var file in files)
             {
-                var result = await UploadImageWithResultAsync(file, folder);
+                var result = await UploadImageWithResultAsync(file, folder, cancellationToken);
                 uploadedResults.Add(result);
             }
 
@@ -137,19 +139,19 @@ public class CloudinaryService : ICloudinaryService
         }
         catch
         {
-            await DeleteImagesByPublicIdsAsync(uploadedResults.Select(x => x.PublicId));
+            await DeleteImagesByPublicIdsAsync(uploadedResults.Select(x => x.PublicId), cancellationToken);
             throw;
         }
     }
 
-    public async Task DeleteImageAsync(string? imageUrl)
+    public async Task DeleteImageAsync(string? imageUrl, CancellationToken cancellationToken = default)
     {
         var publicId = ExtractPublicId(imageUrl);
 
-        await DeleteImageByPublicIdAsync(publicId);
+        await DeleteImageByPublicIdAsync(publicId, cancellationToken);
     }
 
-    public async Task DeleteImageByPublicIdAsync(string? publicId)
+    public async Task DeleteImageByPublicIdAsync(string? publicId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(publicId))
         {
@@ -160,11 +162,11 @@ public class CloudinaryService : ICloudinaryService
         await _cloudinary.DestroyAsync(deleteParams);
     }
 
-    public async Task DeleteImagesByPublicIdsAsync(IEnumerable<string?> publicIds)
+    public async Task DeleteImagesByPublicIdsAsync(IEnumerable<string?> publicIds, CancellationToken cancellationToken = default)
     {
         foreach (var publicId in publicIds)
         {
-            await DeleteImageByPublicIdAsync(publicId);
+            await DeleteImageByPublicIdAsync(publicId, cancellationToken);
         }
     }
 

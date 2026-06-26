@@ -7,7 +7,8 @@ public interface IPaymentService
 {
     Task<CreateVNPayPaymentResponseDto> CreateVNPayPaymentAsync(
         Guid bookingId,
-        string ipAddress);
+        string ipAddress,
+        CancellationToken cancellationToken = default);
 
-    Task<VNPayReturnDto> HandleVNPayReturnAsync(IQueryCollection query);
+    Task<VNPayReturnDto> HandleVNPayReturnAsync(IQueryCollection query, CancellationToken cancellationToken = default);
 }

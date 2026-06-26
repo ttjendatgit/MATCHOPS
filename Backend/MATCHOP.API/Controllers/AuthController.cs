@@ -24,58 +24,74 @@ namespace MATCHOP.API.Controllers
 
         [Authorize(Roles = "ADMIN")]
         [HttpGet("admin/users")]
-        public async Task<IActionResult> GetAllUsers()
+        public async Task<IActionResult> GetAllUsers(CancellationToken cancellationToken = default)
         {
-            var result = await _userService.GetAllUsersForAdminAsync();
+            var result = await _userService.GetAllUsersForAdminAsync(cancellationToken);
             return Ok(ApiResponse<List<UserAdminResponseDto>>.Ok(result));
         }
 
-        [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterRequestDto dto)
+        [Authorize(Roles = "ADMIN")]
+        [HttpPatch("admin/users/{id:guid}/suspend")]
+        public async Task<IActionResult> SuspendUser(Guid id, CancellationToken cancellationToken = default)
         {
-            await _authService.RegisterAsync(dto);
+            var result = await _userService.SuspendUserAsync(id, cancellationToken);
+            return Ok(ApiResponse<UserAdminResponseDto>.Ok(result, "Người dùng đã bị khóa."));
+        }
+
+        [Authorize(Roles = "ADMIN")]
+        [HttpPatch("admin/users/{id:guid}/activate")]
+        public async Task<IActionResult> ActivateUser(Guid id, CancellationToken cancellationToken = default)
+        {
+            var result = await _userService.ActivateUserAsync(id, cancellationToken);
+            return Ok(ApiResponse<UserAdminResponseDto>.Ok(result, "Người dùng đã được mở khóa."));
+        }
+
+        [HttpPost("register")]
+        public async Task<IActionResult> Register(RegisterRequestDto dto, CancellationToken cancellationToken = default)
+        {
+            await _authService.RegisterAsync(dto, cancellationToken);
 
             return Ok(ApiResponse<object>.Ok(
                 "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản."));
         }
 
         [HttpPost("verify-email")]
-        public async Task<IActionResult> VerifyEmail(VerifyEmailRequestDto dto)
+        public async Task<IActionResult> VerifyEmail(VerifyEmailRequestDto dto, CancellationToken cancellationToken = default)
         {
-            await _authService.VerifyEmailAsync(dto);
+            await _authService.VerifyEmailAsync(dto, cancellationToken);
 
             return Ok(ApiResponse<object>.Ok(
                 "Xác thực email thành công."));
         }
 
         [HttpPost("resend-verification")]
-        public async Task<IActionResult> ResendVerificationEmail(ResendVerificationEmailRequestDto dto)
+        public async Task<IActionResult> ResendVerificationEmail(ResendVerificationEmailRequestDto dto, CancellationToken cancellationToken = default)
         {
-            await _authService.ResendVerificationEmailAsync(dto);
+            await _authService.ResendVerificationEmailAsync(dto, cancellationToken);
 
             return Ok(ApiResponse<object>.Ok(
                 "Email xác thực đã được gửi lại."));
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login(LoginRequestDto dto)
+        public async Task<IActionResult> Login(LoginRequestDto dto, CancellationToken cancellationToken = default)
         {
-            var result = await _authService.LoginAsync(dto);
+            var result = await _authService.LoginAsync(dto, cancellationToken);
 
             return Ok(ApiResponse<AuthResponseDto>.Ok(result, "Đăng nhập thành công."));
         }
 
         [HttpPost("google-login")]
-        public async Task<IActionResult> GoogleLogin(GoogleLoginRequestDto dto)
+        public async Task<IActionResult> GoogleLogin(GoogleLoginRequestDto dto, CancellationToken cancellationToken = default)
         {
-            var result = await _authService.GoogleLoginAsync(dto);
+            var result = await _authService.GoogleLoginAsync(dto, cancellationToken);
 
             return Ok(ApiResponse<AuthResponseDto>.Ok(result, "Đăng nhập Google thành công."));
         }
 
         [Authorize]
         [HttpGet("me")]
-        public async Task<IActionResult> Me()
+        public async Task<IActionResult> Me(CancellationToken cancellationToken = default)
         {
             var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -86,7 +102,7 @@ namespace MATCHOP.API.Controllers
 
             var userId = Guid.Parse(userIdValue);
 
-            var result = await _authService.GetMeAsync(userId);
+            var result = await _authService.GetMeAsync(userId, cancellationToken);
 
             return Ok(ApiResponse<AuthResponseDto>.Ok(result));
         }

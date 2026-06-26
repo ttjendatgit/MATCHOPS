@@ -5,16 +5,16 @@ namespace MATCHOP.API.Repositories.Interfaces
 {
     public interface IUserRepository
     {
-        Task<User?> GetByIdAsync(Guid id);
-        Task<List<User>> GetAllAsync();
-        Task<User?> GetProfileAsync(Guid userId);
-        Task<User> UpdateAsync(User user);
-        Task<User?> UploadAvatarAsync(Guid userId, string avatarUrl);
+        Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+        Task<List<User>> GetAllAsync(CancellationToken cancellationToken = default);
+        Task<User?> GetProfileAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task<User> UpdateAsync(User user, CancellationToken cancellationToken = default);
+        Task<User?> UploadAvatarAsync(Guid userId, string avatarUrl, CancellationToken cancellationToken = default);
 
-        Task<bool> EmailExistsAsync(string email, Guid excludeUserId);
-        Task<bool> PhoneExistsAsync(string phoneNumber, Guid excludeUserId);
+        Task<bool> EmailExistsAsync(string email, Guid excludeUserId, CancellationToken cancellationToken = default);
+        Task<bool> PhoneExistsAsync(string phoneNumber, Guid excludeUserId, CancellationToken cancellationToken = default);
 
-        Task<List<FavoriteSport>> GetFavoriteSportsAsync(Guid userId);
-        Task ReplaceFavoriteSportsAsync(Guid userId, List<SportType> sportTypes);
+        Task<List<FavoriteSport>> GetFavoriteSportsAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task ReplaceFavoriteSportsAsync(Guid userId, List<SportType> sportTypes, CancellationToken cancellationToken = default);
     }
 }

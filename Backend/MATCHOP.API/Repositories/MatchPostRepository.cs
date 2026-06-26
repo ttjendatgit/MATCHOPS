@@ -14,15 +14,15 @@ namespace MATCHOP.API.Repositories
             _context = context;
         }
 
-        public async Task<MatchPost?> GetByIdAsync(Guid id)
+        public async Task<MatchPost?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             return await _context.MatchPosts
                 .Include(p => p.Creator)
                 .Include(p => p.Sport)
-                .FirstOrDefaultAsync(p => p.Id == id);
+                .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         }
 
-        public async Task<List<MatchPost>> GetFilteredAsync(MatchPostFilterDto filter)
+        public async Task<List<MatchPost>> GetFilteredAsync(MatchPostFilterDto filter, CancellationToken cancellationToken = default)
         {
             var query = _context.MatchPosts
                 .Include(p => p.Creator)
@@ -35,34 +35,34 @@ namespace MATCHOP.API.Repositories
                 .OrderByDescending(p => p.CreatedAt)
                 .Skip((filter.Page - 1) * filter.PageSize)
                 .Take(filter.PageSize)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
         }
 
-        public async Task<int> GetCountAsync(MatchPostFilterDto filter)
+        public async Task<int> GetCountAsync(MatchPostFilterDto filter, CancellationToken cancellationToken = default)
         {
             var query = _context.MatchPosts.AsQueryable();
             query = ApplyFilter(query, filter);
-            return await query.CountAsync();
+            return await query.CountAsync(cancellationToken);
         }
 
-        public async Task AddAsync(MatchPost post)
+        public async Task AddAsync(MatchPost post, CancellationToken cancellationToken = default)
         {
-            await _context.MatchPosts.AddAsync(post);
-            await _context.SaveChangesAsync();
+            await _context.MatchPosts.AddAsync(post, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task UpdateAsync(MatchPost post)
+        public async Task UpdateAsync(MatchPost post, CancellationToken cancellationToken = default)
         {
             post.UpdatedAt = DateTime.UtcNow;
             _context.MatchPosts.Update(post);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task DeleteAsync(MatchPost post)
+        public async Task DeleteAsync(MatchPost post, CancellationToken cancellationToken = default)
         {
             post.Status = MatchPostStatus.CANCELLED;
             post.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
         private static IQueryable<MatchPost> ApplyFilter(IQueryable<MatchPost> query, MatchPostFilterDto filter)

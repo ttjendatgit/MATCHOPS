@@ -22,7 +22,8 @@ public class VenueRepository : IVenueRepository
         string? city,
         string? district,
         Guid? sportId,
-        string? keyword)
+        string? keyword,
+        CancellationToken cancellationToken = default)
     {
         var query = BaseQuery()
             .Where(v => v.Status == VenueStatus.ACTIVE);
@@ -48,44 +49,44 @@ public class VenueRepository : IVenueRepository
 
         return await query
             .OrderByDescending(v => v.CreatedAt)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<Venue?> GetActiveByIdAsync(Guid id) =>
+    public async Task<Venue?> GetActiveByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         await BaseQuery()
             .FirstOrDefaultAsync(v =>
-                v.Id == id && v.Status == VenueStatus.ACTIVE);
+                v.Id == id && v.Status == VenueStatus.ACTIVE, cancellationToken);
 
-    public async Task<Venue?> GetByIdAsync(Guid id) =>
+    public async Task<Venue?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         await BaseQuery()
-            .FirstOrDefaultAsync(v => v.Id == id);
+            .FirstOrDefaultAsync(v => v.Id == id, cancellationToken);
 
-    public async Task<List<Venue>> GetAllAsync() =>
+    public async Task<List<Venue>> GetAllAsync(CancellationToken cancellationToken = default) =>
         await BaseQuery()
             .OrderByDescending(v => v.CreatedAt)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
-    public async Task<List<Venue>> GetByOwnerIdAsync(Guid ownerId) =>
+    public async Task<List<Venue>> GetByOwnerIdAsync(Guid ownerId, CancellationToken cancellationToken = default) =>
         await BaseQuery()
             .Where(v => v.OwnerId == ownerId)
             .OrderByDescending(v => v.CreatedAt)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
-    public async Task<Venue> CreateAsync(Venue venue)
+    public async Task<Venue> CreateAsync(Venue venue, CancellationToken cancellationToken = default)
     {
         _db.Venues.Add(venue);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
 
         // Reload để có Owner navigation
-        await _db.Entry(venue).Reference(v => v.Owner).LoadAsync();
+        await _db.Entry(venue).Reference(v => v.Owner).LoadAsync(cancellationToken);
         return venue;
     }
 
-    public async Task<Venue> UpdateAsync(Venue venue)
+    public async Task<Venue> UpdateAsync(Venue venue, CancellationToken cancellationToken = default)
     {
         venue.UpdatedAt = DateTime.UtcNow;
         _db.Venues.Update(venue);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
         return venue;
     }
 }

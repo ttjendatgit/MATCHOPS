@@ -1,19 +1,19 @@
-﻿using MATCHOP.API.DTOs.Auth;
+using MATCHOP.API.DTOs.Auth;
 
 namespace MATCHOP.API.Services
 {
     public interface IAuthService
     {
-        Task RegisterAsync(RegisterRequestDto dto);
+        Task RegisterAsync(RegisterRequestDto dto, CancellationToken cancellationToken = default);
 
-        Task VerifyEmailAsync(VerifyEmailRequestDto dto);
+        Task VerifyEmailAsync(VerifyEmailRequestDto dto, CancellationToken cancellationToken = default);
 
-        Task ResendVerificationEmailAsync(ResendVerificationEmailRequestDto dto);
+        Task ResendVerificationEmailAsync(ResendVerificationEmailRequestDto dto, CancellationToken cancellationToken = default);
 
-        Task<AuthResponseDto> LoginAsync(LoginRequestDto dto);
+        Task<AuthResponseDto> LoginAsync(LoginRequestDto dto, CancellationToken cancellationToken = default);
 
-        Task<AuthResponseDto> GoogleLoginAsync(GoogleLoginRequestDto dto);
+        Task<AuthResponseDto> GoogleLoginAsync(GoogleLoginRequestDto dto, CancellationToken cancellationToken = default);
 
-        Task<AuthResponseDto> GetMeAsync(Guid userId);
+        Task<AuthResponseDto> GetMeAsync(Guid userId, CancellationToken cancellationToken = default);
     }
 }
