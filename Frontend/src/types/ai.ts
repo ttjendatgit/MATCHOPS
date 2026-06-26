@@ -7,7 +7,6 @@ export interface AiChatMessage {
 
 export interface AiChatRequest {
   message: string;
-  conversationId?: string;
 }
 
 export interface AiChatResponse {
@@ -15,6 +14,7 @@ export interface AiChatResponse {
   response: string;
   conversationId: string;
   timestamp: Date;
+  history: AiMessageDto[];
 }
 
 export interface AiConversation {
@@ -30,4 +30,20 @@ export interface AiHistoryItem {
   title: string;
   lastMessage: string;
   timestamp: string;
+}
+
+export interface AiConversationSummary {
+  id: string;
+  title: string;
+}
+
+export interface AiMessageDto {
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+}
+
+export interface AiConversationDetailResponse {
+  conversation: AiConversationSummary;
+  messages: AiMessageDto[];
 }

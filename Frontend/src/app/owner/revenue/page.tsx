@@ -12,7 +12,9 @@ import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
 import type { ApiResponse } from "@/types/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { cn, formatCurrency } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface BookingResponseDto {
   id: string;
@@ -24,6 +26,38 @@ interface BookingResponseDto {
 export default function OwnerRevenuePage() {
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<BookingResponseDto[]>([]);
+
+  const handleExportReport = () => {
+    if (bookings.length === 0) {
+      toast.error("Không có dữ liệu để xuất báo cáo.");
+      return;
+    }
+
+    const rows = [
+      ["Ma don", "Ngay dat", "So tien", "Trang thai"],
+      ...bookings.map((booking) => [
+        booking.id,
+        booking.bookingDate,
+        booking.totalPrice.toString(),
+        booking.status,
+      ]),
+    ];
+
+    const csv = rows
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `owner-revenue-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Xuất báo cáo thành công.");
+  };
 
   useEffect(() => {
     const token = getStoredToken();
@@ -64,7 +98,12 @@ export default function OwnerRevenuePage() {
             Theo dõi hiệu quả kinh doanh từ các cụm sân của bạn.
           </p>
         </div>
-        <Button variant="outline" className="border-[rgba(134,210,50,0.2)] bg-[#141414] text-white gap-2">
+        <Button
+          variant="outline"
+          className="border-[rgba(134,210,50,0.2)] bg-[#141414] text-white gap-2"
+          onClick={handleExportReport}
+          disabled={bookings.length === 0}
+        >
           <Download className="h-4 w-4" />
           Xuất báo cáo
         </Button>
@@ -196,17 +235,3 @@ export default function OwnerRevenuePage() {
   );
 }
 
-function Button({ children, variant, className, ...props }: any) {
-  return (
-    <button 
-      className={cn(
-        "px-4 py-2 rounded-lg text-sm font-bold transition-all",
-        variant === "outline" ? "border border-white/10 hover:bg-white/5" : "bg-[#FF8000] hover:bg-[#FF8000]/90",
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-}

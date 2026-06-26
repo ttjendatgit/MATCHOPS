@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
 import type { ApiResponse } from "@/types/api";
 import { useParams } from "next/navigation";
+import { toast } from "sonner";
 
 interface VenueResponseDto {
   id: string;
@@ -28,11 +30,31 @@ interface VenueResponseDto {
 const timeInputClass =
   "flex h-10 w-full rounded-lg border border-[rgba(134,210,50,0.28)] bg-[#141414] px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#FF8000] focus:ring-offset-1 focus:ring-offset-[#030303] focus:border-[rgba(255,128,0,0.5)] transition-colors [color-scheme:dark]";
 
+function toApiTime(time: string): string {
+  return time.length === 5 ? `${time}:00` : time;
+}
+
 export default function VenueDetailOwnerPage() {
+  const router = useRouter();
   const params = useParams();
   const id = params.id as string;
   const [venue, setVenue] = useState<VenueResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    city: "",
+    district: "",
+    ward: "",
+    address: "",
+    openingTime: "06:00",
+    closingTime: "22:00",
+  });
+
+  const setField = (field: keyof typeof formData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   useEffect(() => {
     const token = getStoredToken();
@@ -41,10 +63,90 @@ export default function VenueDetailOwnerPage() {
     apiFetch<ApiResponse<VenueResponseDto>>(`/owner/venues/${id}`, { token })
       .then(res => {
         setVenue(res.data);
+        if (res.data) {
+          setFormData({
+            name: res.data.name ?? "",
+            city: res.data.city ?? "",
+            district: res.data.district ?? "",
+            ward: res.data.ward ?? "",
+            address: res.data.address ?? "",
+            openingTime: res.data.openingTime.slice(0, 5),
+            closingTime: res.data.closingTime.slice(0, 5),
+          });
+        }
       })
-      .catch(err => console.error(err))
+      .catch(err => {
+        toast.error(err instanceof Error ? err.message : "Không thể tải thông tin cơ sở.");
+      })
       .finally(() => setLoading(false));
   }, [id]);
+
+  const handleSave = async () => {
+    const token = getStoredToken();
+    if (!token) {
+      toast.error("Phiên đăng nhập đã hết hạn.");
+      router.push("/login");
+      return;
+    }
+
+    if (!formData.name || !formData.city || !formData.district || !formData.address) {
+      toast.error("Vui lòng điền đầy đủ các trường bắt buộc.");
+      return;
+    }
+
+    if (formData.openingTime >= formData.closingTime) {
+      toast.error("Giờ mở cửa phải nhỏ hơn giờ đóng cửa.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const body = new FormData();
+      body.append("Name", formData.name);
+      body.append("City", formData.city);
+      body.append("District", formData.district);
+      body.append("Address", formData.address);
+      body.append("OpeningTime", toApiTime(formData.openingTime));
+      body.append("ClosingTime", toApiTime(formData.closingTime));
+      body.append("Ward", formData.ward);
+      if (coverImage) body.append("CoverImage", coverImage);
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5208/api"}/owner/venues/${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body,
+        },
+      );
+
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.message || `Lỗi máy chủ: ${response.status}`);
+      }
+
+      const updatedVenue = result.data as VenueResponseDto;
+      setVenue(updatedVenue);
+      setFormData({
+        name: updatedVenue.name ?? "",
+        city: updatedVenue.city ?? "",
+        district: updatedVenue.district ?? "",
+        ward: updatedVenue.ward ?? "",
+        address: updatedVenue.address ?? "",
+        openingTime: updatedVenue.openingTime.slice(0, 5),
+        closingTime: updatedVenue.closingTime.slice(0, 5),
+      });
+      setCoverImage(null);
+      toast.success("Lưu thay đổi thành công.");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể cập nhật cơ sở.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -84,7 +186,9 @@ export default function VenueDetailOwnerPage() {
             <Button variant="outline" size="sm" asChild>
               <Link href={`/owner/venues/${id}/courts`}>Quản lý sân</Link>
             </Button>
-            <Button size="sm">Lưu thay đổi</Button>
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? "Đang lưu..." : "Lưu thay đổi"}
+            </Button>
           </div>
         }
       />
@@ -101,41 +205,71 @@ export default function VenueDetailOwnerPage() {
                 <Label className="text-[#C4C7C9] text-xs font-semibold uppercase tracking-wide">
                   Tên cơ sở
                 </Label>
-                <Input defaultValue={venue.name} />
+                <Input value={formData.name} onChange={(e) => setField("name", e.target.value)} />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-[#C4C7C9] text-xs font-semibold uppercase tracking-wide">
                     Thành phố
                   </Label>
-                  <Input defaultValue={venue.city} />
+                  <Input value={formData.city} onChange={(e) => setField("city", e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[#C4C7C9] text-xs font-semibold uppercase tracking-wide">
                     Quận
                   </Label>
-                  <Input defaultValue={venue.district} />
+                  <Input value={formData.district} onChange={(e) => setField("district", e.target.value)} />
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[#C4C7C9] text-xs font-semibold uppercase tracking-wide">
+                  Phường / Xã
+                </Label>
+                <Input value={formData.ward} onChange={(e) => setField("ward", e.target.value)} />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[#C4C7C9] text-xs font-semibold uppercase tracking-wide">
                   Địa chỉ
                 </Label>
-                <Input defaultValue={venue.address} />
+                <Input value={formData.address} onChange={(e) => setField("address", e.target.value)} />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-[#C4C7C9] text-xs font-semibold uppercase tracking-wide">
                     Giờ mở cửa
                   </Label>
-                  <input type="time" className={timeInputClass} defaultValue={venue.openingTime.slice(0, 5)} />
+                  <input
+                    type="time"
+                    className={timeInputClass}
+                    value={formData.openingTime}
+                    onChange={(e) => setField("openingTime", e.target.value)}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[#C4C7C9] text-xs font-semibold uppercase tracking-wide">
                     Giờ đóng cửa
                   </Label>
-                  <input type="time" className={timeInputClass} defaultValue={venue.closingTime.slice(0, 5)} />
+                  <input
+                    type="time"
+                    className={timeInputClass}
+                    value={formData.closingTime}
+                    onChange={(e) => setField("closingTime", e.target.value)}
+                  />
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[#C4C7C9] text-xs font-semibold uppercase tracking-wide">
+                  Ảnh bìa
+                </Label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setCoverImage(e.target.files?.[0] ?? null)}
+                  className={timeInputClass.replace("h-10", "h-auto py-2")}
+                />
+                {coverImage && (
+                  <p className="text-xs text-[#C4C7C9]/50">Đã chọn: {coverImage.name}</p>
+                )}
               </div>
             </div>
           </div>

@@ -1,127 +1,230 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { VenueStatusBadge } from "@/components/shared/StatusBadge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MapPin, MoreHorizontal, CheckCircle2, XCircle, PauseCircle } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { VenueStatusBadge } from "@/components/shared/StatusBadge";
 import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
 import type { ApiResponse } from "@/types/api";
-
-interface VenueAdminResponseDto {
-  id: string;
-  name: string;
-  ownerName: string;
-  ownerEmail: string;
-  city: string;
-  district: string;
-  status: string;
-  createdAt: string;
-}
+import type { VenueResponseDto } from "@/types/venue";
 
 export default function AdminVenuesPage() {
-  const [venues, setVenues] = useState<VenueAdminResponseDto[]>([]);
+  const [venues, setVenues] = useState<VenueResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({ open: false, title: "", description: "", onConfirm: () => {} });
 
   useEffect(() => {
-    const token = getStoredToken();
-    if (!token) return;
-
-    apiFetch<ApiResponse<VenueAdminResponseDto[]>>("/admin/venues", { token })
-      .then(res => {
-        setVenues(res.data || []);
-      })
-      .catch(err => console.error(err))
-      .finally(() => setLoading(false));
+    loadVenues();
   }, []);
 
-  const handleApprove = async (id: string) => {
+  const loadVenues = async () => {
     const token = getStoredToken();
     if (!token) return;
     try {
-      await apiFetch(`/admin/venues/${id}/approve`, { method: "PATCH", token });
-      setVenues(prev => prev.map(v => v.id === id ? { ...v, status: "ACTIVE" } : v));
+      const res = await apiFetch<ApiResponse<VenueResponseDto[]>>("/admin/venues", { token });
+      setVenues(res.data || []);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleReject = async (id: string) => {
-    const token = getStoredToken();
-    if (!token) return;
-    try {
-      await apiFetch(`/admin/venues/${id}/reject`, { method: "PATCH", token });
-      setVenues(prev => prev.map(v => v.id === id ? { ...v, status: "REJECTED" } : v));
-    } catch (err) {
-      console.error(err);
-    }
+  const handleApprove = (venue: VenueResponseDto) => {
+    setConfirmDialog({
+      open: true,
+      title: "Duyệt cụm sân",
+      description: `Bạn chắc chắn muốn duyệt ${venue.name}?`,
+      onConfirm: async () => {
+        try {
+          await apiFetch(`/admin/venues/${venue.id}/approve`, {
+            method: "PATCH",
+            token: getStoredToken(),
+          });
+          loadVenues();
+        } catch (err) {
+          console.error(err);
+        }
+      },
+    });
   };
+
+  const handleReject = (venue: VenueResponseDto) => {
+    setConfirmDialog({
+      open: true,
+      title: "Từ chối cụm sân",
+      description: `Bạn chắc chắn muốn từ chối ${venue.name}?`,
+      onConfirm: async () => {
+        try {
+          await apiFetch(`/admin/venues/${venue.id}/reject`, {
+            method: "PATCH",
+            token: getStoredToken(),
+          });
+          loadVenues();
+        } catch (err) {
+          console.error(err);
+        }
+      },
+    });
+  };
+
+  const handleSuspend = (venue: VenueResponseDto) => {
+    setConfirmDialog({
+      open: true,
+      title: "Tạm khóa cụm sân",
+      description: `Bạn chắc chắn muốn tạm khóa ${venue.name}?`,
+      onConfirm: async () => {
+        try {
+          await apiFetch(`/admin/venues/${venue.id}/suspend`, {
+            method: "PATCH",
+            token: getStoredToken(),
+          });
+          loadVenues();
+        } catch (err) {
+          console.error(err);
+        }
+      },
+    });
+  };
+
+  const filteredVenues = venues.filter((venue) =>
+    venue.name.toLowerCase().includes(search.toLowerCase()) ||
+    venue.city.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Quản lý cơ sở" description="Duyệt, từ chối và quản lý trạng thái các cơ sở trên nền tảng" />
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-white">Quản lý cụm sân</h1>
+        <p className="text-sm text-[#C4C7C9]">Quản lý cụm sân (duyệt, từ chối, tạm khóa)</p>
+      </div>
 
-      {/* Filter bar omitted for brevity as per existing code */}
+      <div className="flex items-center gap-3">
+        <Input
+          placeholder="Tìm kiếm theo tên hoặc thành phố..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-md bg-[#0A0A0A] border-[rgba(134,210,50,0.2)] text-white placeholder:text-[#C4C7C9]/40"
+        />
+      </div>
 
-      {loading ? (
-        <div className="flex justify-center py-10">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-[#FF8000]" />
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/50">
-                    <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Cơ sở</th>
-                    <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Chủ sân</th>
-                    <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Địa điểm</th>
-                    <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Trạng thái</th>
-                    <th className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Thao tác</th>
+      <Card className="border-[rgba(134,210,50,0.2)] bg-[#0A0A0A] text-white">
+        <CardHeader>
+          <CardTitle className="text-lg">Tất cả cụm sân</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[rgba(134,210,50,0.2)]">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#C4C7C9]/60">Cụm sân</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#C4C7C9]/60">Chủ sân</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#C4C7C9]/60">Trạng thái</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#C4C7C9]/60">Ngày tạo</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-[#C4C7C9]/60">Hành động</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[rgba(134,210,50,0.2)]">
+                {filteredVenues.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-10 text-center text-[#C4C7C9]">
+                      Không tìm thấy cụm sân nào.
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {venues.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-5 py-10 text-center text-slate-500">
-                        Không có cơ sở nào.
+                ) : (
+                  filteredVenues.map((venue) => (
+                    <tr key={venue.id} className="hover:bg-[#141414]/50 transition-colors">
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          {venue.coverImageUrl && (
+                            <img
+                              src={venue.coverImageUrl}
+                              alt={venue.name}
+                              className="h-12 w-12 rounded-lg object-cover"
+                            />
+                          )}
+                          <div>
+                            <p className="font-medium text-white">{venue.name}</p>
+                            <p className="text-xs text-[#C4C7C9]/60 flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {venue.city}, {venue.district}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-[#C4C7C9]/80">{venue.ownerName}</td>
+                      <td className="px-4 py-4">
+                        <VenueStatusBadge status={venue.status} />
+                      </td>
+                      <td className="px-4 py-4 text-[#C4C7C9]/60">
+                        {new Date(venue.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {(venue.status === "PENDING_APPROVAL" || venue.status === "DRAFT") && (
+                            <>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                                onClick={() => handleApprove(venue)}
+                              >
+                                Duyệt
+                              </Button>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                                onClick={() => handleReject(venue)}
+                              >
+                                Không duyệt
+                              </Button>
+                            </>
+                          )}
+                          {venue.status === "ACTIVE" && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="bg-amber-600 hover:bg-amber-700 text-white"
+                              onClick={() => handleSuspend(venue)}
+                            >
+                              Tạm khóa
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
-                  ) : (
-                    venues.map((v) => (
-                      <tr key={v.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-5 py-4">
-                          <p className="font-medium text-slate-900">{v.name}</p>
-                          <p className="text-xs text-slate-400">{new Date(v.createdAt).toLocaleDateString("vi-VN")}</p>
-                        </td>
-                        <td className="px-5 py-4">
-                          <p className="text-slate-900">{v.ownerName}</p>
-                        </td>
-                        <td className="px-5 py-4 text-slate-600">{v.district}, {v.city}</td>
-                        <td className="px-5 py-4"><VenueStatusBadge status={v.status as any} /></td>
-                        <td className="px-5 py-4">
-                          <div className="flex justify-end gap-2">
-                            {v.status === "PENDING_APPROVAL" && (
-                              <>
-                                <Button size="sm" variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/5 text-xs" onClick={() => handleReject(v.id)}>Từ chối</Button>
-                                <Button size="sm" className="text-xs" onClick={() => handleApprove(v.id)}>Duyệt</Button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </div>
   );
 }

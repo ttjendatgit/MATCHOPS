@@ -2,15 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { User, Mail, Phone, Calendar, Shield, Camera, Save, Loader2 } from "lucide-react";
+import { User, Mail, Phone, Calendar, Shield, Camera, Save, Loader2, Bell, TrendingUp } from "lucide-react";
+import { Pie, PieChart, Cell, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { apiFetch } from "@/lib/api";
-import { getStoredToken, getStoredUser } from "@/lib/auth";
-import type { User as AuthUser } from "@/types/auth";
+import { getStoredToken } from "@/lib/auth";
 import type { ApiResponse } from "@/types/api";
+import type { DashboardAiSummary, DashboardUserStatistics } from "@/types/dashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AIInsightCard } from "@/components/shared/AIInsightCard";
+import { AIRecommendationsCard } from "@/components/shared/AIRecommendationsCard";
+import { ForecastCard } from "@/components/shared/ForecastCard";
+import { RevenueAnalysisCard } from "@/components/shared/RevenueAnalysisCard";
+import { BookingTrendAnalysisCard } from "@/components/shared/BookingTrendAnalysisCard";
+import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface ProfileData {
@@ -23,11 +30,15 @@ interface ProfileData {
   preferredPlayingArea: string;
 }
 
+const PIE_COLORS = ["#FF8000", "#86D232", "#60A5FA", "#F59E0B", "#A855F7"];
+
 export default function ProfilePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [dashboardStats, setDashboardStats] = useState<DashboardUserStatistics | null>(null);
+  const [dashboardAi, setDashboardAi] = useState<DashboardAiSummary | null>(null);
 
   useEffect(() => {
     const token = getStoredToken();
@@ -36,15 +47,21 @@ export default function ProfilePage() {
       return;
     }
 
-    apiFetch<ApiResponse<ProfileData>>("/profile", { token })
-      .then((res) => {
-        if (res.success && res.data) {
-          setProfile(res.data);
+    Promise.all([
+      apiFetch<ApiResponse<ProfileData>>("/profile", { token }),
+      apiFetch<ApiResponse<DashboardUserStatistics>>("/dashboard/user/statistics", { token }),
+      apiFetch<ApiResponse<DashboardAiSummary>>("/dashboard/user/ai-summary", { token }),
+    ])
+      .then(([profileRes, statsRes, aiRes]) => {
+        if (profileRes.success && profileRes.data) {
+          setProfile(profileRes.data);
         }
+        setDashboardStats(statsRes.data);
+        setDashboardAi(aiRes.data);
       })
       .catch((err) => {
         console.error(err);
-        toast.error("Không thể tải thông tin cá nhân");
+        toast.error("Không thể tải thông tin cá nhân và analytics");
       })
       .finally(() => setLoading(false));
   }, [router]);
@@ -228,15 +245,146 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {/* This would be populated from backend favorite sports */}
-                <span className="rounded-full bg-slate-800 px-4 py-1.5 text-sm text-slate-300 border border-white/5">Cầu lông</span>
-                <span className="rounded-full bg-slate-800 px-4 py-1.5 text-sm text-slate-300 border border-white/5">Tennis</span>
-                <button className="rounded-full bg-[#FF8000]/10 px-4 py-1.5 text-sm text-[#FF8000] border border-[#FF8000]/30 hover:bg-[#FF8000]/20 transition-colors">
-                  + Thêm môn mới
-                </button>
+                {dashboardStats?.favoriteSports?.length ? (
+                  dashboardStats.favoriteSports.map((sport) => (
+                    <span key={sport.label} className="rounded-full bg-slate-800 px-4 py-1.5 text-sm text-slate-300 border border-white/5">
+                      {sport.label} ({sport.count})
+                    </span>
+                  ))
+                ) : (
+                  <span className="rounded-full bg-slate-800 px-4 py-1.5 text-sm text-slate-300 border border-white/5">
+                    Chưa có dữ liệu
+                  </span>
+                )}
               </div>
             </CardContent>
           </Card>
+
+          {dashboardStats && dashboardAi ? (
+            <div className="mt-8 space-y-8">
+              <div>
+                <h2 className="text-2xl font-bold text-white">AI Dashboard</h2>
+                <p className="mt-1 text-sm text-slate-400">
+                  Personalized insights based on your bookings, spend, favorite venues, and matchmaking activity.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card className="border-white/10 bg-slate-900/50 backdrop-blur-sm">
+                  <CardContent className="p-5">
+                    <p className="text-xs uppercase tracking-wide text-slate-400">Total Bookings</p>
+                    <p className="mt-2 text-3xl font-bold text-white">{dashboardStats.totalBookings}</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-white/10 bg-slate-900/50 backdrop-blur-sm">
+                  <CardContent className="p-5">
+                    <p className="text-xs uppercase tracking-wide text-slate-400">Monthly Frequency</p>
+                    <p className="mt-2 text-3xl font-bold text-white">{dashboardStats.playingFrequencyPerMonth}</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-white/10 bg-slate-900/50 backdrop-blur-sm">
+                  <CardContent className="p-5">
+                    <p className="text-xs uppercase tracking-wide text-slate-400">Unread Notifications</p>
+                    <p className="mt-2 flex items-center gap-2 text-3xl font-bold text-white">
+                      <Bell className="h-6 w-6 text-[#FF8000]" />
+                      {dashboardStats.unreadNotifications}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid gap-6 xl:grid-cols-3">
+                <AIInsightCard
+                  summary={dashboardAi.summary}
+                  insights={dashboardAi.insights}
+                  risks={dashboardAi.risks}
+                  opportunities={dashboardAi.opportunities}
+                  className="xl:col-span-2"
+                />
+                <div className="space-y-6">
+                  <AIRecommendationsCard recommendations={dashboardAi.recommendations} />
+                  <ForecastCard forecast={dashboardAi.forecast} />
+                </div>
+              </div>
+
+              <div className="grid gap-6 xl:grid-cols-2">
+                <RevenueAnalysisCard
+                  title="Spending Trend"
+                  description={`Total spent ${formatCurrency(dashboardStats.spendingStatistics.totalSpent)}`}
+                  data={dashboardStats.spendingTrend}
+                />
+                <BookingTrendAnalysisCard
+                  title="Monthly Activity"
+                  description="Bookings per month."
+                  data={dashboardStats.monthlyActivity}
+                />
+              </div>
+
+              <div className="grid gap-6 xl:grid-cols-3">
+                <Card className="border-white/10 bg-slate-900/50 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="text-base font-semibold text-white">Favorite Sports</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-72">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={dashboardStats.favoriteSports} dataKey="count" nameKey="label" innerRadius={50} outerRadius={82} paddingAngle={4}>
+                            {dashboardStats.favoriteSports.map((item, index) => (
+                              <Cell key={item.label} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-white/10 bg-slate-900/50 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="text-base font-semibold text-white">Preferred Hours</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-72">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={dashboardStats.preferredHours}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                          <XAxis dataKey="label" stroke="#94a3b8" />
+                          <YAxis stroke="#94a3b8" />
+                          <Tooltip contentStyle={{ backgroundColor: "#020617", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px" }} />
+                          <Bar dataKey="count" fill="#86D232" radius={[8, 8, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-white/10 bg-slate-900/50 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+                      <TrendingUp className="h-4 w-4 text-[#FF8000]" />
+                      Matchmaking Statistics
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                      <p className="text-xs uppercase tracking-wide text-slate-400">Open Match Posts</p>
+                      <p className="mt-1 text-2xl font-bold text-white">{dashboardStats.matchmakingStatistics.openMatchPosts}</p>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                      <p className="text-xs uppercase tracking-wide text-slate-400">Joined Match Rooms</p>
+                      <p className="mt-1 text-2xl font-bold text-white">{dashboardStats.matchmakingStatistics.joinedMatchRooms}</p>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                      <p className="text-xs uppercase tracking-wide text-slate-400">Average Spend</p>
+                      <p className="mt-1 text-2xl font-bold text-white">{formatCurrency(dashboardStats.spendingStatistics.averageSpend)}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

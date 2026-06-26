@@ -138,10 +138,10 @@ export default function AiChatPage() {
             </div>
           ) : (
             <>{conversations.map((conv) => (
-              <button
+              <div
                 key={conv.id}
                 onClick={() => !editingId && selectConversation(conv.id)}
-                className={`w-full text-left p-3 rounded-lg border border-transparent hover:bg-white/5 transition-colors group ${
+                className={`w-full text-left p-3 rounded-lg border border-transparent hover:bg-white/5 transition-colors group cursor-pointer ${
                   currentConversationId === conv.id ? "bg-white/5" : ""
                 }`}
               >
@@ -205,7 +205,7 @@ export default function AiChatPage() {
                     </div>
                   )}
                 </div>
-              </button>
+              </div>
             ))}</>
           )}
         </div>

@@ -8,9 +8,12 @@ import type {
   AiChatMessage,
   AiChatRequest,
   AiChatResponse,
+  AiConversationDetailResponse,
   AiHistoryItem,
 } from "@/types/ai";
 import { toast } from "sonner";
+
+const CURRENT_CONVERSATION_STORAGE_KEY = "currentConversationId";
 
 export function useAiChat() {
   const [messages, setMessages] = useState<AiChatMessage[]>([]);
@@ -22,10 +25,65 @@ export function useAiChat() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const pendingRequestRef = useRef<AbortController | null>(null);
+  const sendAbortRef = useRef<AbortController | null>(null);
+  const conversationAbortRef = useRef<AbortController | null>(null);
+  const currentConversationIdRef = useRef<string | null>(null);
+  const isFetchingConversationsRef = useRef(false);
+  const hasFetchedConversationsRef = useRef(false);
+  const latestConversationRequestRef = useRef(0);
+  const hasAttemptedRestoreRef = useRef(false);
+
+  // #region debug-point A:frontend-report
+  const reportAiDebug = useCallback((hypothesisId: string, msg: string, data: Record<string, unknown> = {}) => {
+    fetch("http://127.0.0.1:7777/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: "ai-chat-history",
+        runId: "pre-fix",
+        hypothesisId,
+        location: "Frontend/src/hooks/useAiChat.ts",
+        msg: `[DEBUG] ${msg}`,
+        data,
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+  }, []);
+  // #endregion
+
+  const persistCurrentConversationId = useCallback((conversationId: string | null) => {
+    currentConversationIdRef.current = conversationId;
+    setCurrentConversationId(conversationId);
+
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (conversationId) {
+      window.localStorage.setItem(CURRENT_CONVERSATION_STORAGE_KEY, conversationId);
+    } else {
+      window.localStorage.removeItem(CURRENT_CONVERSATION_STORAGE_KEY);
+    }
+  }, []);
+
+  const mapHistoryToMessages = useCallback(
+    (history: { role: "user" | "assistant"; content: string; createdAt: string }[]) =>
+      history.map((message, index) => ({
+        id: `${message.role}-${message.createdAt}-${index}`,
+        role: message.role,
+        content: message.content,
+        timestamp: new Date(message.createdAt),
+      })),
+    []
+  );
 
   // Fetch conversations
   const fetchConversations = useCallback(async () => {
+    if (isFetchingConversationsRef.current) {
+      return;
+    }
+
+    isFetchingConversationsRef.current = true;
     setIsLoadingHistory(true);
     setError(null);
     try {
@@ -36,16 +94,31 @@ export function useAiChat() {
       );
       if (response.success && response.data) {
         setConversations(response.data);
+        // #region debug-point B:fetch-conversations-success
+        reportAiDebug("B", "Fetched conversations", {
+          count: response.data.length,
+          firstConversationId: response.data[0]?.id ?? null,
+          currentConversationId,
+        });
+        // #endregion
       }
     } catch (err) {
+      // #region debug-point B:fetch-conversations-error
+      reportAiDebug("B", "Failed to fetch conversations", {
+        currentConversationId,
+        error: err instanceof Error ? err.message : "unknown",
+      });
+      // #endregion
       setError(
         err instanceof Error ? err.message : "Failed to fetch conversations"
       );
       console.error(err);
     } finally {
+      isFetchingConversationsRef.current = false;
+      hasFetchedConversationsRef.current = true;
       setIsLoadingHistory(false);
     }
-  }, []);
+  }, [currentConversationId, reportAiDebug]);
 
   // Scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -58,9 +131,9 @@ export function useAiChat() {
       if (!content.trim() || isLoading) return;
 
       // Cancel previous pending request
-      pendingRequestRef.current?.abort();
+      sendAbortRef.current?.abort();
       const abortController = new AbortController();
-      pendingRequestRef.current = abortController;
+      sendAbortRef.current = abortController;
 
       const userMessage: AiChatMessage = {
         role: "user",
@@ -72,13 +145,18 @@ export function useAiChat() {
       setIsLoading(true);
       setError(null);
 
+      // #region debug-point A:send-start
+      reportAiDebug("A", "Send message started", {
+        currentConversationId: currentConversationIdRef.current,
+        contentLength: content.length,
+        hasPendingRequest: !!sendAbortRef.current,
+      });
+      // #endregion
+
       try {
         const token = getStoredToken();
         const reqBody: AiChatRequest = {
           message: content,
-          ...(currentConversationId
-            ? { conversationId: currentConversationId }
-            : {}),
         };
         const response = await apiFetch<ApiResponse<AiChatResponse>>(
           "/ai/chat",
@@ -91,100 +169,130 @@ export function useAiChat() {
         );
 
         if (response.success && response.data) {
-          const assistantMessage: AiChatMessage = {
-            id: response.data.id,
-            role: "assistant",
-            content: response.data.response,
-            timestamp: new Date(response.data.timestamp),
-          };
-          setMessages((prev) => [...prev, assistantMessage]);
-
-          // Update conversation list
-          if (!currentConversationId) {
-            setCurrentConversationId(response.data.conversationId);
-            await fetchConversations();
+          // #region debug-point A:send-success
+          reportAiDebug("A", "Send message succeeded", {
+            requestConversationId: null,
+            responseConversationId: response.data.conversationId,
+            assistantMessageId: response.data.id,
+            historyCount: response.data.history?.length ?? null,
+          });
+          // #endregion
+          persistCurrentConversationId(response.data.conversationId);
+          if (response.data.history?.length) {
+            setMessages(mapHistoryToMessages(response.data.history));
           } else {
-            setConversations((prev) =>
-              prev.map((c) =>
-                c.id === response.data.conversationId
-                  ? {
-                      ...c,
-                      lastMessage: response.data.response,
-                      timestamp: new Date().toISOString(),
-                    }
-                  : c
-              )
-            );
+            const assistantMessage: AiChatMessage = {
+              id: response.data.id,
+              role: "assistant",
+              content: response.data.response,
+              timestamp: new Date(response.data.timestamp),
+            };
+            setMessages((prev) => [...prev, assistantMessage]);
           }
+          await fetchConversations();
         }
       } catch (err: any) {
         if (err.name !== "AbortError") {
+          // #region debug-point A:send-error
+          reportAiDebug("A", "Send message failed", {
+            currentConversationId: currentConversationIdRef.current,
+            error: err instanceof Error ? err.message : "unknown",
+          });
+          // #endregion
           const errorMessage =
             err instanceof Error ? err.message : "Failed to send message";
           setError(errorMessage);
           toast.error(errorMessage);
         }
       } finally {
-        if (pendingRequestRef.current === abortController) {
-          pendingRequestRef.current = null;
+        if (sendAbortRef.current === abortController) {
+          sendAbortRef.current = null;
         }
         setIsLoading(false);
       }
     },
-    [currentConversationId, isLoading, fetchConversations]
+    [isLoading, fetchConversations, mapHistoryToMessages, persistCurrentConversationId, reportAiDebug]
   );
 
   // Select conversation
   const selectConversation = useCallback(
     async (id: string) => {
-      if (currentConversationId === id) return;
-      setCurrentConversationId(id);
+      if (!id) return;
+      if (currentConversationIdRef.current === id && messages.length > 0) return;
+      // #region debug-point C:select-start
+      reportAiDebug("C", "Select conversation started", {
+        clickedConversationId: id,
+        currentConversationId: currentConversationIdRef.current,
+        hasPendingRequest: !!conversationAbortRef.current,
+      });
+      // #endregion
+      conversationAbortRef.current?.abort();
+      const abortController = new AbortController();
+      conversationAbortRef.current = abortController;
+      const requestId = latestConversationRequestRef.current + 1;
+      latestConversationRequestRef.current = requestId;
       setIsLoadingHistory(true);
       setError(null);
-
-      const abortController = new AbortController();
-      pendingRequestRef.current = abortController;
 
       try {
         const token = getStoredToken();
         const response = await apiFetch<
-          ApiResponse<{ Messages: any[] }>
+          ApiResponse<AiConversationDetailResponse>
         >(`/ai/conversations/${id}`, {
           token,
           signal: abortController.signal,
         });
 
         if (response.success && response.data) {
-          const msgs = response.data.Messages.map((m: any) => ({
-            role: m.Role,
-            content: m.Content,
-            timestamp: new Date(m.CreatedAt),
-          }));
-          setMessages(msgs);
+          if (latestConversationRequestRef.current !== requestId) {
+            return;
+          }
+          // #region debug-point C:select-success
+          reportAiDebug("C", "Select conversation succeeded", {
+            clickedConversationId: id,
+            responseMessageCount: response.data.messages?.length ?? null,
+            responseConversationId: response.data.conversation?.id ?? null,
+            currentConversationIdAtResolve: currentConversationIdRef.current,
+          });
+          // #endregion
+          setMessages(mapHistoryToMessages(response.data.messages));
+          persistCurrentConversationId(id);
         }
       } catch (err: any) {
         if (err.name !== "AbortError") {
+          // #region debug-point C:select-error
+          reportAiDebug("C", "Select conversation failed", {
+            clickedConversationId: id,
+            currentConversationIdAtError: currentConversationIdRef.current,
+            error: err instanceof Error ? err.message : "unknown",
+          });
+          // #endregion
           const errorMessage =
             err instanceof Error ? err.message : "Failed to load conversation";
+          if (errorMessage.toLowerCase().includes("conversation not found")) {
+            persistCurrentConversationId(null);
+            setMessages([]);
+          }
           setError(errorMessage);
           toast.error(errorMessage);
         }
       } finally {
-        if (pendingRequestRef.current === abortController) {
-          pendingRequestRef.current = null;
+        if (conversationAbortRef.current === abortController) {
+          conversationAbortRef.current = null;
         }
         setIsLoadingHistory(false);
       }
     },
-    [currentConversationId]
+    [mapHistoryToMessages, messages.length, persistCurrentConversationId, reportAiDebug]
   );
 
   // New conversation
   const newConversation = useCallback(() => {
+    conversationAbortRef.current?.abort();
     setMessages([]);
-    setCurrentConversationId(null);
+    persistCurrentConversationId(null);
     setError(null);
-  }, []);
+  }, [persistCurrentConversationId]);
 
   // Delete conversation
   const deleteConversation = useCallback(
@@ -198,7 +306,7 @@ export function useAiChat() {
         });
 
         if (currentConversationId === id) {
-          setCurrentConversationId(null);
+          persistCurrentConversationId(null);
           setMessages([]);
         }
 
@@ -211,7 +319,7 @@ export function useAiChat() {
         toast.error(errorMessage);
       }
     },
-    [currentConversationId]
+    [currentConversationId, persistCurrentConversationId]
   );
 
   // Rename conversation
@@ -245,10 +353,51 @@ export function useAiChat() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || hasAttemptedRestoreRef.current) {
+      return;
+    }
+
+    hasAttemptedRestoreRef.current = true;
+    const storedConversationId = window.localStorage.getItem(CURRENT_CONVERSATION_STORAGE_KEY);
+    if (storedConversationId) {
+      currentConversationIdRef.current = storedConversationId;
+      setCurrentConversationId(storedConversationId);
+      reportAiDebug("H", "Restored conversation id from localStorage", {
+        storedConversationId,
+      });
+    }
+  }, [reportAiDebug]);
+
+  useEffect(() => {
+    if (!currentConversationId || !hasFetchedConversationsRef.current) {
+      return;
+    }
+
+    const existsInHistory = conversations.some((conversation) => conversation.id === currentConversationId);
+    if (!existsInHistory) {
+      persistCurrentConversationId(null);
+      setMessages([]);
+      return;
+    }
+
+    if (messages.length === 0 && !isLoadingHistory) {
+      void selectConversation(currentConversationId);
+    }
+  }, [
+    conversations,
+    currentConversationId,
+    messages.length,
+    isLoadingHistory,
+    persistCurrentConversationId,
+    selectConversation,
+  ]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      pendingRequestRef.current?.abort();
+      sendAbortRef.current?.abort();
+      conversationAbortRef.current?.abort();
     };
   }, []);
 
