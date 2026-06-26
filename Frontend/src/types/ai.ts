@@ -7,6 +7,7 @@ export interface AiChatMessage {
 
 export interface AiChatRequest {
   message: string;
+  conversationId?: string;
 }
 
 export interface AiChatResponse {

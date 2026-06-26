@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   Send,
   Bot,
@@ -306,11 +308,15 @@ export default function AiChatPage() {
                 <div
                   className={`px-4 py-3 rounded-2xl ${
                     msg.role === "assistant"
-                      ? "bg-slate-900 border border-white/5 text-slate-100"
+                      ? "bg-slate-900 border border-white/5 text-slate-100 prose prose-invert prose-sm max-w-none"
                       : "bg-[#FF8000] text-white"
                   }`}
                 >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                  {msg.role === "assistant" ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                  ) : (
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                  )}
                 </div>
               </div>
             ))}</>

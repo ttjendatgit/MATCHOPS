@@ -82,13 +82,13 @@ export default function AdminAnalyticsPage() {
 
       <div className="grid gap-6 xl:grid-cols-2">
         <RevenueAnalysisCard
-          title="Revenue Chart"
-          description="Monthly platform revenue from confirmed and completed bookings."
+          title="Biểu đồ doanh thu"
+          description="Doanh thu hàng tháng của nền tảng từ các đơn đặt đã xác nhận và hoàn thành."
           data={stats.monthlyRevenue}
         />
         <BookingTrendAnalysisCard
-          title="Booking Trend Chart"
-          description="Monthly booking volume across the platform."
+          title="Biểu đồ xu hướng đặt sân"
+          description="Số lượng đơn đặt hàng tháng trên nền tảng."
           data={stats.bookingTrend}
         />
       </div>

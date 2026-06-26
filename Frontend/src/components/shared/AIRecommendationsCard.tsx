@@ -18,7 +18,7 @@ export function AIRecommendationsCard({ recommendations, variant = "dark", class
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <ListChecks className="h-4 w-4 text-[#86D232]" />
-          AI Recommendations
+          Đề xuất AI
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -30,7 +30,7 @@ export function AIRecommendationsCard({ recommendations, variant = "dark", class
               </li>
             ))
           ) : (
-            <li className={cn("text-sm", isDark ? "text-slate-400" : "text-slate-500")}>No recommendations yet.</li>
+            <li className={cn("text-sm", isDark ? "text-slate-400" : "text-slate-500")}>Chưa có đề xuất nào.</li>
           )}
         </ul>
       </CardContent>

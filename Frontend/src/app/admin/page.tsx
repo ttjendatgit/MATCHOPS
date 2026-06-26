@@ -72,7 +72,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const token = getStoredToken();
     if (!token) {
-      setError("Missing admin session.");
+      setError("Thiếu phiên quản trị viên.");
       setLoading(false);
       return;
     }
@@ -89,7 +89,7 @@ export default function AdminDashboardPage() {
         setAi(aiRes.data);
       })
       .catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to load admin analytics.");
+        setError(err instanceof Error ? err.message : "Không thể tải phân tích quản trị viên.");
       })
       .finally(() => setLoading(false));
   }, []);
@@ -105,7 +105,7 @@ export default function AdminDashboardPage() {
   if (error || !stats || !ai) {
     return (
       <div className="rounded-xl border border-red-500/20 bg-red-950/20 p-6 text-red-300">
-        {error || "Unable to load admin analytics."}
+        {error || "Không thể tải phân tích quản trị viên."}
       </div>
     );
   }
@@ -114,9 +114,9 @@ export default function AdminDashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">AI Analytics Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-white">Bảng điều khiển Phân tích AI</h1>
           <p className="mt-1 text-sm text-[#C4C7C9]">
-            MATCHOPS performance, risks, opportunities, and AI-generated recommendations for admins.
+            Hiệu suất MATCHOPS, rủi ro, cơ hội và đề xuất tạo bởi AI cho quản trị viên.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -138,28 +138,28 @@ export default function AdminDashboardPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <AdminMetric
-          label="Total Users"
+          label="Tổng Người dùng"
           value={stats.totalUsers.toString()}
           icon={Users}
-          hint={`Retention ${stats.userRetentionRate}%`}
+          hint={`Giữ chân ${stats.userRetentionRate}%`}
         />
         <AdminMetric
-          label="Total Venues"
+          label="Tổng Cụm sân"
           value={stats.totalVenues.toString()}
           icon={Building2}
-          hint={`${stats.topPerformingVenues.length} top venues tracked`}
+          hint={`${stats.topPerformingVenues.length} cụm sân hàng đầu được theo dõi`}
         />
         <AdminMetric
-          label="Total Bookings"
+          label="Tổng Đặt sân"
           value={stats.totalBookings.toString()}
           icon={TrendingUp}
-          hint={`Growth ${stats.bookingGrowthRate}%`}
+          hint={`Tăng trưởng ${stats.bookingGrowthRate}%`}
         />
         <AdminMetric
-          label="Total Revenue"
+          label="Tổng Doanh thu"
           value={formatCurrency(stats.totalRevenue)}
           icon={Star}
-          hint={`Cancellation ${stats.cancellationRate}%`}
+          hint={`Hủy ${stats.cancellationRate}%`}
         />
       </div>
 
@@ -179,13 +179,13 @@ export default function AdminDashboardPage() {
 
       <div className="grid gap-6 xl:grid-cols-2">
         <RevenueAnalysisCard
-          title="Revenue Chart"
-          description="Monthly platform revenue from confirmed and completed bookings."
+          title="Biểu đồ Doanh thu"
+          description="Doanh thu hàng tháng của nền tảng từ các đơn đặt đã xác nhận và hoàn thành."
           data={stats.monthlyRevenue}
         />
         <BookingTrendAnalysisCard
-          title="Booking Trend Chart"
-          description="Monthly booking volume across the platform."
+          title="Biểu đồ Xu hướng Đặt sân"
+          description="Số lượng đơn đặt hàng tháng trên nền tảng."
           data={stats.bookingTrend}
         />
       </div>
@@ -193,7 +193,7 @@ export default function AdminDashboardPage() {
       <div className="grid gap-6 xl:grid-cols-3">
         <Card className="border-white/10 bg-slate-950/50 text-white">
           <CardHeader>
-            <CardTitle className="text-base">Sport Distribution Chart</CardTitle>
+            <CardTitle className="text-base">Biểu đồ Phân bố Môn thể thao</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-72">
@@ -224,7 +224,7 @@ export default function AdminDashboardPage() {
 
         <Card className="border-white/10 bg-slate-950/50 text-white">
           <CardHeader>
-            <CardTitle className="text-base">Peak Hour Chart</CardTitle>
+            <CardTitle className="text-base">Biểu đồ Giờ cao điểm</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-72">
@@ -243,24 +243,24 @@ export default function AdminDashboardPage() {
 
         <Card className="border-white/10 bg-slate-950/50 text-white">
           <CardHeader>
-            <CardTitle className="text-base">Health Snapshot</CardTitle>
+            <CardTitle className="text-base">Tóm tắt Sức khỏe</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-lg bg-slate-900/50 p-4">
-              <p className="text-xs uppercase tracking-wide text-slate-400">Total Reviews</p>
+              <p className="text-xs uppercase tracking-wide text-slate-400">Tổng Đánh giá</p>
               <p className="mt-1 text-2xl font-bold text-white">{stats.totalReviews}</p>
             </div>
             <div className="rounded-lg bg-slate-900/50 p-4">
-              <p className="text-xs uppercase tracking-wide text-slate-400">Notifications Sent</p>
+              <p className="text-xs uppercase tracking-wide text-slate-400">Thông báo đã gửi</p>
               <p className="mt-1 flex items-center gap-2 text-2xl font-bold text-[#FF8000]">
                 <Star className="h-5 w-5" />
                 {stats.totalNotifications}
               </p>
             </div>
             <div className="rounded-lg bg-slate-900/50 p-4">
-              <p className="text-xs uppercase tracking-wide text-slate-400">Operational Risk</p>
+              <p className="text-xs uppercase tracking-wide text-slate-400">Rủi ro Hoạt động</p>
               <p className="mt-1 text-sm text-slate-300">
-                {ai.risks[0] || "No major operational risk detected."}
+                {ai.risks[0] || "Không phát hiện rủi ro hoạt động lớn nào."}
               </p>
             </div>
           </CardContent>
@@ -269,9 +269,9 @@ export default function AdminDashboardPage() {
 
       <Card className="border-white/10 bg-slate-950/50 text-white">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Top Performing Venues</CardTitle>
+          <CardTitle className="text-base">Cụm sân Hiệu suất Cao nhất</CardTitle>
           <Link href="/admin/venues" className="flex items-center gap-1 text-sm text-[#FF8000] hover:underline">
-            Manage venues <ArrowRight className="h-4 w-4" />
+            Quản lý cụm sân <ArrowRight className="h-4 w-4" />
           </Link>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
@@ -283,12 +283,12 @@ export default function AdminDashboardPage() {
               </div>
               <p className="mt-2 text-lg font-bold text-[#FF8000]">{formatCurrency(venue.revenue)}</p>
               <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
-                <span>{venue.bookingCount} bookings</span>
-                <span>{venue.averageRating} rating</span>
+                <span>{venue.bookingCount} đơn đặt</span>
+                <span>{venue.averageRating} sao</span>
               </div>
               <div className="mt-2 flex items-center gap-2 text-xs text-amber-400">
                 <AlertCircle className="h-3.5 w-3.5" />
-                {venue.cancellationRate}% cancellations
+                {venue.cancellationRate}% hủy
               </div>
             </div>
           ))}

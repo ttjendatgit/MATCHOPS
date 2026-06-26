@@ -317,7 +317,16 @@ export function PublicNavbar() {
                     className="flex items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-xs font-medium text-slate-300 transition-all duration-200 hover:border-white/30 hover:bg-white/5 hover:text-white"
                   >
                     <LayoutDashboard className="h-3.5 w-3.5" aria-hidden />
-                    Dashboard
+                    Dashboard Chủ sân
+                  </Link>
+                )}
+                {user.role === "ADMIN" && (
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-1.5 rounded-full border border-[#FF8000]/22 bg-[#FF8000]/[0.05] px-3.5 py-2 text-xs font-medium text-[#FF8000] transition-all duration-200 hover:border-[#FF8000]/35 hover:bg-[#FF8000]/10"
+                  >
+                    <LayoutDashboard className="h-3.5 w-3.5" aria-hidden />
+                    Dashboard Admin
                   </Link>
                 )}
 
@@ -446,7 +455,17 @@ export function PublicNavbar() {
                   onClick={() => setMobileOpen(false)}
                 >
                   <LayoutDashboard className="h-4 w-4" aria-hidden />
-                  Dashboard
+                  Dashboard Chủ sân
+                </Link>
+              )}
+              {user.role === "ADMIN" && (
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-2 rounded-xl border border-[#FF8000]/20 bg-[#FF8000]/[0.04] px-3.5 py-2.5 text-sm font-medium text-[#FF8000] transition-all duration-200 hover:bg-[#FF8000]/[0.07]"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <LayoutDashboard className="h-4 w-4" aria-hidden />
+                  Dashboard Admin
                 </Link>
               )}
 

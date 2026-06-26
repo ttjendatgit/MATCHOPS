@@ -157,6 +157,7 @@ export function useAiChat() {
         const token = getStoredToken();
         const reqBody: AiChatRequest = {
           message: content,
+          conversationId: currentConversationIdRef.current || undefined,
         };
         const response = await apiFetch<ApiResponse<AiChatResponse>>(
           "/ai/chat",

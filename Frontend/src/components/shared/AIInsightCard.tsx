@@ -19,7 +19,7 @@ export function AIInsightCard({
   insights,
   risks,
   opportunities,
-  title = "AI Summary",
+  title = "Tóm tắt AI",
   variant = "dark",
   className,
 }: Props) {
@@ -45,30 +45,30 @@ export function AIInsightCard({
         <section>
           <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
             <Lightbulb className="h-4 w-4 text-[#86D232]" />
-            Key Insights
+            Thông tin chính
           </div>
           <ul className={cn("space-y-2 text-sm", listClass)}>
-            {insights.length > 0 ? insights.map((item) => <li key={item}>- {item}</li>) : <li>- No insights yet.</li>}
+            {insights.length > 0 ? insights.map((item) => <li key={item}>- {item}</li>) : <li>- Chưa có thông tin nào.</li>}
           </ul>
         </section>
 
         <section>
           <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
             <ShieldAlert className="h-4 w-4 text-rose-400" />
-            Risks
+            Rủi ro
           </div>
           <ul className={cn("space-y-2 text-sm", listClass)}>
-            {risks.length > 0 ? risks.map((item) => <li key={item}>- {item}</li>) : <li>- No major risks detected.</li>}
+            {risks.length > 0 ? risks.map((item) => <li key={item}>- {item}</li>) : <li>- Không phát hiện rủi ro lớn nào.</li>}
           </ul>
         </section>
 
         <section>
           <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
             <Sparkles className="h-4 w-4 text-sky-400" />
-            Opportunities
+            Cơ hội
           </div>
           <ul className={cn("space-y-2 text-sm", listClass)}>
-            {opportunities.length > 0 ? opportunities.map((item) => <li key={item}>- {item}</li>) : <li>- No opportunities detected.</li>}
+            {opportunities.length > 0 ? opportunities.map((item) => <li key={item}>- {item}</li>) : <li>- Không phát hiện cơ hội nào.</li>}
           </ul>
         </section>
       </CardContent>

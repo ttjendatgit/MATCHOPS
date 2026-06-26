@@ -19,7 +19,7 @@ export function ForecastCard({ forecast, variant = "dark", className }: Props) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <TrendingUp className="h-4 w-4 text-[#FF8000]" />
-          Forecast
+          Dự báo
         </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-3 sm:grid-cols-2">
@@ -33,7 +33,7 @@ export function ForecastCard({ forecast, variant = "dark", className }: Props) {
             </div>
           ))
         ) : (
-          <p className={cn("text-sm", isDark ? "text-slate-400" : "text-slate-500")}>No forecast available.</p>
+          <p className={cn("text-sm", isDark ? "text-slate-400" : "text-slate-500")}>Không có dự báo nào.</p>
         )}
       </CardContent>
     </Card>
