@@ -3,6 +3,7 @@ namespace MATCHOP.API.DTOs.AI
     public class ChatRequestDto
     {
         public string Message { get; set; } = string.Empty;
+        public Guid? ConversationId { get; set; }
     }
 
     public class ChatResponseDto

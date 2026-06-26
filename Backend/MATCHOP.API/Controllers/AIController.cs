@@ -37,12 +37,13 @@ namespace MATCHOP.API.Controllers
             _ = ReportAiDebugAsync("D", "AIController.Chat started", new
             {
                 userId,
-                messageLength = dto.Message?.Length ?? 0
+                messageLength = dto.Message?.Length ?? 0,
+                conversationId = dto.ConversationId
             });
             // #endregion
             try
             {
-                var result = await _aiService.ProcessMessageAsync(userId, dto.Message!, cancellationToken);
+                var result = await _aiService.ProcessMessageAsync(userId, dto.Message!, dto.ConversationId, cancellationToken);
                 // #region debug-point D:controller-chat-success
                 _ = ReportAiDebugAsync("D", "AIController.Chat succeeded", new
                 {

@@ -12,7 +12,7 @@ namespace MATCHOP.API.Services
 {
     public interface IAIService
     {
-        Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage, CancellationToken cancellationToken = default);
+        Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage, Guid? conversationId = null, CancellationToken cancellationToken = default);
     }
 
     public class AIService : IAIService
@@ -40,7 +40,7 @@ namespace MATCHOP.API.Services
             _userSkillService = userSkillService;
         }
 
-        public async Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage, CancellationToken cancellationToken = default)
+        public async Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage, Guid? conversationId = null, CancellationToken cancellationToken = default)
         {
             var normalizedUserMessage = string.IsNullOrWhiteSpace(userMessage) ? string.Empty : userMessage.Trim();
             AIConversation conversation;
@@ -49,26 +49,48 @@ namespace MATCHOP.API.Services
             _ = ReportAiDebugAsync("F", "AIService.ProcessMessageAsync started", new
             {
                 userId,
-                messageLength = normalizedUserMessage.Length
+                messageLength = normalizedUserMessage.Length,
+                conversationId
             });
             // #endregion
             
-            // 1. Always create a new conversation for each send request
-            conversation = new AIConversation
+            // 1. Check if conversation exists or create new
+            if (conversationId.HasValue)
             {
-                UserId = userId,
-                Title = normalizedUserMessage.Length > 50 ? normalizedUserMessage.Substring(0, 50) + "..." : normalizedUserMessage
-            };
-            await _aiChatRepository.AddConversationAsync(conversation, cancellationToken);
-            history = new List<AIChatMessage>();
-            // #region debug-point F:service-new-conversation
-            _ = ReportAiDebugAsync("F", "AIService created new conversation", new
+                // Try to load existing conversation
+                conversation = await _aiChatRepository.GetConversationAsync(conversationId.Value, userId, cancellationToken)
+                    ?? throw new AppException(ErrorCodes.ConversationNotFound, "Conversation not found");
+                
+                history = await _aiChatRepository.GetMessagesByConversationAsync(conversationId.Value, cancellationToken);
+                // #region debug-point F:service-existing-conversation
+                _ = ReportAiDebugAsync("F", "AIService loaded existing conversation", new
+                {
+                    userId,
+                    conversationId = conversation.Id,
+                    title = conversation.Title,
+                    historyCount = history.Count
+                });
+                // #endregion
+            }
+            else
             {
-                userId,
-                conversationId = conversation.Id,
-                title = conversation.Title
-            });
-            // #endregion
+                // Create new conversation
+                conversation = new AIConversation
+                {
+                    UserId = userId,
+                    Title = normalizedUserMessage.Length > 50 ? normalizedUserMessage.Substring(0, 50) + "..." : normalizedUserMessage
+                };
+                await _aiChatRepository.AddConversationAsync(conversation, cancellationToken);
+                history = new List<AIChatMessage>();
+                // #region debug-point F:service-new-conversation
+                _ = ReportAiDebugAsync("F", "AIService created new conversation", new
+                {
+                    userId,
+                    conversationId = conversation.Id,
+                    title = conversation.Title
+                });
+                // #endregion
+            }
 
             // 2. Get Context from Database
             var context = await GetSystemContextAsync(userId, cancellationToken);
