@@ -4,19 +4,14 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, MoreHorizontal, CheckCircle2, XCircle, PauseCircle } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { MapPin, CheckCircle2, XCircle, PauseCircle, PlayCircle } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { VenueStatusBadge } from "@/components/shared/StatusBadge";
 import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
 import type { ApiResponse } from "@/types/api";
 import type { VenueResponseDto } from "@/types/venue";
+import { toast } from "sonner";
 
 export default function AdminVenuesPage() {
   const [venues, setVenues] = useState<VenueResponseDto[]>([]);
@@ -58,8 +53,10 @@ export default function AdminVenuesPage() {
             token: getStoredToken(),
           });
           loadVenues();
+          toast.success("Duyệt cụm sân thành công!");
         } catch (err) {
           console.error(err);
+          toast.error("Không thể duyệt cụm sân!");
         }
       },
     });
@@ -77,8 +74,10 @@ export default function AdminVenuesPage() {
             token: getStoredToken(),
           });
           loadVenues();
+          toast.success("Từ chối cụm sân thành công!");
         } catch (err) {
           console.error(err);
+          toast.error("Không thể từ chối cụm sân!");
         }
       },
     });
@@ -96,8 +95,31 @@ export default function AdminVenuesPage() {
             token: getStoredToken(),
           });
           loadVenues();
+          toast.success("Tạm khóa cụm sân thành công!");
         } catch (err) {
           console.error(err);
+          toast.error("Không thể tạm khóa cụm sân!");
+        }
+      },
+    });
+  };
+
+  const handleActivate = (venue: VenueResponseDto) => {
+    setConfirmDialog({
+      open: true,
+      title: "Kích hoạt cụm sân",
+      description: `Bạn chắc chắn muốn kích hoạt ${venue.name}?`,
+      onConfirm: async () => {
+        try {
+          await apiFetch(`/admin/venues/${venue.id}/activate`, {
+            method: "PATCH",
+            token: getStoredToken(),
+          });
+          loadVenues();
+          toast.success("Kích hoạt cụm sân thành công!");
+        } catch (err) {
+          console.error(err);
+          toast.error("Không thể kích hoạt cụm sân!");
         }
       },
     });
@@ -205,6 +227,16 @@ export default function AdminVenuesPage() {
                               onClick={() => handleSuspend(venue)}
                             >
                               Tạm khóa
+                            </Button>
+                          )}
+                          {(venue.status === "SUSPENDED" || venue.status === "INACTIVE") && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                              onClick={() => handleActivate(venue)}
+                            >
+                              Kích hoạt
                             </Button>
                           )}
                         </div>

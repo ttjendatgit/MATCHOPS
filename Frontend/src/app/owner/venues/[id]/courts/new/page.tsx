@@ -151,11 +151,37 @@ export default function NewCourtPage({ params }: { params: Promise<{ id: string 
       toast.error("Vui lòng điền đầy đủ thông tin bắt buộc!");
       return;
     }
+
+    // Validate each price rule
+    for (let i = 0; i < priceRules.length; i++) {
+      const rule = priceRules[i];
+      if (rule.pricePerHour) {
+        const pricePerHourNum = Number(rule.pricePerHour);
+        if (pricePerHourNum <= 0) {
+          toast.error(`Giá/giờ quy tắc ${i + 1} phải lớn hơn 0!`);
+          return;
+        }
+        if (rule.startTime >= rule.endTime) {
+          toast.error(`Giờ bắt đầu quy tắc ${i + 1} phải nhỏ hơn giờ kết thúc!`);
+          return;
+        }
+      }
+    }
+
+    // Validate capacity if provided
+    if (formData.capacity) {
+      const capacityNum = Number(formData.capacity);
+      if (isNaN(capacityNum) || capacityNum < 1) {
+        toast.error("Sức chứa phải là số lớn hơn 0!");
+        return;
+      }
+    }
+
     setLoading(true);
-    
+
     try {
       const token = getStoredToken();
-      
+
       // 1. Create court using multipart form data
       const courtFormData = new FormData();
       courtFormData.append("VenueId", venueId);
@@ -165,16 +191,16 @@ export default function NewCourtPage({ params }: { params: Promise<{ id: string 
       if (formData.capacity) courtFormData.append("Capacity", formData.capacity);
       if (formData.locationNote) courtFormData.append("LocationNote", formData.locationNote);
       if (formData.description) courtFormData.append("Description", formData.description);
-      
+
       // Upload images
       formData.images.forEach((file) => {
         courtFormData.append("Images", file);
       });
-      
+
       if (formData.primaryImageIndex !== null) {
         courtFormData.append("PrimaryImageIndex", formData.primaryImageIndex.toString());
       }
-      
+
       const courtRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5208/api"}/owner/courts`, {
         method: "POST",
         headers: {
@@ -182,16 +208,16 @@ export default function NewCourtPage({ params }: { params: Promise<{ id: string 
         },
         body: courtFormData,
       });
-      
+
       const courtResult = await courtRes.json();
-      
+
       if (!courtResult.success) {
         throw new Error(courtResult.message || "Failed to create court");
       }
-      
+
       const courtId = courtResult.data.id;
       toast.success("Tạo sân thành công! Đang tạo bảng giá...");
-      
+
       // 2. Create price rules for the new court
       for (const rule of priceRules) {
         if (rule.pricePerHour) {
@@ -202,7 +228,7 @@ export default function NewCourtPage({ params }: { params: Promise<{ id: string 
             endTime: rule.endTime,
             pricePerHour: Number(rule.pricePerHour),
           };
-          
+
           await apiFetch("/owner/price-rules", {
             method: "POST",
             token,
@@ -210,10 +236,10 @@ export default function NewCourtPage({ params }: { params: Promise<{ id: string 
           });
         }
       }
-      
+
       toast.success("Tạo sân và bảng giá thành công!");
       router.push(`/owner/venues/${venueId}/courts`);
-      
+
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Đã có lỗi xảy ra!");

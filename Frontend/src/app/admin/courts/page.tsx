@@ -15,6 +15,7 @@ import { CourtStatusBadge } from "@/components/shared/StatusBadge";
 import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
 import type { ApiResponse } from "@/types/api";
+import { toast } from "sonner";
 
 interface CourtResponseDto {
   id: string;
@@ -66,8 +67,10 @@ export default function AdminCourtsPage() {
         body: JSON.stringify({ status }),
       });
       setCourts((prev) => prev.map((court) => (court.id === id ? { ...court, status } : court)));
+      toast.success("Cập nhật trạng thái sân thành công!");
     } catch (err) {
       console.error(err);
+      toast.error("Không thể cập nhật trạng thái sân!");
     }
   };
 
