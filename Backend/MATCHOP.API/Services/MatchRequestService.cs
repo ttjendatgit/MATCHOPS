@@ -4,6 +4,7 @@ using MATCHOP.API.Enums;
 using MATCHOP.API.Helpers;
 using MATCHOP.API.Hubs;
 using MATCHOP.API.Repositories;
+using MATCHOP.API.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 
@@ -26,6 +27,7 @@ namespace MATCHOP.API.Services
         private readonly IChatService _chatService;
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly IChatRepository _chatRepo;
+        private readonly IMembershipService _membershipService;
 
         public MatchRequestService(
             IMatchRequestRepository requestRepo,
@@ -33,7 +35,8 @@ namespace MATCHOP.API.Services
             IMatchRoomRepository roomRepo,
             IChatService chatService,
             IHubContext<ChatHub> hubContext,
-            IChatRepository chatRepo)
+            IChatRepository chatRepo,
+            IMembershipService membershipService)
         {
             _requestRepo = requestRepo;
             _matchPostRepo = matchPostRepo;
@@ -41,6 +44,7 @@ namespace MATCHOP.API.Services
             _chatService = chatService;
             _hubContext = hubContext;
             _chatRepo = chatRepo;
+            _membershipService = membershipService;
         }
 
         public async Task<MatchRequestResponseDto> CreateRequestAsync(Guid senderId, CreateMatchRequestDto dto)
@@ -63,6 +67,19 @@ namespace MATCHOP.API.Services
 
             if (await _requestRepo.ExistsAsync(dto.PostId, senderId))
                 throw new AppException(ErrorCodes.ValidationError, "Bạn đã gửi yêu cầu tham gia trận này rồi.");
+
+            // Membership quota: count join requests created this calendar month (UTC)
+            var plan = await _membershipService.GetEffectivePlanAsync(senderId, UserRole.USER);
+            if (plan?.MaxJoinRequestsPerMonth is int joinLimit)
+            {
+                var now = DateTime.UtcNow;
+                var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var nextMonthStart = monthStart.AddMonths(1);
+                var joinCount = await _requestRepo.CountBySenderInMonthAsync(senderId, monthStart, nextMonthStart);
+                if (joinCount >= joinLimit)
+                    throw new AppException(ErrorCodes.ValidationError,
+                        $"Bạn đã dùng hết {joinLimit} yêu cầu tham gia trong tháng này. Nâng cấp Pro để tiếp tục.");
+            }
 
             var request = new MatchRequest
             {

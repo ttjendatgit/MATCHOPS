@@ -45,6 +45,15 @@ namespace MATCHOP.API.Repositories
             return await query.CountAsync();
         }
 
+        public async Task<int> CountByCreatorInMonthAsync(Guid creatorId, DateTime monthStart, DateTime nextMonthStart)
+        {
+            return await _context.MatchPosts
+                .CountAsync(p =>
+                    p.CreatorId == creatorId &&
+                    p.CreatedAt >= monthStart &&
+                    p.CreatedAt < nextMonthStart);
+        }
+
         public async Task AddAsync(MatchPost post)
         {
             await _context.MatchPosts.AddAsync(post);

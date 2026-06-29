@@ -8,6 +8,7 @@ namespace MATCHOP.API.Repositories
         Task<MatchPost?> GetByIdAsync(Guid id);
         Task<List<MatchPost>> GetFilteredAsync(MatchPostFilterDto filter);
         Task<int> GetCountAsync(MatchPostFilterDto filter);
+        Task<int> CountByCreatorInMonthAsync(Guid creatorId, DateTime monthStart, DateTime nextMonthStart);
         Task AddAsync(MatchPost post);
         Task UpdateAsync(MatchPost post);
         Task DeleteAsync(MatchPost post);

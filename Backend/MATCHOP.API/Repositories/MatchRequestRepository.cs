@@ -12,6 +12,7 @@ namespace MATCHOP.API.Repositories
         Task UpdateAsync(MatchRequest request);
         Task AcceptWithPostUpdateAsync(MatchRequest request, MatchPost post);
         Task<bool> ExistsAsync(Guid postId, Guid senderUserId);
+        Task<int> CountBySenderInMonthAsync(Guid senderUserId, DateTime monthStart, DateTime nextMonthStart);
     }
 
     public class MatchRequestRepository : IMatchRequestRepository
@@ -80,6 +81,15 @@ namespace MATCHOP.API.Repositories
             return await _context.MatchRequests
                 .AnyAsync(r => r.PostId == postId && r.SenderUserId == senderUserId
                     && (r.Status == MatchRequestStatus.PENDING || r.Status == MatchRequestStatus.ACCEPTED));
+        }
+
+        public async Task<int> CountBySenderInMonthAsync(Guid senderUserId, DateTime monthStart, DateTime nextMonthStart)
+        {
+            return await _context.MatchRequests
+                .CountAsync(r =>
+                    r.SenderUserId == senderUserId &&
+                    r.CreatedAt >= monthStart &&
+                    r.CreatedAt < nextMonthStart);
         }
     }
 }

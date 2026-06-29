@@ -3,6 +3,7 @@ using MATCHOP.API.Entities;
 using MATCHOP.API.Enums;
 using MATCHOP.API.Helpers;
 using MATCHOP.API.Repositories;
+using MATCHOP.API.Services.Interfaces;
 
 namespace MATCHOP.API.Services
 {
@@ -10,11 +11,16 @@ namespace MATCHOP.API.Services
     {
         private readonly IMatchPostRepository _matchPostRepository;
         private readonly IUserSkillRepository _userSkillRepository;
+        private readonly IMembershipService _membershipService;
 
-        public MatchPostService(IMatchPostRepository matchPostRepository, IUserSkillRepository userSkillRepository)
+        public MatchPostService(
+            IMatchPostRepository matchPostRepository,
+            IUserSkillRepository userSkillRepository,
+            IMembershipService membershipService)
         {
             _matchPostRepository = matchPostRepository;
             _userSkillRepository = userSkillRepository;
+            _membershipService = membershipService;
         }
 
         public async Task<MatchPostResponseDto> CreatePostAsync(Guid userId, CreateMatchPostDto dto)
@@ -23,6 +29,19 @@ namespace MATCHOP.API.Services
             if (userSkill == null)
             {
                 throw new AppException(ErrorCodes.ValidationError, "Bạn cần cập nhật trình độ cho môn thể thao này trước khi tạo bài tìm trận.");
+            }
+
+            // Membership quota: count posts created this calendar month (UTC)
+            var plan = await _membershipService.GetEffectivePlanAsync(userId, UserRole.USER);
+            if (plan?.MaxMatchPostsPerMonth is int postLimit)
+            {
+                var now = DateTime.UtcNow;
+                var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var nextMonthStart = monthStart.AddMonths(1);
+                var postCount = await _matchPostRepository.CountByCreatorInMonthAsync(userId, monthStart, nextMonthStart);
+                if (postCount >= postLimit)
+                    throw new AppException(ErrorCodes.ValidationError,
+                        $"Bạn đã dùng hết {postLimit} bài ghép đối trong tháng này. Nâng cấp Pro để tiếp tục.");
             }
 
             if (dto.PreferredTime <= DateTime.UtcNow)
