@@ -317,4 +317,12 @@ public class VenueService : IVenueService
         var updated = await _venueRepo.UpdateAsync(venue, cancellationToken);
         return ToDto(updated);
     }
+    
+    public async Task<VenueResponseDto> ActivateVenueAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var venue = await GetVenueOrThrowAsync(id, cancellationToken);
+        venue.Status = VenueStatus.ACTIVE;
+        var updated = await _venueRepo.UpdateAsync(venue, cancellationToken);
+        return ToDto(updated);
+    }
 }

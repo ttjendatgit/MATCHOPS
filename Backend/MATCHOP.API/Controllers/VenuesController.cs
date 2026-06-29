@@ -109,4 +109,12 @@ public class VenuesController : ControllerBase
         var result = await _venueService.SuspendVenueAsync(id, cancellationToken);
         return Ok(ApiResponse<VenueResponseDto>.Ok(result, "Venue đã bị tạm khóa."));
     }
+    
+    [HttpPatch("api/admin/venues/{id:guid}/activate")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> ActivateVenue(Guid id, CancellationToken cancellationToken = default)
+    {
+        var result = await _venueService.ActivateVenueAsync(id, cancellationToken);
+        return Ok(ApiResponse<VenueResponseDto>.Ok(result, "Venue đã được kích hoạt."));
+    }
 }

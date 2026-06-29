@@ -25,4 +25,5 @@ public interface IVenueService
     Task<VenueResponseDto> ApproveVenueAsync(Guid id, CancellationToken cancellationToken = default);
     Task<VenueResponseDto> RejectVenueAsync(Guid id, CancellationToken cancellationToken = default);
     Task<VenueResponseDto> SuspendVenueAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<VenueResponseDto> ActivateVenueAsync(Guid id, CancellationToken cancellationToken = default);
 }
