@@ -35,6 +35,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import MembershipLimitModal from "@/components/membership/MembershipLimitModal";
+
+function isMembershipLimitError(message: string): boolean {
+  return message.includes("Nâng cấp Pro để tiếp tục");
+}
 
 interface Sport {
   id: string;
@@ -81,6 +86,7 @@ export default function MatchmakingPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [membershipLimit, setMembershipLimit] = useState<{ open: boolean; type: "match-post" | "join-request" }>({ open: false, type: "match-post" });
   const [isQuickMatchLoading, setIsQuickMatchLoading] = useState(false);
   const [isInQueue, setIsInQueue] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -331,11 +337,22 @@ export default function MatchmakingPage() {
         fetchMyPosts();
         setActiveTab("my_posts");
       } else {
-        toast.error(res.message || "Không thể tạo bài đăng");
+        const msg = res.message || "Không thể tạo bài đăng";
+        if (isMembershipLimitError(msg)) {
+          setIsCreateModalOpen(false);
+          setMembershipLimit({ open: true, type: "match-post" });
+        } else {
+          toast.error(msg);
+        }
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Đã xảy ra lỗi khi tạo bài đăng";
-      toast.error(message);
+      if (isMembershipLimitError(message)) {
+        setIsCreateModalOpen(false);
+        setMembershipLimit({ open: true, type: "match-post" });
+      } else {
+        toast.error(message);
+      }
     } finally {
       setActionLoading(null);
     }
@@ -455,13 +472,22 @@ export default function MatchmakingPage() {
         setSentRequestMap(prev => new Map(prev).set(post.id, { status: "PENDING" }));
         fetchSentRequests();
       } else {
-        toast.error(res.message || "Không thể gửi yêu cầu");
+        const msg = res.message || "Không thể gửi yêu cầu";
+        if (isMembershipLimitError(msg)) {
+          setMembershipLimit({ open: true, type: "join-request" });
+        } else {
+          toast.error(msg);
+        }
         fetchSentRequests();
         fetchPosts();
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Không thể gửi yêu cầu tham gia trận đấu";
-      toast.error(message);
+      if (isMembershipLimitError(message)) {
+        setMembershipLimit({ open: true, type: "join-request" });
+      } else {
+        toast.error(message);
+      }
       fetchSentRequests();
       fetchPosts();
     } finally {
@@ -975,6 +1001,13 @@ export default function MatchmakingPage() {
           )}
         </div>
       )}
+
+      {/* Membership limit upgrade modal */}
+      <MembershipLimitModal
+        open={membershipLimit.open}
+        onOpenChange={(open) => setMembershipLimit((prev) => ({ ...prev, open }))}
+        type={membershipLimit.type}
+      />
 
       {/* Create Post Modal */}
       <Dialog open={isCreateModalOpen} onOpenChange={(open) => {
