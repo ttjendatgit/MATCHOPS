@@ -1,9 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="MatchOps">
-  <defs>
-    <linearGradient id="mo" x1="6" y1="9" x2="42" y2="41" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FF8A2A"/>
-      <stop offset="1" stop-color="#FF6A00"/>
-    </linearGradient>
-  </defs>
-  <path d="M5 41 L17 9 L24 25 L31 9 L43 41" fill="none" stroke="url(#mo)" stroke-width="7.5" stroke-linejoin="miter" stroke-miterlimit="10"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 254 246" width="254" height="246" role="img" aria-label="MatchOps">
+  <title>MatchOps</title>
+  <path
+    fill="#FF6A00"
+    d="M 0,0 L 0,237.1 L 39,208.5 L 39,80.9 L 98.9,128.5 L 65,155.5 L 65,198 L 125.3,152 L 187.4,201 L 188,170.2 L 157.2,146 L 144.9,154 L 145.5,134.5 L 215.5,82 L 218.9,89.5 L 219,95.5 L 215,100.5 L 215,192.7 L 219,196.3 L 219,246 L 254,220.8 L 254,0 L 127.5,98.8 Z"
+  />
 </svg>

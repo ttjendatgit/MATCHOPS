@@ -1,12 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 56" width="260" height="56" role="img" aria-label="MatchOps">
-  <defs>
-    <linearGradient id="mo" x1="6" y1="9" x2="42" y2="41" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FF8A2A"/>
-      <stop offset="1" stop-color="#FF6A00"/>
-    </linearGradient>
-  </defs>
-  <g transform="translate(4 4)">
-    <path d="M5 41 L17 9 L24 25 L31 9 L43 41" fill="none" stroke="url(#mo)" stroke-width="7.5" stroke-linejoin="miter" stroke-miterlimit="10"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 100" width="440" height="100" role="img" aria-label="MatchOps — Sports Operations Platform">
+  <title>MatchOps</title>
+  <!--
+    MatchOps horizontal logo lockup.
+    Approved reference: matchops-approved-logo.png (single source of truth).
+
+    Left:  geometric orange M brand mark (solid fill, transparent cutouts via evenodd)
+    Right: MATCHOPS wordmark in black-weight condensed sans-serif
+
+    Canvas: 440 × 100 px — wide enough for all 8 characters at font-size 56
+    Mark area: x=0 y=5 → ~90×90
+    Wordmark starts at x=108
+  -->
+
+  <!-- ── M Brand Mark ───────────────────────────────────────────────────────────
+       Coordinate origin: (0,0) maps to mark top-left.
+       Original mark canvas: 254×246, scaled to fit ~93×96 in the 100px tall canvas.
+  ─────────────────────────────────────────────────────────────────────────────-->
+  <g transform="translate(2,3) scale(0.378)">
+    <path
+      fill="#FF6A00"
+      d="M 0,0 L 0,237.1 L 39,208.5 L 39,80.9 L 98.9,128.5 L 65,155.5 L 65,198 L 125.3,152 L 187.4,201 L 188,170.2 L 157.2,146 L 144.9,154 L 145.5,134.5 L 215.5,82 L 218.9,89.5 L 219,95.5 L 215,100.5 L 215,192.7 L 219,196.3 L 219,246 L 254,220.8 L 254,0 L 127.5,98.8 Z"
+    />
   </g>
-  <text x="62" y="38" font-family="'Arial Black', Arial, sans-serif" font-weight="900" font-size="30" letter-spacing="1" fill="#F5F6F7">MATCH<tspan fill="#FF6A00">OPS</tspan></text>
+
+  <!-- ── MATCHOPS Wordmark ──────────────────────────────────────────────────────
+       Font: Arial Black / Impact-class condensed (closest available system font)
+       Color: #1B2030 (near-black, matches approved reference)
+       y-baseline: 73 (optical center for 100px canvas at font-size 56)
+  ─────────────────────────────────────────────────────────────────────────────-->
+  <text
+    x="106"
+    y="73"
+    font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif"
+    font-weight="900"
+    font-size="56"
+    letter-spacing="0.5"
+    fill="#1B2030"
+  >MATCHOPS</text>
 </svg>

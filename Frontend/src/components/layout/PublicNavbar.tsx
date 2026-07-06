@@ -18,7 +18,7 @@ import {
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { getStoredUser, clearAuthData, verifySession } from "@/lib/auth";
-import { BrandLogo } from "@/components/branding";
+import { BrandMark } from "@/components/branding";
 import type { User } from "@/types/auth";
 
 // ─── Nav data ─────────────────────────────────────────────────────────────────
@@ -40,9 +40,9 @@ function checkActive(pathname: string, href: string, exact: boolean) {
 function LogoMark() {
   return (
     <Link href="/" className="group flex shrink-0 items-center" aria-label="MatchOps — Trang chủ">
-      <BrandLogo
-        size="md"
-        glow
+      <BrandMark
+        size={36}
+        title="MatchOps"
         className="transition-transform duration-200 group-hover:scale-[1.03]"
       />
     </Link>
