@@ -3,6 +3,7 @@ using MATCHOP.API.Entities;
 using MATCHOP.API.Enums;
 using MATCHOP.API.Helpers;
 using MATCHOP.API.Repositories;
+using MATCHOP.API.Services.Interfaces;
 
 namespace MATCHOP.API.Services;
 
@@ -12,17 +13,20 @@ public class VenueService : IVenueService
     private readonly ICurrentUserService _currentUser;
     private readonly ICloudinaryService _cloudinary;
     private readonly ILogger<VenueService> _logger;
+    private readonly IMembershipService _membershipService;
 
     public VenueService(
         IVenueRepository venueRepo,
         ICurrentUserService currentUser,
         ICloudinaryService cloudinary,
-        ILogger<VenueService> logger)
+        ILogger<VenueService> logger,
+        IMembershipService membershipService)
     {
         _venueRepo = venueRepo;
         _currentUser = currentUser;
         _cloudinary = cloudinary;
         _logger = logger;
+        _membershipService = membershipService;
     }
 
     // ── Mapping ───────────────────────────────────────────────────────────────
@@ -146,6 +150,19 @@ public class VenueService : IVenueService
         ValidateOpeningClosingTime(dto.OpeningTime, dto.ClosingTime);
 
         var ownerId = GetCurrentUserId();
+
+        // Membership quota: check how many venues this owner already has
+        var plan = await _membershipService.GetEffectivePlanAsync(ownerId, UserRole.OWNER);
+        // Fall back to OWNER_FREE limit (1) when seed data is missing
+        int? maxVenues = plan is null ? 1 : plan.MaxVenues;
+        if (maxVenues is int venueLimit)
+        {
+            var venueCount = await _venueRepo.CountByOwnerIdAsync(ownerId);
+            if (venueCount >= venueLimit)
+                throw new AppException(ErrorCodes.ValidationError,
+                    $"Bạn đã đạt giới hạn {venueLimit} cụm sân của gói hiện tại. Nâng cấp gói Chủ sân để tiếp tục.");
+        }
+
         string? coverImageUrl = null;
 
         try

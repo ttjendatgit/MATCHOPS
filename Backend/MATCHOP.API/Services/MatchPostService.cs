@@ -33,7 +33,9 @@ namespace MATCHOP.API.Services
 
             // Membership quota: count posts created this calendar month (UTC)
             var plan = await _membershipService.GetEffectivePlanAsync(userId, UserRole.USER);
-            if (plan?.MaxMatchPostsPerMonth is int postLimit)
+            // Fall back to USER_FREE limit (3) when seed data is missing
+            int? maxPosts = plan is null ? 3 : plan.MaxMatchPostsPerMonth;
+            if (maxPosts is int postLimit)
             {
                 var now = DateTime.UtcNow;
                 var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);

@@ -15,6 +15,7 @@ public interface IVenueRepository
     Task<Venue?> GetByIdAsync(Guid id);
     Task<List<Venue>> GetAllAsync();
     Task<List<Venue>> GetByOwnerIdAsync(Guid ownerId);
+    Task<int> CountByOwnerIdAsync(Guid ownerId);
     Task<Venue> CreateAsync(Venue venue);
     Task<Venue> UpdateAsync(Venue venue);
 }

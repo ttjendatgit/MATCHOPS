@@ -70,7 +70,9 @@ namespace MATCHOP.API.Services
 
             // Membership quota: count join requests created this calendar month (UTC)
             var plan = await _membershipService.GetEffectivePlanAsync(senderId, UserRole.USER);
-            if (plan?.MaxJoinRequestsPerMonth is int joinLimit)
+            // Fall back to USER_FREE limit (5) when seed data is missing
+            int? maxJoins = plan is null ? 5 : plan.MaxJoinRequestsPerMonth;
+            if (maxJoins is int joinLimit)
             {
                 var now = DateTime.UtcNow;
                 var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);

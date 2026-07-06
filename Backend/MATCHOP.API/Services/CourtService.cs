@@ -14,17 +14,20 @@ public class CourtService : ICourtService
     private readonly ICourtRepository _courtRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly ICloudinaryService _cloudinaryService;
+    private readonly IMembershipService _membershipService;
 
     public CourtService(
         ApplicationDbContext context,
         ICourtRepository courtRepository,
         ICurrentUserService currentUserService,
-        ICloudinaryService cloudinaryService)
+        ICloudinaryService cloudinaryService,
+        IMembershipService membershipService)
     {
         _context = context;
         _courtRepository = courtRepository;
         _currentUserService = currentUserService;
         _cloudinaryService = cloudinaryService;
+        _membershipService = membershipService;
     }
 
     public async Task<List<CourtResponseDto>> GetPublicCourtsByVenueIdAsync(Guid venueId)
@@ -125,6 +128,19 @@ public class CourtService : ICourtService
                 ErrorCodes.PermissionDenied,
                 "Bạn không có quyền tạo sân trong địa điểm này.",
                 StatusCodes.Status403Forbidden);
+        }
+
+        // Membership quota: count courts across all venues owned by this owner
+        var plan = await _membershipService.GetEffectivePlanAsync(ownerId, UserRole.OWNER);
+        // Fall back to OWNER_FREE limit (3) when seed data is missing
+        int? maxCourts = plan is null ? 3 : plan.MaxCourts;
+        if (maxCourts is int courtLimit)
+        {
+            var courtCount = await _context.Courts
+                .CountAsync(c => c.Venue.OwnerId == ownerId);
+            if (courtCount >= courtLimit)
+                throw new AppException(ErrorCodes.ValidationError,
+                    $"Bạn đã đạt giới hạn {courtLimit} sân của gói hiện tại. Nâng cấp gói Chủ sân để tiếp tục.");
         }
 
         if (venue.Status == VenueStatus.SUSPENDED || venue.Status == VenueStatus.REJECTED)

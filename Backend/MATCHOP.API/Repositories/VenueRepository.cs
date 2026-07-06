@@ -71,6 +71,9 @@ public class VenueRepository : IVenueRepository
             .OrderByDescending(v => v.CreatedAt)
             .ToListAsync();
 
+    public async Task<int> CountByOwnerIdAsync(Guid ownerId) =>
+        await _db.Venues.CountAsync(v => v.OwnerId == ownerId);
+
     public async Task<Venue> CreateAsync(Venue venue)
     {
         _db.Venues.Add(venue);
