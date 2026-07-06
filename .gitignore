@@ -39,3 +39,4 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*__pycache__/
 *.pyc
+.claude/settings.json
