@@ -118,7 +118,7 @@ export function Hero({ sports, districts, venue }: HeroProps) {
   }
 
   return (
-    <section className="relative isolate overflow-hidden bg-[#030303] pt-28 pb-16 sm:pt-32 sm:pb-20 lg:pt-40 lg:pb-24">
+    <section className="relative isolate overflow-hidden bg-[#030303] pt-12 pb-16 sm:pt-16 sm:pb-20 lg:pt-24 lg:pb-24">
       {/* ── Background: real sports photo + one controlled gradient + one subtle accent ── */}
       <div className="absolute inset-0 -z-10">
         <Image
