@@ -17,6 +17,17 @@ export const TextHoverEffect = ({
   const [cursor, setCursor] = useState({ x: 0, y: 0 });
   const [hovered, setHovered] = useState(false);
   const [maskPosition, setMaskPosition] = useState({ cx: "50%", cy: "50%" });
+  const [reducedMotion, setReducedMotion] = useState(false);
+
+  // Smallest possible reduced-motion branch: skip the 4s stroke-draw reveal
+  // and the eased mouse-follow glide. Nothing else about the effect changes.
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReducedMotion(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   useEffect(() => {
     if (svgRef.current && cursor.x !== null && cursor.y !== null) {
@@ -35,12 +46,13 @@ export const TextHoverEffect = ({
       ref={svgRef}
       width="100%"
       height="100%"
-      viewBox="0 0 300 100"
+      viewBox="0 0 440 100"
       xmlns="http://www.w3.org/2000/svg"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onMouseMove={(e) => setCursor({ x: e.clientX, y: e.clientY })}
       className={cn("select-none uppercase cursor-pointer", className)}
+      aria-hidden="true"
     >
       <defs>
         <linearGradient
@@ -67,7 +79,7 @@ export const TextHoverEffect = ({
           r="20%"
           initial={{ cx: "50%", cy: "50%" }}
           animate={maskPosition}
-          transition={{ duration: duration ?? 0, ease: "easeOut" }}
+          transition={{ duration: reducedMotion ? 0 : duration ?? 0, ease: "easeOut" }}
         >
           <stop offset="0%" stopColor="white" />
           <stop offset="100%" stopColor="black" />
@@ -94,19 +106,24 @@ export const TextHoverEffect = ({
         {text}
       </text>
       <motion.text
+        key={reducedMotion ? "reduced" : "full"}
         x="50%"
         y="50%"
         textAnchor="middle"
         dominantBaseline="middle"
         strokeWidth="0.3"
         className="fill-transparent stroke-[#FF8000] font-[helvetica] text-7xl font-bold"
-        initial={{ strokeDashoffset: 1000, strokeDasharray: 1000 }}
+        initial={
+          reducedMotion
+            ? { strokeDashoffset: 0, strokeDasharray: 1000 }
+            : { strokeDashoffset: 1000, strokeDasharray: 1000 }
+        }
         animate={{
           strokeDashoffset: 0,
           strokeDasharray: 1000,
         }}
         transition={{
-          duration: 4,
+          duration: reducedMotion ? 0 : 4,
           ease: "easeInOut",
         }}
       >
