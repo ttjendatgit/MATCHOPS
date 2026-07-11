@@ -119,16 +119,18 @@ export function Hero({ sports, districts, venue }: HeroProps) {
 
   return (
     <section className="relative isolate overflow-hidden bg-[#030303] pt-12 pb-16 sm:pt-16 sm:pb-20 lg:pt-24 lg:pb-24">
-      {/* ── Background: real sports photo + one controlled gradient + one subtle accent ── */}
+      {/* ── Background: dedicated Hero court photo + controlled overlay stack ── */}
       <div className="absolute inset-0 -z-10">
         <Image
-          src="/images/auth-sports-bg.jpg"
+          src="/images/home/matchops-hero-court-blue.png"
           alt=""
           fill
           priority
           sizes="100vw"
-          className="object-cover object-center"
+          quality={85}
+          className="object-cover object-[13%_50%] sm:object-[center_38%] lg:object-[58%_78%]"
         />
+        {/* Left-to-right readability gradient behind copy + search */}
         <div
           className="absolute inset-0"
           style={{
@@ -136,11 +138,20 @@ export function Hero({ sports, districts, venue }: HeroProps) {
               "linear-gradient(100deg, rgba(3,3,3,0.95) 0%, rgba(3,3,3,0.86) 30%, rgba(3,3,3,0.48) 58%, rgba(3,3,3,0.22) 76%, rgba(3,3,3,0.40) 100%)",
           }}
         />
+        {/* Subtle top darkening for the navbar transition */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              "radial-gradient(ellipse 55% 45% at 6% 96%, rgba(255,128,0,0.16) 0%, transparent 60%)",
+              "linear-gradient(to bottom, rgba(3,3,3,0.55) 0%, rgba(3,3,3,0.18) 14%, transparent 26%)",
+          }}
+        />
+        {/* Subtle orange warmth near the product-card cluster */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse 55% 45% at 94% 92%, rgba(255,128,0,0.14) 0%, transparent 60%)",
           }}
         />
       </div>
