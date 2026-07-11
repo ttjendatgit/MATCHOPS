@@ -14,17 +14,20 @@ public class CourtService : ICourtService
     private readonly ICourtRepository _courtRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly ICloudinaryService _cloudinaryService;
+    private readonly IMembershipService _membershipService;
 
     public CourtService(
         ApplicationDbContext context,
         ICourtRepository courtRepository,
         ICurrentUserService currentUserService,
-        ICloudinaryService cloudinaryService)
+        ICloudinaryService cloudinaryService,
+        IMembershipService membershipService)
     {
         _context = context;
         _courtRepository = courtRepository;
         _currentUserService = currentUserService;
         _cloudinaryService = cloudinaryService;
+        _membershipService = membershipService;
     }
 
     public async Task<List<CourtResponseDto>> GetPublicCourtsByVenueIdAsync(Guid venueId, CancellationToken cancellationToken = default)
@@ -105,6 +108,9 @@ public class CourtService : ICourtService
     public async Task<CourtResponseDto> CreateMyCourtAsync(CreateCourtDto dto, CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
+
+        // Check membership limits before creating court
+        await _membershipService.CheckCourtLimitAsync(ownerId, cancellationToken);
 
         ValidateCreateCourtDto(dto);
 

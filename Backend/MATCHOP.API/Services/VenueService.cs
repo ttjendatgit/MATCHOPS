@@ -3,6 +3,7 @@ using MATCHOP.API.Entities;
 using MATCHOP.API.Enums;
 using MATCHOP.API.Helpers;
 using MATCHOP.API.Repositories;
+using MATCHOP.API.Services.Interfaces;
 
 namespace MATCHOP.API.Services;
 
@@ -11,17 +12,20 @@ public class VenueService : IVenueService
     private readonly IVenueRepository _venueRepo;
     private readonly ICurrentUserService _currentUser;
     private readonly ICloudinaryService _cloudinary;
+    private readonly IMembershipService _membershipService;
     private readonly ILogger<VenueService> _logger;
 
     public VenueService(
         IVenueRepository venueRepo,
         ICurrentUserService currentUser,
         ICloudinaryService cloudinary,
+        IMembershipService membershipService,
         ILogger<VenueService> logger)
     {
         _venueRepo = venueRepo;
         _currentUser = currentUser;
         _cloudinary = cloudinary;
+        _membershipService = membershipService;
         _logger = logger;
     }
 
@@ -145,7 +149,11 @@ public class VenueService : IVenueService
     public async Task<VenueResponseDto> CreateVenueAsync(CreateVenueDto dto, CancellationToken cancellationToken = default)
     {
         ValidateOpeningClosingTime(dto.OpeningTime, dto.ClosingTime);
-        
+
+        // Check membership limits before creating venue
+        var ownerId = GetCurrentUserId();
+        await _membershipService.CheckVenueLimitAsync(ownerId, cancellationToken);
+
         ValidationHelper.ValidateRequiredText(dto.Name, "Tên venue", minLength: 2, maxLength: 200);
         ValidationHelper.ValidateRequiredAddress(dto.Address, "Địa chỉ", minLength: 5, maxLength: 500);
         ValidationHelper.ValidateRequiredText(dto.City, "Tỉnh/Thành phố", minLength: 1, maxLength: 100);
@@ -159,7 +167,6 @@ public class VenueService : IVenueService
             ValidationHelper.ValidateOptionalDescription(dto.Description, "Mô tả", maxLength: 2000);
         }
 
-        var ownerId = GetCurrentUserId();
         string? coverImageUrl = null;
 
         try

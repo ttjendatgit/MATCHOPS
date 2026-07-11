@@ -4,6 +4,7 @@ using MATCHOP.API.Enums;
 using MATCHOP.API.Helpers;
 using MATCHOP.API.Hubs;
 using MATCHOP.API.Repositories;
+using MATCHOP.API.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 
@@ -16,6 +17,16 @@ namespace MATCHOP.API.Services
         Task<List<MatchRequestResponseDto>> GetSentRequestsAsync(Guid userId, CancellationToken cancellationToken = default);
         Task AcceptRequestAsync(Guid userId, Guid requestId, CancellationToken cancellationToken = default);
         Task RejectRequestAsync(Guid userId, Guid requestId, CancellationToken cancellationToken = default);
+        Task<MatchRequestAdminListDto> GetAllRequestsAsync(Guid? postId, string? status, int page, int pageSize, CancellationToken cancellationToken = default);
+    }
+
+    public class MatchRequestAdminListDto
+    {
+        public List<MatchRequestResponseDto> Requests { get; set; } = new();
+        public int TotalCount { get; set; }
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+        public int TotalPages { get; set; }
     }
 
     public class MatchRequestService : IMatchRequestService
@@ -26,6 +37,7 @@ namespace MATCHOP.API.Services
         private readonly IChatService _chatService;
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly IChatRepository _chatRepo;
+        private readonly IMembershipService _membershipService;
 
         public MatchRequestService(
             IMatchRequestRepository requestRepo,
@@ -33,7 +45,8 @@ namespace MATCHOP.API.Services
             IMatchRoomRepository roomRepo,
             IChatService chatService,
             IHubContext<ChatHub> hubContext,
-            IChatRepository chatRepo)
+            IChatRepository chatRepo,
+            IMembershipService membershipService)
         {
             _requestRepo = requestRepo;
             _matchPostRepo = matchPostRepo;
@@ -41,10 +54,14 @@ namespace MATCHOP.API.Services
             _chatService = chatService;
             _hubContext = hubContext;
             _chatRepo = chatRepo;
+            _membershipService = membershipService;
         }
 
         public async Task<MatchRequestResponseDto> CreateRequestAsync(Guid senderId, CreateMatchRequestDto dto, CancellationToken cancellationToken = default)
         {
+            // Check membership limits before creating request
+            await _membershipService.CheckJoinRequestLimitAsync(senderId, cancellationToken);
+
             var post = await _matchPostRepo.GetByIdAsync(dto.PostId, cancellationToken);
             if (post == null)
                 throw new AppException(ErrorCodes.ValidationError, "Bài đăng không tồn tại.", StatusCodes.Status404NotFound);
@@ -182,6 +199,20 @@ namespace MATCHOP.API.Services
             {
                 await _hubContext.Clients.Client(conn).SendAsync("MatchRequestRejected", requestId, cancellationToken);
             }
+        }
+
+        public async Task<MatchRequestAdminListDto> GetAllRequestsAsync(Guid? postId, string? status, int page, int pageSize, CancellationToken cancellationToken = default)
+        {
+            var (requests, totalCount) = await _requestRepo.GetAllForAdminAsync(postId, status, page, pageSize, cancellationToken);
+
+            return new MatchRequestAdminListDto
+            {
+                Requests = requests.Select(MapToDto).ToList(),
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+            };
         }
 
         private async Task EnsureRoomForPostAsync(MatchPost post, Guid acceptedSenderUserId, CancellationToken cancellationToken = default)

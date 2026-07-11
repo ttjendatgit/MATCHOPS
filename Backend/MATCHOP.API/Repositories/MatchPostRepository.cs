@@ -65,6 +65,50 @@ namespace MATCHOP.API.Repositories
             await _context.SaveChangesAsync(cancellationToken);
         }
 
+        public async Task<(List<MatchPost> Posts, int TotalCount)> GetAllForAdminAsync(MatchPostFilterDto filter, CancellationToken cancellationToken = default)
+        {
+            var query = _context.MatchPosts
+                .Include(p => p.Creator)
+                .Include(p => p.Sport)
+                .AsQueryable();
+
+            // Apply sport filter
+            if (filter.SportId.HasValue)
+                query = query.Where(p => p.SportId == filter.SportId.Value);
+
+            // Apply city filter
+            if (!string.IsNullOrWhiteSpace(filter.City))
+                query = query.Where(p => p.City.ToLower().Contains(filter.City.ToLower()));
+
+            // Apply status filter if provided
+            if (!string.IsNullOrEmpty(filter.StatusFilter) && Enum.TryParse<MatchPostStatus>(filter.StatusFilter, true, out var statusEnum))
+                query = query.Where(p => p.Status == statusEnum);
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            var posts = await query
+                .OrderByDescending(p => p.CreatedAt)
+                .Skip((filter.Page - 1) * filter.PageSize)
+                .Take(filter.PageSize)
+                .ToListAsync(cancellationToken);
+
+            return (posts, totalCount);
+        }
+
+        public async Task<int> GetTotalCountAsync(CancellationToken cancellationToken = default)
+        {
+            return await _context.MatchPosts.CountAsync(cancellationToken);
+        }
+
+        public async Task<int> GetCountByStatusAsync(string status, CancellationToken cancellationToken = default)
+        {
+            if (Enum.TryParse<MatchPostStatus>(status, true, out var statusEnum))
+            {
+                return await _context.MatchPosts.CountAsync(p => p.Status == statusEnum, cancellationToken);
+            }
+            return 0;
+        }
+
         private static IQueryable<MatchPost> ApplyFilter(IQueryable<MatchPost> query, MatchPostFilterDto filter)
         {
             if (filter.SportId.HasValue)

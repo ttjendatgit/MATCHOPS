@@ -78,3 +78,18 @@ public class PaymentResponseDto
     public DateTime? PaidAt { get; set; }
     public DateTime CreatedAt { get; set; }
 }
+
+public class BookingReportDto
+{
+    public DateTime GeneratedAt { get; set; }
+    public DateTime? FromDate { get; set; }
+    public DateTime? ToDate { get; set; }
+    public int TotalBookings { get; set; }
+    public int CompletedBookings { get; set; }
+    public int ConfirmedBookings { get; set; }
+    public int CancelledBookings { get; set; }
+    public int PendingBookings { get; set; }
+    public decimal TotalRevenue { get; set; }
+    public decimal CompletedRevenue { get; set; }
+    public List<BookingResponseDto> Bookings { get; set; } = new();
+}

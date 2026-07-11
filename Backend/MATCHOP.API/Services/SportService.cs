@@ -26,6 +26,16 @@ namespace MATCHOP.API.Services
             return sports.Select(MapToResponse).ToList();
         }
 
+        public async Task<List<SportResponseDto>> GetAllSportsAsync(CancellationToken cancellationToken = default)
+        {
+            var sports = await _context.Sports
+                .AsNoTracking()
+                .OrderBy(x => x.Name)
+                .ToListAsync(cancellationToken);
+
+            return sports.Select(MapToResponse).ToList();
+        }
+
         public async Task<SportResponseDto> GetActiveSportByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             var sport = await _context.Sports

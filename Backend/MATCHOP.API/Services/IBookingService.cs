@@ -22,4 +22,5 @@ public interface IBookingService
     Task<BookingResponseDto> CancelBookingAsync(Guid id, CancelBookingDto dto, CancellationToken cancellationToken = default);
     Task<BookingResponseDto> ConfirmBookingAsync(Guid id, CancellationToken cancellationToken = default);
     Task<BookingResponseDto> CompleteBookingAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<BookingReportDto> GetBookingsReportAsync(DateTime? fromDate, DateTime? toDate, CancellationToken cancellationToken = default);
 }

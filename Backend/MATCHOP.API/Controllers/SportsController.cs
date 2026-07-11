@@ -59,5 +59,14 @@ namespace MATCHOP.API.Controllers
 
             return Ok(ApiResponse<object>.Ok("Xóa môn thể thao thành công."));
         }
+
+        /// <summary>GET /api/admin/sports — Admin get all sports (including inactive)</summary>
+        [Authorize(Roles = "ADMIN")]
+        [HttpGet("admin/sports")]
+        public async Task<IActionResult> GetAllSports(CancellationToken cancellationToken = default)
+        {
+            var result = await _sportService.GetAllSportsAsync(cancellationToken);
+            return Ok(ApiResponse<List<SportResponseDto>>.Ok(result));
+        }
     }
 }

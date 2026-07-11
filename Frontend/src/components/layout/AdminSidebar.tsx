@@ -17,6 +17,7 @@ import {
   Settings,
   Zap,
   X,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -31,6 +32,7 @@ const navItems = [
   { href: "/admin/courts", icon: PlayCircle, label: "Sân" },
   { href: "/admin/bookings", icon: Calendar, label: "Lịch đặt" },
   { href: "/admin/matches", icon: Users2, label: "Trận đấu" },
+  { href: "/admin/membership", icon: CreditCard, label: "Membership" },
   { href: "/admin/sports", icon: Dumbbell, label: "Môn thể thao" },
   { href: "/admin/analytics", icon: TrendingUp, label: "Phân tích" },
   { href: "/admin/settings", icon: Settings, label: "Cài đặt" },

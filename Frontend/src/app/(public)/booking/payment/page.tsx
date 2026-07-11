@@ -214,7 +214,7 @@ export default function PaymentPage() {
 
     try {
       // 1. Create the real booking in Backend
-      const createRes = await apiFetch<ApiResponse<{ id: string }>>("/bookings", {
+      const createRes = await apiFetch<ApiResponse<{ id: string }>>("/api/bookings", {
         method: "POST",
         token,
         body: JSON.stringify({
@@ -234,14 +234,16 @@ export default function PaymentPage() {
 
       // 2. Tích hợp thanh toán VNPay thực tế nếu chọn VNPay
       if (selectedMethod === "VNPAY") {
-        const payRes = await apiFetch<ApiResponse<{ paymentUrl: string }>>(`/my/bookings/${bookingId}/pay/vnpay`, {
+        const payRes = await apiFetch<ApiResponse<any>>(`/api/my/bookings/${bookingId}/pay/vnpay`, {
           method: "POST",
           token,
         });
 
-        if (payRes.success && payRes.data?.paymentUrl) {
+        if (payRes.success && payRes.data?.data?.paymentUrl) {
           // Redirect user sang cổng thanh toán VNPay
-          window.location.href = payRes.data.paymentUrl;
+          // Store booking ID for callback page to fetch status
+          sessionStorage.setItem("MATCHOP_LAST_BOOKING_ID", bookingId);
+          window.location.href = payRes.data?.data?.PaymentUrl;
           return;
         } else {
           throw new Error(payRes.message || "Không thể khởi tạo thanh toán VNPay.");
@@ -249,7 +251,7 @@ export default function PaymentPage() {
       }
 
       // 3. Fallback cho các phương thức khác (Mock payment)
-      const payRes = await apiFetch<ApiResponse<any>>(`/my/bookings/${bookingId}/pay/mock`, {
+      const payRes = await apiFetch<ApiResponse<any>>(`/api/my/bookings/${bookingId}/pay/mock`, {
         method: "POST",
         token,
         body: JSON.stringify({ transactionCode: `MOCK-${Date.now()}` }),

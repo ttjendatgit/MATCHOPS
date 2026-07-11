@@ -99,6 +99,26 @@ namespace MATCHOP.API.Services
             }
         }
 
+        public async Task<MatchRoomAdminListDto> GetAllRoomsAsync(string? status, int page, int pageSize, CancellationToken cancellationToken = default)
+        {
+            var (rooms, totalCount) = await _matchRoomRepository.GetAllForAdminAsync(status, page, pageSize, cancellationToken);
+
+            var roomResponses = new List<MatchRoomResponseDto>();
+            foreach (var room in rooms)
+            {
+                roomResponses.Add(await MapToResponseAsync(room, cancellationToken));
+            }
+
+            return new MatchRoomAdminListDto
+            {
+                Rooms = roomResponses,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+            };
+        }
+
         private async Task<MatchRoomResponseDto> MapToResponseAsync(MatchRoom room, CancellationToken cancellationToken = default)
         {
             Guid? conversationId = null;

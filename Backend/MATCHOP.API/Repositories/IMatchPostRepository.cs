@@ -11,5 +11,8 @@ namespace MATCHOP.API.Repositories
         Task AddAsync(MatchPost post, CancellationToken cancellationToken = default);
         Task UpdateAsync(MatchPost post, CancellationToken cancellationToken = default);
         Task DeleteAsync(MatchPost post, CancellationToken cancellationToken = default);
+        Task<(List<MatchPost> Posts, int TotalCount)> GetAllForAdminAsync(MatchPostFilterDto filter, CancellationToken cancellationToken = default);
+        Task<int> GetTotalCountAsync(CancellationToken cancellationToken = default);
+        Task<int> GetCountByStatusAsync(string status, CancellationToken cancellationToken = default);
     }
 }

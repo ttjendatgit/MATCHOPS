@@ -653,19 +653,6 @@ public class BookingService : IBookingService
         return court;
     }
 
-    private async Task<bool> ExpireBookingIfNeededAsync(Booking booking, CancellationToken cancellationToken = default)
-    {
-        if (booking.Status != BookingStatus.PENDING_PAYMENT ||
-            booking.PaymentStatus != BookingPaymentStatus.UNPAID ||
-            booking.ExpireAt is null ||
-            booking.ExpireAt > DateTime.UtcNow)
-            return false;
-
-        MarkBookingExpired(booking);
-        await _bookingRepository.SaveChangesAsync(cancellationToken);
-        return true;
-    }
-
     private void ValidateBookingTime(DateOnly bookingDate, TimeOnly startTime, TimeOnly endTime)
     {
         if (!IsValidTimeBlock(startTime) || !IsValidTimeBlock(endTime))
@@ -766,7 +753,7 @@ public class BookingService : IBookingService
         return total;
     }
 
-    private async Task<bool> ExpireBookingIfNeededAsync(Booking booking)
+    private async Task<bool> ExpireBookingIfNeededAsync(Booking booking, CancellationToken cancellationToken = default)
     {
         if (booking.Status != BookingStatus.PENDING_PAYMENT ||
             booking.PaymentStatus != BookingPaymentStatus.UNPAID ||
@@ -775,7 +762,7 @@ public class BookingService : IBookingService
             return false;
 
         MarkBookingExpired(booking);
-        await _bookingRepository.SaveChangesAsync();
+        await _bookingRepository.SaveChangesAsync(cancellationToken);
         return true;
     }
 
@@ -921,4 +908,53 @@ public class BookingService : IBookingService
                 Status        = s.Status.ToString()
             }).ToList()
     };
+
+    public async Task<BookingReportDto> GetBookingsReportAsync(DateTime? fromDate, DateTime? toDate, CancellationToken cancellationToken = default)
+    {
+        // Expire pending bookings first
+        var pendingExpired = await _bookingRepository
+            .GetExpiredPendingBookingsAsync(DateTime.UtcNow, batchSize: 100, cancellationToken);
+        if (pendingExpired.Count > 0)
+        {
+            foreach (var b in pendingExpired)
+                MarkBookingExpired(b);
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
+        }
+
+        var query = _context.Bookings
+            .Include(b => b.Court).ThenInclude(c => c!.Venue)
+            .Include(b => b.Court).ThenInclude(c => c!.Sport)
+            .Include(b => b.User)
+            .AsQueryable();
+
+        if (fromDate.HasValue)
+            query = query.Where(b => b.BookingDate >= DateOnly.FromDateTime(fromDate.Value));
+        if (toDate.HasValue)
+            query = query.Where(b => b.BookingDate <= DateOnly.FromDateTime(toDate.Value));
+
+        var bookings = await query.ToListAsync(cancellationToken);
+
+        var completedRevenue = bookings
+            .Where(b => b.Status == BookingStatus.COMPLETED)
+            .Sum(b => b.TotalPrice);
+
+        var totalRevenue = bookings
+            .Where(b => b.Status is BookingStatus.COMPLETED or BookingStatus.CONFIRMED)
+            .Sum(b => b.TotalPrice);
+
+        return new BookingReportDto
+        {
+            GeneratedAt = DateTime.UtcNow.AddHours(7),
+            FromDate = fromDate,
+            ToDate = toDate,
+            TotalBookings = bookings.Count,
+            CompletedBookings = bookings.Count(b => b.Status == BookingStatus.COMPLETED),
+            ConfirmedBookings = bookings.Count(b => b.Status == BookingStatus.CONFIRMED),
+            CancelledBookings = bookings.Count(b => b.Status is BookingStatus.CANCELLED_BY_USER or BookingStatus.CANCELLED_BY_OWNER or BookingStatus.CANCELLED_BY_ADMIN),
+            PendingBookings = bookings.Count(b => b.Status == BookingStatus.PENDING_PAYMENT),
+            TotalRevenue = totalRevenue,
+            CompletedRevenue = completedRevenue,
+            Bookings = bookings.Select(MapToResponse).ToList()
+        };
+    }
 }

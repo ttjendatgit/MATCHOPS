@@ -3,6 +3,7 @@ using MATCHOP.API.Entities;
 using MATCHOP.API.Enums;
 using MATCHOP.API.Helpers;
 using MATCHOP.API.Repositories;
+using MATCHOP.API.Services.Interfaces;
 
 namespace MATCHOP.API.Services
 {
@@ -10,15 +11,23 @@ namespace MATCHOP.API.Services
     {
         private readonly IMatchPostRepository _matchPostRepository;
         private readonly IUserSkillRepository _userSkillRepository;
+        private readonly IMembershipService _membershipService;
 
-        public MatchPostService(IMatchPostRepository matchPostRepository, IUserSkillRepository userSkillRepository)
+        public MatchPostService(
+            IMatchPostRepository matchPostRepository,
+            IUserSkillRepository userSkillRepository,
+            IMembershipService membershipService)
         {
             _matchPostRepository = matchPostRepository;
             _userSkillRepository = userSkillRepository;
+            _membershipService = membershipService;
         }
 
         public async Task<MatchPostResponseDto> CreatePostAsync(Guid userId, CreateMatchPostDto dto, CancellationToken cancellationToken = default)
         {
+            // Check membership limits before creating post
+            await _membershipService.CheckMatchPostLimitAsync(userId, cancellationToken);
+
             var userSkill = await _userSkillRepository.GetAsync(userId, dto.SportId, cancellationToken);
             if (userSkill == null)
             {
@@ -93,6 +102,61 @@ namespace MATCHOP.API.Services
             if (post.CreatorId != userId) throw new AppException(ErrorCodes.ValidationError, "Bạn không có quyền xóa bài đăng này.");
 
             await _matchPostRepository.DeleteAsync(post, cancellationToken);
+        }
+
+        public async Task DeletePostAsync(Guid postId, CancellationToken cancellationToken = default)
+        {
+            var post = await _matchPostRepository.GetByIdAsync(postId, cancellationToken);
+            if (post == null) throw new AppException(ErrorCodes.ValidationError, "Không tìm thấy bài đăng.");
+
+            post.Status = MatchPostStatus.CANCELLED;
+            post.UpdatedAt = DateTime.UtcNow;
+            await _matchPostRepository.UpdateAsync(post, cancellationToken);
+        }
+
+        public async Task<MatchPostResponseDto> UpdatePostStatusAsync(Guid postId, MatchPostStatus status, CancellationToken cancellationToken = default)
+        {
+            var post = await _matchPostRepository.GetByIdAsync(postId, cancellationToken);
+            if (post == null) throw new AppException(ErrorCodes.ValidationError, "Không tìm thấy bài đăng.");
+
+            post.Status = status;
+            post.UpdatedAt = DateTime.UtcNow;
+            await _matchPostRepository.UpdateAsync(post, cancellationToken);
+            return MapToResponse(post);
+        }
+
+        public async Task<MatchPostAdminListDto> GetAllPostsAsync(MatchPostFilterDto filter, CancellationToken cancellationToken = default)
+        {
+            var (posts, totalCount) = await _matchPostRepository.GetAllForAdminAsync(filter, cancellationToken);
+
+            return new MatchPostAdminListDto
+            {
+                Posts = posts.Select(MapToResponse).ToList(),
+                TotalCount = totalCount,
+                Page = filter.Page,
+                PageSize = filter.PageSize,
+                TotalPages = (int)Math.Ceiling((double)totalCount / filter.PageSize)
+            };
+        }
+
+        public async Task<MatchStatisticsDto> GetStatisticsAsync(CancellationToken cancellationToken = default)
+        {
+            var totalPosts = await _matchPostRepository.GetTotalCountAsync(cancellationToken);
+            var openPosts = await _matchPostRepository.GetCountByStatusAsync("OPEN", cancellationToken);
+            var filledPosts = await _matchPostRepository.GetCountByStatusAsync("FILLED", cancellationToken);
+            var cancelledPosts = await _matchPostRepository.GetCountByStatusAsync("CANCELLED", cancellationToken);
+
+            return new MatchStatisticsDto
+            {
+                TotalPosts = totalPosts,
+                OpenPosts = openPosts,
+                FilledPosts = filledPosts,
+                CancelledPosts = cancelledPosts,
+                TotalRequests = 0, // TODO: Get from request repository
+                PendingRequests = 0,
+                TotalRooms = 0, // TODO: Get from room repository
+                ActiveRooms = 0
+            };
         }
 
         private static MatchPostResponseDto MapToResponse(MatchPost post)

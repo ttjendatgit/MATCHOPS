@@ -15,9 +15,12 @@ import {
   TrendingUp,
   Shield,
   Loader2,
+  Zap,
+  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
@@ -38,6 +41,21 @@ interface MembershipPlanDto {
   maxMatchPostsPerMonth?: number | null;
   maxJoinRequestsPerMonth?: number | null;
   sortOrder: number;
+  features?: string[];
+}
+
+interface MembershipUsageDto {
+  usedMatchPosts: number;
+  maxMatchPosts: number;
+  usedJoinRequests: number;
+  maxJoinRequests: number;
+  usedVenues: number;
+  maxVenues: number;
+  usedCourts: number;
+  maxCourts: number;
+  daysRemaining: number;
+  periodStart: string;
+  periodEnd: string;
 }
 
 interface MySubscriptionDto {
@@ -48,6 +66,7 @@ interface MySubscriptionDto {
   cancelledAt?: string | null;
   isFallbackFreePlan: boolean;
   plan: MembershipPlanDto;
+  usage?: MembershipUsageDto | null;
 }
 
 interface ApiResponse<T> {
@@ -161,11 +180,13 @@ function PageSkeleton() {
 
 export default function MySubscriptionPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [subData,  setSubData]  = useState<MySubscriptionDto | null>(null);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState<string | null>(null);
   const [isAdmin,  setIsAdmin]  = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<"success" | "failed" | null>(null);
 
   const load = useCallback(async () => {
     const token = getStoredToken();
@@ -200,7 +221,32 @@ export default function MySubscriptionPage() {
     }
   }, [router]);
 
-  useEffect(() => { load(); }, [load]);
+  // Handle payment return from VNPay and initial load
+  useEffect(() => {
+    // Handle payment return
+    const payment = searchParams.get("payment");
+    const errorMsg = searchParams.get("error");
+
+    if (payment === "success") {
+      setPaymentStatus("success");
+      toast.success("Thanh toán thành công! Gói của bạn đã được kích hoạt.");
+    } else if (payment === "failed") {
+      setPaymentStatus("failed");
+      if (errorMsg) {
+        toast.error(`Thanh toán thất bại: ${decodeURIComponent(errorMsg)}`);
+      } else {
+        toast.error("Thanh toán thất bại. Vui lòng thử lại.");
+      }
+    }
+
+    // Clean up URL params
+    if (payment) {
+      window.history.replaceState({}, "", "/account/subscription");
+    }
+
+    // Load subscription data
+    load();
+  }, [searchParams, load]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -499,6 +545,57 @@ export default function MySubscriptionPage() {
           </div>
         )}
 
+        {/* ── Usage Statistics ── */}
+        {plan && subData?.usage && (
+          <div className="rounded-2xl border border-[rgba(255,128,0,0.25)] bg-[#0A0A0A] p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-[11px] font-bold uppercase tracking-widest text-[#C4C7C9]/45">
+                Sử dụng trong tháng này
+              </h2>
+              <span className="text-xs text-[#FF8000]">
+                <Clock className="mr-1 inline h-3 w-3" />
+                {subData.usage.daysRemaining} ngày còn lại
+              </span>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {isOwner ? (
+                // OWNER usage
+                <>
+                  <UsageBar
+                    label="Cụm sân"
+                    used={subData.usage.usedVenues}
+                    max={subData.usage.maxVenues}
+                    icon={Building2}
+                  />
+                  <UsageBar
+                    label="Sân"
+                    used={subData.usage.usedCourts}
+                    max={subData.usage.maxCourts}
+                    icon={BarChart3}
+                  />
+                </>
+              ) : (
+                // USER usage
+                <>
+                  <UsageBar
+                    label="Bài ghép đối"
+                    used={subData.usage.usedMatchPosts}
+                    max={subData.usage.maxMatchPosts}
+                    icon={Users}
+                  />
+                  <UsageBar
+                    label="Yêu cầu tham gia"
+                    used={subData.usage.usedJoinRequests}
+                    max={subData.usage.maxJoinRequests}
+                    icon={Zap}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ── CTAs ── */}
         <div className="flex flex-col gap-3 sm:flex-row">
           {/* Primary */}
@@ -555,6 +652,52 @@ function DateField({
       <p className={cn("text-sm font-semibold", danger ? "text-red-400" : "text-white")}>
         {value}
       </p>
+    </div>
+  );
+}
+
+function UsageBar({
+  label,
+  used,
+  max,
+  icon: Icon,
+}: {
+  label: string;
+  used: number;
+  max: number;
+  icon: React.ElementType;
+}) {
+  const isUnlimited = max === Number.MAX_SAFE_INTEGER || max === 0;
+  const percentage = isUnlimited ? 0 : Math.min((used / max) * 100, 100);
+  const isNearLimit = percentage >= 80;
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Icon className="h-4 w-4 text-[#FF8000]" aria-hidden />
+          <span className="text-sm font-medium text-[#C4C7C9]">{label}</span>
+        </div>
+        <span className={cn(
+          "text-sm font-semibold tabular-nums",
+          isNearLimit ? "text-amber-400" : "text-white"
+        )}>
+          {used}{!isUnlimited && `/${max}`}
+        </span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-[#141414]">
+        {isUnlimited ? (
+          <div className="h-full w-full bg-gradient-to-r from-[#86D232] to-[#86D232]/50" />
+        ) : (
+          <div
+            className={cn(
+              "h-full rounded-full transition-all duration-500",
+              isNearLimit ? "bg-amber-500" : "bg-[#FF8000]"
+            )}
+            style={{ width: `${percentage}%` }}
+          />
+        )}
+      </div>
     </div>
   );
 }

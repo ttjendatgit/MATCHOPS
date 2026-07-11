@@ -1,4 +1,5 @@
 using MATCHOP.API.Entities;
+using MATCHOP.API.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace MATCHOP.API.Repositories
@@ -82,6 +83,30 @@ namespace MATCHOP.API.Repositories
         {
             return await _context.MatchRoomPlayers
                 .FirstOrDefaultAsync(p => p.RoomId == roomId && p.UserId == userId, cancellationToken);
+        }
+
+        public async Task<(List<MatchRoom> Rooms, int TotalCount)> GetAllForAdminAsync(
+            string? status, int page, int pageSize, CancellationToken cancellationToken = default)
+        {
+            var query = _context.MatchRooms
+                .Include(r => r.Sport)
+                .Include(r => r.MatchPost).ThenInclude(p => p!.Creator)
+                .Include(r => r.MatchPost).ThenInclude(p => p!.Sport)
+                .Include(r => r.Players).ThenInclude(p => p.User)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(status) && Enum.TryParse<MatchRoomStatus>(status, true, out var statusEnum))
+                query = query.Where(r => r.Status == statusEnum);
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            var rooms = await query
+                .OrderByDescending(r => r.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return (rooms, totalCount);
         }
     }
 }

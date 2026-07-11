@@ -12,6 +12,7 @@ namespace MATCHOP.API.Repositories
         Task UpdateAsync(MatchRequest request, CancellationToken cancellationToken = default);
         Task AcceptWithPostUpdateAsync(MatchRequest request, MatchPost post, CancellationToken cancellationToken = default);
         Task<bool> ExistsAsync(Guid postId, Guid senderUserId, CancellationToken cancellationToken = default);
+        Task<(List<MatchRequest> Requests, int TotalCount)> GetAllForAdminAsync(Guid? postId, string? status, int page, int pageSize, CancellationToken cancellationToken = default);
     }
 
     public class MatchRequestRepository : IMatchRequestRepository
@@ -80,6 +81,32 @@ namespace MATCHOP.API.Repositories
             return await _context.MatchRequests
                 .AnyAsync(r => r.PostId == postId && r.SenderUserId == senderUserId
                     && (r.Status == MatchRequestStatus.PENDING || r.Status == MatchRequestStatus.ACCEPTED), cancellationToken);
+        }
+
+        public async Task<(List<MatchRequest> Requests, int TotalCount)> GetAllForAdminAsync(
+            Guid? postId, string? status, int page, int pageSize, CancellationToken cancellationToken = default)
+        {
+            var query = _context.MatchRequests
+                .Include(r => r.Post).ThenInclude(p => p!.Sport)
+                .Include(r => r.SenderUser)
+                .Include(r => r.ReceiverUser)
+                .AsQueryable();
+
+            if (postId.HasValue)
+                query = query.Where(r => r.PostId == postId.Value);
+
+            if (!string.IsNullOrEmpty(status) && Enum.TryParse<MatchRequestStatus>(status, true, out var statusEnum))
+                query = query.Where(r => r.Status == statusEnum);
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            var requests = await query
+                .OrderByDescending(r => r.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return (requests, totalCount);
         }
     }
 }

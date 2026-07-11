@@ -12,20 +12,34 @@ function VNPayCallbackContent() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("Đang xác thực giao dịch...");
+  const [bookingData, setBookingData] = useState<any>(null);
 
   useEffect(() => {
     const verifyPayment = async () => {
       try {
         const queryString = searchParams.toString();
-        const res = await apiFetch<ApiResponse<any>>(`/payments/vnpay/return?${queryString}`);
+        const res = await apiFetch<ApiResponse<any>>(`/api/payments/vnpay/return?${queryString}`);
 
-        if (res.success) {
+        if (res.success && res.data?.data?.Success) {
           setStatus("success");
           setMessage("Thanh toán thành công!");
           sessionStorage.removeItem("MATCHOP_BOOKING_DRAFT");
+
+          // Refresh booking status from backend
+          const bookingId = sessionStorage.getItem("MATCHOP_LAST_BOOKING_ID");
+          if (bookingId) {
+            try {
+              const bookingRes = await apiFetch<ApiResponse<any>>(`/api/my/bookings/${bookingId}`);
+              if (bookingRes.success && bookingRes.data?.data) {
+                setBookingData(bookingRes.data.data);
+              }
+            } catch {
+              // Ignore booking fetch error, we already have success status
+            }
+          }
         } else {
           setStatus("error");
-          setMessage(res.message || "Giao dịch không thành công hoặc đã bị hủy.");
+          setMessage(res.data?.data?.Message || res.message || "Giao dịch không thành công hoặc đã bị hủy.");
         }
       } catch {
         setStatus("error");
