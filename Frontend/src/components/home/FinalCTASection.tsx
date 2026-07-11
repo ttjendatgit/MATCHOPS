@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Search, ArrowRight, CheckCircle2, Zap, Shield } from "lucide-react";
+import { Search, CheckCircle2, Zap, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const trustBadges = [
@@ -98,19 +98,6 @@ export function FinalCTASection() {
             <Link href="/venues">
               <Search className="h-5 w-5" aria-hidden="true" />
               Tìm sân ngay
-            </Link>
-          </Button>
-
-          {/* Secondary — emerald-tinted on hover */}
-          <Button
-            size="lg"
-            variant="outline"
-            className="gap-2 rounded-xl px-8 py-6 text-base font-semibold bg-[#030303]/70 border border-white/15 text-white shadow-lg backdrop-blur-md transition-all duration-200 hover:bg-[#FF8000]/12 hover:border-[#FF8000]/45 hover:text-white hover:shadow-[#FF8000]/20 focus-visible:ring-2 focus-visible:ring-[#FF8000]/60"
-            asChild
-          >
-            <Link href="/register">
-              Đăng ký làm chủ sân
-              <ArrowRight className="h-5 w-5" aria-hidden="true" />
             </Link>
           </Button>
         </div>

@@ -150,7 +150,12 @@ export function Hero({ sports, districts, venue }: HeroProps) {
         <div className="motion-safe:animate-fade-up">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/55">
             Đặt sân <span className="text-[#FF8000]">·</span> Ghép trận{" "}
-            <span className="text-[#FF8000]">·</span> Book coach
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+              <span className="text-[#FF8000]">·</span> Book coach
+              <span className="inline-flex items-center rounded-full border border-white/15 bg-white/[0.07] px-2 py-0.5 text-[10px] font-bold tracking-wide text-white/55">
+                Sắp ra mắt
+              </span>
+            </span>
           </p>
 
           <p className="mt-4 text-sm font-bold uppercase tracking-[0.32em] text-[#FF8000]">

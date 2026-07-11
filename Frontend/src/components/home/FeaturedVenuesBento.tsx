@@ -9,7 +9,6 @@ import {
   Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -149,16 +148,12 @@ function HeroVenueCard() {
             </span>
             <span className="ml-1 text-sm text-slate-400">/ giờ</span>
           </div>
-          <Button
-            size="sm"
-            className="gap-1.5 rounded-xl bg-[#FF8000] text-xs font-bold text-white shadow-lg shadow-[#FF8000]/40 transition-all duration-200 hover:bg-[#FF8000]/85 hover:shadow-[#FF8000]/60"
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#FF8000]/15 text-[#FF8000] ring-1 ring-[#FF8000]/30 transition-all duration-200 group-hover:bg-[#FF8000]/25 group-hover:ring-[#FF8000]/50"
+            aria-hidden="true"
           >
-            Đặt ngay
-            <ArrowRight
-              className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5"
-              aria-hidden="true"
-            />
-          </Button>
+            <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+          </span>
         </div>
       </div>
     </Link>
@@ -218,14 +213,12 @@ function WideVenueCard() {
             </span>
             <span className="ml-1 text-xs text-slate-400">/ giờ</span>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1 rounded-xl border-amber-500/25 text-xs font-semibold text-amber-300 transition-all duration-200 hover:border-amber-500/50 hover:bg-amber-500/10 hover:text-amber-200"
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-amber-500/25 text-amber-300 transition-all duration-200 group-hover:border-amber-500/50 group-hover:bg-amber-500/10 group-hover:text-amber-200"
+            aria-hidden="true"
           >
-            Đặt ngay
-            <ArrowRight className="h-3 w-3" aria-hidden="true" />
-          </Button>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </span>
         </div>
       </div>
     </Link>
