@@ -23,6 +23,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<UserSkill> UserSkills => Set<UserSkill>();
+    public DbSet<CoachProfile> CoachProfiles => Set<CoachProfile>();
+    public DbSet<CoachSport> CoachSports => Set<CoachSport>();
     public DbSet<MatchPost> MatchPosts => Set<MatchPost>();
     public DbSet<MatchQueue> MatchQueues => Set<MatchQueue>();
     public DbSet<MatchRoom> MatchRooms => Set<MatchRoom>();
@@ -575,6 +577,91 @@ public class ApplicationDbContext : DbContext
 
             e.HasIndex(x => x.Level)
              .HasDatabaseName("ix_user_skills_level");
+        });
+
+        // ── CoachProfile ──────────────────────────────────────────────
+        // 1:1 optional extension of User — same shape as UserSubscription
+        // (unique FK, Cascade on User delete since no other entity
+        // references CoachProfile yet). Sport is intentionally left
+        // untouched by any cascade below.
+        modelBuilder.Entity<CoachProfile>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.DisplayName)
+             .HasMaxLength(200);
+
+            e.Property(x => x.Bio)
+             .HasMaxLength(2000);
+
+            e.Property(x => x.HourlyRate)
+             .HasPrecision(18, 2);
+
+            e.Property(x => x.City)
+             .IsRequired()
+             .HasMaxLength(100);
+
+            e.Property(x => x.District)
+             .IsRequired()
+             .HasMaxLength(100);
+
+            e.Property(x => x.Status)
+             .HasConversion<int>();
+
+            e.Property(x => x.RejectionReason)
+             .HasMaxLength(500);
+
+            e.HasOne(x => x.User)
+             .WithMany()
+             .HasForeignKey(x => x.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            // One coach profile per user
+            e.HasIndex(x => x.UserId)
+             .IsUnique()
+             .HasDatabaseName("ux_coach_profiles_user_id");
+
+            e.HasIndex(x => x.Status)
+             .HasDatabaseName("ix_coach_profiles_status");
+
+            e.HasIndex(x => new { x.City, x.District })
+             .HasDatabaseName("ix_coach_profiles_location");
+        });
+
+        // ── CoachSport ────────────────────────────────────────────────
+        modelBuilder.Entity<CoachSport>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.CreatedAt)
+             .HasDefaultValueSql("NOW()");
+
+            e.HasOne(x => x.CoachProfile)
+             .WithMany(cp => cp.CoachSports)
+             .HasForeignKey(x => x.CoachProfileId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            // Restrict, not Cascade — Sport is shared reference data
+            // (also used by Courts/Bookings/UserSkills); deleting a coach
+            // profile must never be able to delete a Sport record.
+            e.HasOne(x => x.Sport)
+             .WithMany()
+             .HasForeignKey(x => x.SportId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            // 1 coach can only tag a given sport once
+            e.HasIndex(x => new { x.CoachProfileId, x.SportId })
+             .IsUnique()
+             .HasDatabaseName("ux_coach_sports_profile_sport");
+
+            e.HasIndex(x => x.SportId)
+             .HasDatabaseName("ix_coach_sports_sport_id");
         });
 
         // ── MatchPost ─────────────────────────────────────────────────

@@ -163,6 +163,14 @@ public enum NotificationType
     PAYMENT_SUCCESS = 6
 }
 
+public enum CoachProfileStatus
+{
+    PENDING_APPROVAL = 1,
+    ACTIVE = 2,
+    REJECTED = 3,
+    SUSPENDED = 4
+}
+
 public enum MembershipTier
 {
     FREE     = 1,
