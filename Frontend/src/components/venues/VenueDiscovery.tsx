@@ -45,6 +45,15 @@ export interface VenueDiscoveryProps {
   venues: VenueDisplayData[];
   allSports: string[];
   allDistricts: string[];
+  /** Pre-validated against allSports/allDistricts by the server — "" means no match/none given. */
+  initialSport?: string;
+  initialDistrict?: string;
+  /**
+   * Raw value from the homepage's ?datetime= param. There is no real
+   * availability data to filter venues by time yet, so this is only
+   * preserved (kept in the URL) — never used to filter results.
+   */
+  initialDatetime?: string;
 }
 
 type PriceFilter = "ALL" | "UNDER_100K" | "100K_TO_200K" | "OVER_200K";
@@ -375,20 +384,63 @@ function FilterSelect({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function VenueDiscovery({ venues, allSports, allDistricts }: VenueDiscoveryProps) {
+export function VenueDiscovery({
+  venues,
+  allSports,
+  allDistricts,
+  initialSport,
+  initialDistrict,
+  initialDatetime,
+}: VenueDiscoveryProps) {
   const [searchRaw, setSearchRaw]       = useState("");
   const [searchQ, setSearchQ]           = useState("");
-  const [sportFilter, setSportFilter]   = useState<string>("ALL");
-  const [districtFilter, setDistrict]   = useState<string>("ALL");
+  const [sportFilter, setSportFilter]   = useState<string>(initialSport || "ALL");
+  const [districtFilter, setDistrict]   = useState<string>(initialDistrict || "ALL");
   const [priceFilter, setPriceFilter]   = useState<PriceFilter>("ALL");
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>("ALL");
   const [openNowOnly, setOpenNowOnly]   = useState(false);
+  // Carried over from the homepage search so it isn't silently dropped from
+  // the URL — not filtered on, no real per-time availability data exists.
+  const [datetime, setDatetime]         = useState(initialDatetime || "");
 
   // Debounce search
   useEffect(() => {
     const t = setTimeout(() => setSearchQ(searchRaw.trim()), 280);
     return () => clearTimeout(t);
   }, [searchRaw]);
+
+  // The route stays "/venues" across a searchParams-only navigation (Hero
+  // search again, a different SportsSection chip, or browser Back/Forward
+  // between two ?sport= states), so this component isn't remounted and the
+  // useState initializers above won't re-run on their own — re-sync local
+  // state whenever the server sends fresh initial* props.
+  useEffect(() => {
+    setSportFilter(initialSport || "ALL");
+  }, [initialSport]);
+
+  useEffect(() => {
+    setDistrict(initialDistrict || "ALL");
+  }, [initialDistrict]);
+
+  useEffect(() => {
+    setDatetime(initialDatetime || "");
+  }, [initialDatetime]);
+
+  // Keep the URL shareable/refreshable as filters change, without forcing a
+  // server round-trip on every click — filtering already happens entirely
+  // client-side below, so a Next.js router navigation here would just
+  // re-fetch the same venue list for no reason.
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    if (sportFilter !== "ALL") qs.set("sport", sportFilter);
+    if (districtFilter !== "ALL") qs.set("district", districtFilter);
+    if (datetime) qs.set("datetime", datetime);
+    const query = qs.toString();
+    const url = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+    if (url !== `${window.location.pathname}${window.location.search}`) {
+      window.history.replaceState(null, "", url);
+    }
+  }, [sportFilter, districtFilter, datetime]);
 
   const resetFilters = useCallback(() => {
     setSearchRaw("");
@@ -398,6 +450,7 @@ export function VenueDiscovery({ venues, allSports, allDistricts }: VenueDiscove
     setPriceFilter("ALL");
     setRatingFilter("ALL");
     setOpenNowOnly(false);
+    setDatetime("");
   }, []);
 
   const hasFilter =

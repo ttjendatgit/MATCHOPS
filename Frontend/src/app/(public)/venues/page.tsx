@@ -9,6 +9,34 @@ export const metadata: Metadata = {
   title: "Tìm sân thể thao – MatchOps",
 };
 
+interface VenuesPageProps {
+  // Contract emitted by the homepage: Hero search (sport, district, datetime)
+  // and SportsSection sport cards (sport). Kept backwards compatible — do not
+  // rename without updating both emitters.
+  searchParams: Promise<{
+    sport?: string;
+    district?: string;
+    datetime?: string;
+  }>;
+}
+
+// Case/whitespace-insensitive match against the real, available option list.
+// Falls back to "no filter" rather than crashing or showing a broken
+// selected state when the URL carries a value that doesn't exist in the data.
+//
+// Vietnamese diacritics can round-trip through a URL as either NFC (composed,
+// what a person normally types) or NFD (decomposed, what this backend's data
+// happens to use) — visually identical but byte-different strings that a
+// plain toLowerCase() comparison would treat as a mismatch. Normalizing both
+// sides to NFC before comparing makes the match robust to that either way.
+function matchOption(value: string | undefined, options: string[]): string {
+  if (!value) return "";
+  const trimmed = value.trim().normalize("NFC");
+  if (!trimmed) return "";
+  const found = options.find((o) => o.normalize("NFC").toLowerCase() === trimmed.toLowerCase());
+  return found ?? "";
+}
+
 interface ApiWrapper<T> {
   success: boolean;
   message: string;
@@ -99,7 +127,9 @@ async function fetchVenueEnrichment(venueId: string): Promise<{
   }
 }
 
-export default async function VenuesPage() {
+export default async function VenuesPage({ searchParams }: VenuesPageProps) {
+  const params = await searchParams;
+
   let venues: VenueDisplayData[] = [];
   let fetchError: string | null = null;
 
@@ -153,11 +183,21 @@ export default async function VenuesPage() {
     ...new Set(venues.map((v) => v.district).filter((d) => d.length > 0)),
   ].sort();
 
+  const initialSport = matchOption(params.sport, allSports);
+  const initialDistrict = matchOption(params.district, allDistricts);
+  // No real availability data exists to filter by yet — the raw value is
+  // only preserved (not validated against anything) so it survives in the
+  // URL rather than being silently dropped. See VenueDiscovery.
+  const initialDatetime = params.datetime?.trim() || "";
+
   return (
     <VenueDiscovery
       venues={venues}
       allSports={allSports}
       allDistricts={allDistricts}
+      initialSport={initialSport}
+      initialDistrict={initialDistrict}
+      initialDatetime={initialDatetime}
     />
   );
 }
