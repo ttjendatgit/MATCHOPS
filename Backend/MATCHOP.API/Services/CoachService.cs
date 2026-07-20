@@ -182,6 +182,184 @@ public class CoachService : ICoachService
         return profile;
     }
 
+    // ── Admin ─────────────────────────────────────────────────────────────────
+
+    public async Task<AdminCoachProfileListResponseDto> GetCoachProfilesForAdminAsync(
+        CoachProfileStatus? status,
+        string? city,
+        string? district,
+        Guid? sportId,
+        string? search,
+        int page,
+        int pageSize)
+    {
+        page = page < 1 ? 1 : page;
+        pageSize = pageSize < 1 ? 20 : Math.Min(pageSize, 100);
+
+        var query = _context.CoachProfiles
+            .Include(x => x.User)
+            .Include(x => x.CoachSports)
+            .ThenInclude(x => x.Sport)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (status.HasValue)
+        {
+            query = query.Where(x => x.Status == status.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(city))
+        {
+            var cityValue = city.Trim().ToLower();
+            query = query.Where(x => x.City.ToLower() == cityValue);
+        }
+
+        if (!string.IsNullOrWhiteSpace(district))
+        {
+            var districtValue = district.Trim().ToLower();
+            query = query.Where(x => x.District.ToLower() == districtValue);
+        }
+
+        if (sportId.HasValue)
+        {
+            query = query.Where(x => x.CoachSports.Any(cs => cs.SportId == sportId.Value));
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var keyword = search.Trim().ToLower();
+            query = query.Where(x =>
+                (x.DisplayName != null && x.DisplayName.ToLower().Contains(keyword)) ||
+                x.User.FullName.ToLower().Contains(keyword) ||
+                x.User.Email.ToLower().Contains(keyword));
+        }
+
+        query = query.OrderByDescending(x => x.CreatedAt);
+
+        var totalCount = await query.CountAsync();
+
+        var profiles = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new AdminCoachProfileListResponseDto
+        {
+            Items = profiles.Select(MapToAdminListItem).ToList(),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
+    public async Task<AdminCoachProfileDetailDto> GetCoachProfileForAdminAsync(Guid id)
+    {
+        var profile = await GetProfileForAdminOrThrowAsync(id, tracking: false);
+        return MapToAdminDetail(profile);
+    }
+
+    public async Task<AdminCoachProfileDetailDto> ApproveCoachProfileAsync(Guid id)
+    {
+        var profile = await GetProfileForAdminOrThrowAsync(id, tracking: true);
+
+        if (profile.Status == CoachProfileStatus.SUSPENDED)
+        {
+            throw new AppException(
+                ErrorCodes.ValidationError,
+                "Hồ sơ đang bị tạm khóa. Vui lòng dùng chức năng kích hoạt lại (reactivate) thay vì duyệt.");
+        }
+
+        if (profile.Status == CoachProfileStatus.ACTIVE)
+        {
+            throw new AppException(
+                ErrorCodes.ValidationError,
+                "Hồ sơ đã được duyệt trước đó.");
+        }
+
+        profile.Status = CoachProfileStatus.ACTIVE;
+        profile.RejectionReason = null;
+        profile.ApprovedAt = DateTime.UtcNow;
+        profile.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return await GetCoachProfileForAdminAsync(id);
+    }
+
+    public async Task<AdminCoachProfileDetailDto> RejectCoachProfileAsync(Guid id, RejectCoachProfileRequestDto dto)
+    {
+        var profile = await GetProfileForAdminOrThrowAsync(id, tracking: true);
+
+        profile.Status = CoachProfileStatus.REJECTED;
+        profile.RejectionReason = dto.RejectionReason.Trim();
+        profile.ApprovedAt = null;
+        profile.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return await GetCoachProfileForAdminAsync(id);
+    }
+
+    public async Task<AdminCoachProfileDetailDto> SuspendCoachProfileAsync(Guid id, SuspendCoachProfileRequestDto dto)
+    {
+        var profile = await GetProfileForAdminOrThrowAsync(id, tracking: true);
+
+        profile.Status = CoachProfileStatus.SUSPENDED;
+        profile.RejectionReason = string.IsNullOrWhiteSpace(dto.Reason) ? null : dto.Reason.Trim();
+        profile.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return await GetCoachProfileForAdminAsync(id);
+    }
+
+    public async Task<AdminCoachProfileDetailDto> ReactivateCoachProfileAsync(Guid id)
+    {
+        var profile = await GetProfileForAdminOrThrowAsync(id, tracking: true);
+
+        if (profile.Status != CoachProfileStatus.SUSPENDED)
+        {
+            throw new AppException(
+                ErrorCodes.ValidationError,
+                "Chỉ có thể kích hoạt lại hồ sơ đang bị tạm khóa.");
+        }
+
+        profile.Status = CoachProfileStatus.ACTIVE;
+        profile.RejectionReason = null;
+        profile.ApprovedAt ??= DateTime.UtcNow;
+        profile.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return await GetCoachProfileForAdminAsync(id);
+    }
+
+    private async Task<CoachProfile> GetProfileForAdminOrThrowAsync(Guid id, bool tracking)
+    {
+        var query = _context.CoachProfiles
+            .Include(x => x.User)
+            .Include(x => x.CoachSports)
+            .ThenInclude(x => x.Sport)
+            .AsQueryable();
+
+        if (!tracking)
+        {
+            query = query.AsNoTracking();
+        }
+
+        var profile = await query.FirstOrDefaultAsync(x => x.Id == id);
+
+        if (profile is null)
+        {
+            throw new AppException(
+                ErrorCodes.CoachProfileNotFound,
+                "Không tìm thấy hồ sơ huấn luyện viên.",
+                StatusCodes.Status404NotFound);
+        }
+
+        return profile;
+    }
+
     private async Task EnsureSportsExistAsync(List<Guid> sportIds)
     {
         if (sportIds.Count == 0)
@@ -207,6 +385,66 @@ public class CoachService : ICoachService
         return new CoachProfileMeResponseDto
         {
             Id = profile.Id,
+            DisplayName = profile.DisplayName,
+            Bio = profile.Bio,
+            ExperienceYears = profile.ExperienceYears,
+            HourlyRate = profile.HourlyRate,
+            City = profile.City,
+            District = profile.District,
+            Status = profile.Status.ToString(),
+            RejectionReason = profile.RejectionReason,
+            ApprovedAt = profile.ApprovedAt,
+            CreatedAt = profile.CreatedAt,
+            UpdatedAt = profile.UpdatedAt,
+            Sports = profile.CoachSports.Select(cs => new CoachSportResponseDto
+            {
+                SportId = cs.SportId,
+                SportName = cs.Sport?.Name ?? "Unknown"
+            }).ToList()
+        };
+    }
+
+    private static AdminCoachProfileListItemDto MapToAdminListItem(CoachProfile profile)
+    {
+        const int bioPreviewLength = 160;
+        var bio = profile.Bio;
+        var bioPreview = bio is not null && bio.Length > bioPreviewLength
+            ? bio[..bioPreviewLength] + "…"
+            : bio;
+
+        return new AdminCoachProfileListItemDto
+        {
+            Id = profile.Id,
+            UserId = profile.UserId,
+            UserFullName = profile.User?.FullName ?? string.Empty,
+            UserEmail = profile.User?.Email ?? string.Empty,
+            DisplayName = profile.DisplayName,
+            BioPreview = bioPreview,
+            ExperienceYears = profile.ExperienceYears,
+            HourlyRate = profile.HourlyRate,
+            City = profile.City,
+            District = profile.District,
+            Status = profile.Status.ToString(),
+            RejectionReason = profile.RejectionReason,
+            ApprovedAt = profile.ApprovedAt,
+            CreatedAt = profile.CreatedAt,
+            UpdatedAt = profile.UpdatedAt,
+            Sports = profile.CoachSports.Select(cs => new CoachSportResponseDto
+            {
+                SportId = cs.SportId,
+                SportName = cs.Sport?.Name ?? "Unknown"
+            }).ToList()
+        };
+    }
+
+    private static AdminCoachProfileDetailDto MapToAdminDetail(CoachProfile profile)
+    {
+        return new AdminCoachProfileDetailDto
+        {
+            Id = profile.Id,
+            UserId = profile.UserId,
+            UserFullName = profile.User?.FullName ?? string.Empty,
+            UserEmail = profile.User?.Email ?? string.Empty,
             DisplayName = profile.DisplayName,
             Bio = profile.Bio,
             ExperienceYears = profile.ExperienceYears,
