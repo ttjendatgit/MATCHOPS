@@ -49,6 +49,9 @@
         public const string InvalidCourtStatus = "INVALID_COURT_STATUS";
         public const string InvalidCapacity = "INVALID_CAPACITY";
         public const string InvalidImageUrl = "INVALID_IMAGE_URL";
-        
+
+        public const string CoachProfileNotFound = "COACH_PROFILE_NOT_FOUND";
+        public const string CoachProfileAlreadyExists = "COACH_PROFILE_ALREADY_EXISTS";
+        public const string CoachProfileSuspended = "COACH_PROFILE_SUSPENDED";
     }
 }
