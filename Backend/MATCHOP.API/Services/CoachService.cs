@@ -360,6 +360,110 @@ public class CoachService : ICoachService
         return profile;
     }
 
+    // ── Public ────────────────────────────────────────────────────────────────
+
+    public async Task<PublicCoachListResponseDto> GetPublicCoachProfilesAsync(
+        string? city,
+        string? district,
+        Guid? sportId,
+        string? search,
+        decimal? minHourlyRate,
+        decimal? maxHourlyRate,
+        int page,
+        int pageSize)
+    {
+        if (minHourlyRate.HasValue && maxHourlyRate.HasValue && minHourlyRate.Value > maxHourlyRate.Value)
+        {
+            throw new AppException(
+                ErrorCodes.ValidationError,
+                "Giá tối thiểu không được lớn hơn giá tối đa.");
+        }
+
+        page = page < 1 ? 1 : page;
+        pageSize = pageSize < 1 ? 20 : Math.Min(pageSize, 100);
+
+        var query = _context.CoachProfiles
+            .Include(x => x.User)
+            .Include(x => x.CoachSports)
+            .ThenInclude(x => x.Sport)
+            .AsNoTracking()
+            .Where(x => x.Status == CoachProfileStatus.ACTIVE)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(city))
+        {
+            var cityValue = city.Trim().ToLower();
+            query = query.Where(x => x.City.ToLower() == cityValue);
+        }
+
+        if (!string.IsNullOrWhiteSpace(district))
+        {
+            var districtValue = district.Trim().ToLower();
+            query = query.Where(x => x.District.ToLower() == districtValue);
+        }
+
+        if (sportId.HasValue)
+        {
+            query = query.Where(x => x.CoachSports.Any(cs => cs.SportId == sportId.Value));
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var keyword = search.Trim().ToLower();
+            query = query.Where(x =>
+                (x.DisplayName != null && x.DisplayName.ToLower().Contains(keyword)) ||
+                x.User.FullName.ToLower().Contains(keyword) ||
+                (x.Bio != null && x.Bio.ToLower().Contains(keyword)));
+        }
+
+        if (minHourlyRate.HasValue)
+        {
+            query = query.Where(x => x.HourlyRate.HasValue && x.HourlyRate.Value >= minHourlyRate.Value);
+        }
+
+        if (maxHourlyRate.HasValue)
+        {
+            query = query.Where(x => x.HourlyRate.HasValue && x.HourlyRate.Value <= maxHourlyRate.Value);
+        }
+
+        query = query.OrderByDescending(x => x.ApprovedAt ?? x.CreatedAt);
+
+        var totalCount = await query.CountAsync();
+
+        var profiles = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new PublicCoachListResponseDto
+        {
+            Items = profiles.Select(MapToPublicListItem).ToList(),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
+    public async Task<PublicCoachDetailDto> GetPublicCoachProfileByIdAsync(Guid id)
+    {
+        var profile = await _context.CoachProfiles
+            .Include(x => x.User)
+            .Include(x => x.CoachSports)
+            .ThenInclude(x => x.Sport)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.Status == CoachProfileStatus.ACTIVE);
+
+        if (profile is null)
+        {
+            throw new AppException(
+                ErrorCodes.CoachProfileNotFound,
+                "Không tìm thấy huấn luyện viên.",
+                StatusCodes.Status404NotFound);
+        }
+
+        return MapToPublicDetail(profile);
+    }
+
     private async Task EnsureSportsExistAsync(List<Guid> sportIds)
     {
         if (sportIds.Count == 0)
@@ -396,22 +500,12 @@ public class CoachService : ICoachService
             ApprovedAt = profile.ApprovedAt,
             CreatedAt = profile.CreatedAt,
             UpdatedAt = profile.UpdatedAt,
-            Sports = profile.CoachSports.Select(cs => new CoachSportResponseDto
-            {
-                SportId = cs.SportId,
-                SportName = cs.Sport?.Name ?? "Unknown"
-            }).ToList()
+            Sports = MapSports(profile)
         };
     }
 
     private static AdminCoachProfileListItemDto MapToAdminListItem(CoachProfile profile)
     {
-        const int bioPreviewLength = 160;
-        var bio = profile.Bio;
-        var bioPreview = bio is not null && bio.Length > bioPreviewLength
-            ? bio[..bioPreviewLength] + "…"
-            : bio;
-
         return new AdminCoachProfileListItemDto
         {
             Id = profile.Id,
@@ -419,7 +513,7 @@ public class CoachService : ICoachService
             UserFullName = profile.User?.FullName ?? string.Empty,
             UserEmail = profile.User?.Email ?? string.Empty,
             DisplayName = profile.DisplayName,
-            BioPreview = bioPreview,
+            BioPreview = BuildBioPreview(profile.Bio),
             ExperienceYears = profile.ExperienceYears,
             HourlyRate = profile.HourlyRate,
             City = profile.City,
@@ -429,11 +523,7 @@ public class CoachService : ICoachService
             ApprovedAt = profile.ApprovedAt,
             CreatedAt = profile.CreatedAt,
             UpdatedAt = profile.UpdatedAt,
-            Sports = profile.CoachSports.Select(cs => new CoachSportResponseDto
-            {
-                SportId = cs.SportId,
-                SportName = cs.Sport?.Name ?? "Unknown"
-            }).ToList()
+            Sports = MapSports(profile)
         };
     }
 
@@ -456,11 +546,61 @@ public class CoachService : ICoachService
             ApprovedAt = profile.ApprovedAt,
             CreatedAt = profile.CreatedAt,
             UpdatedAt = profile.UpdatedAt,
-            Sports = profile.CoachSports.Select(cs => new CoachSportResponseDto
-            {
-                SportId = cs.SportId,
-                SportName = cs.Sport?.Name ?? "Unknown"
-            }).ToList()
+            Sports = MapSports(profile)
         };
+    }
+
+    private static PublicCoachListItemDto MapToPublicListItem(CoachProfile profile)
+    {
+        return new PublicCoachListItemDto
+        {
+            Id = profile.Id,
+            DisplayName = ResolvePublicDisplayName(profile),
+            BioPreview = BuildBioPreview(profile.Bio),
+            ExperienceYears = profile.ExperienceYears,
+            HourlyRate = profile.HourlyRate,
+            City = profile.City,
+            District = profile.District,
+            ApprovedAt = profile.ApprovedAt,
+            CreatedAt = profile.CreatedAt,
+            Sports = MapSports(profile)
+        };
+    }
+
+    private static PublicCoachDetailDto MapToPublicDetail(CoachProfile profile)
+    {
+        return new PublicCoachDetailDto
+        {
+            Id = profile.Id,
+            DisplayName = ResolvePublicDisplayName(profile),
+            Bio = profile.Bio,
+            ExperienceYears = profile.ExperienceYears,
+            HourlyRate = profile.HourlyRate,
+            City = profile.City,
+            District = profile.District,
+            ApprovedAt = profile.ApprovedAt,
+            CreatedAt = profile.CreatedAt,
+            Sports = MapSports(profile)
+        };
+    }
+
+    private static string ResolvePublicDisplayName(CoachProfile profile) =>
+        !string.IsNullOrWhiteSpace(profile.DisplayName) ? profile.DisplayName! : (profile.User?.FullName ?? string.Empty);
+
+    private static string? BuildBioPreview(string? bio)
+    {
+        const int bioPreviewLength = 160;
+        return bio is not null && bio.Length > bioPreviewLength
+            ? bio[..bioPreviewLength] + "…"
+            : bio;
+    }
+
+    private static List<CoachSportResponseDto> MapSports(CoachProfile profile)
+    {
+        return profile.CoachSports.Select(cs => new CoachSportResponseDto
+        {
+            SportId = cs.SportId,
+            SportName = cs.Sport?.Name ?? "Unknown"
+        }).ToList();
     }
 }

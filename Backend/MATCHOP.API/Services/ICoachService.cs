@@ -24,4 +24,17 @@ public interface ICoachService
     Task<AdminCoachProfileDetailDto> RejectCoachProfileAsync(Guid id, RejectCoachProfileRequestDto dto);
     Task<AdminCoachProfileDetailDto> SuspendCoachProfileAsync(Guid id, SuspendCoachProfileRequestDto dto);
     Task<AdminCoachProfileDetailDto> ReactivateCoachProfileAsync(Guid id);
+
+    // Public
+    Task<PublicCoachListResponseDto> GetPublicCoachProfilesAsync(
+        string? city,
+        string? district,
+        Guid? sportId,
+        string? search,
+        decimal? minHourlyRate,
+        decimal? maxHourlyRate,
+        int page,
+        int pageSize);
+
+    Task<PublicCoachDetailDto> GetPublicCoachProfileByIdAsync(Guid id);
 }
