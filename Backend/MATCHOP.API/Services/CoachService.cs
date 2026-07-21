@@ -8,11 +8,15 @@ namespace MATCHOP.API.Services;
 
 public class CoachService : ICoachService
 {
-    private readonly ApplicationDbContext _context;
+    private const int MaxProofCount = 5;
 
-    public CoachService(ApplicationDbContext context)
+    private readonly ApplicationDbContext _context;
+    private readonly ICloudinaryService _cloudinary;
+
+    public CoachService(ApplicationDbContext context, ICloudinaryService cloudinary)
     {
         _context = context;
+        _cloudinary = cloudinary;
     }
 
     public async Task<CoachProfileMeResponseDto> ApplyAsync(Guid userId, CoachApplyRequestDto dto)
@@ -42,6 +46,7 @@ public class CoachService : ICoachService
             HourlyRate = dto.HourlyRate,
             City = dto.City.Trim(),
             District = dto.District.Trim(),
+            Achievements = string.IsNullOrWhiteSpace(dto.Achievements) ? null : dto.Achievements.Trim(),
             Status = CoachProfileStatus.PENDING_APPROVAL,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -113,6 +118,11 @@ public class CoachService : ICoachService
             profile.District = dto.District.Trim();
         }
 
+        if (dto.Achievements is not null)
+        {
+            profile.Achievements = string.IsNullOrWhiteSpace(dto.Achievements) ? null : dto.Achievements.Trim();
+        }
+
         if (dto.SportIds is not null)
         {
             var requestedSportIds = dto.SportIds.Distinct().ToList();
@@ -157,11 +167,125 @@ public class CoachService : ICoachService
         return await GetMyProfileAsync(userId);
     }
 
+    public async Task<List<CoachProofResponseDto>> UploadMyCoachProofsAsync(
+        Guid userId,
+        List<IFormFile> files,
+        CoachProofType proofType)
+    {
+        var profile = await GetOwnProfileOrThrowAsync(userId, tracking: true);
+
+        if (profile.Status == CoachProfileStatus.SUSPENDED)
+        {
+            throw new AppException(
+                ErrorCodes.CoachProfileSuspended,
+                "Hồ sơ huấn luyện viên đang bị tạm khóa, không thể tải lên minh chứng.",
+                StatusCodes.Status403Forbidden);
+        }
+
+        var incomingCount = files?.Count ?? 0;
+
+        if (incomingCount == 0)
+        {
+            throw new AppException(
+                ErrorCodes.ValidationError,
+                "Vui lòng chọn ít nhất một ảnh minh chứng.");
+        }
+
+        if (profile.Proofs.Count + incomingCount > MaxProofCount)
+        {
+            throw new AppException(
+                ErrorCodes.ValidationError,
+                $"Chỉ được lưu tối đa {MaxProofCount} ảnh minh chứng cho mỗi hồ sơ.");
+        }
+
+        var uploaded = await _cloudinary.UploadImagesAsync(files, "coach-proofs", MaxProofCount);
+
+        try
+        {
+            var nextSortOrder = profile.Proofs.Count == 0
+                ? 0
+                : profile.Proofs.Max(p => p.SortOrder) + 1;
+
+            var newProofs = new List<CoachProfileProof>();
+
+            foreach (var result in uploaded)
+            {
+                newProofs.Add(new CoachProfileProof
+                {
+                    Id = Guid.NewGuid(),
+                    CoachProfileId = profile.Id,
+                    ImageUrl = result.Url,
+                    PublicId = result.PublicId,
+                    ProofType = proofType,
+                    SortOrder = nextSortOrder++,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            _context.CoachProfileProofs.AddRange(newProofs);
+
+            if (profile.Status == CoachProfileStatus.REJECTED)
+            {
+                profile.Status = CoachProfileStatus.PENDING_APPROVAL;
+                profile.RejectionReason = null;
+                profile.ApprovedAt = null;
+            }
+
+            profile.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return newProofs.Select(MapProof).ToList();
+        }
+        catch
+        {
+            await _cloudinary.DeleteImagesByPublicIdsAsync(uploaded.Select(u => u.PublicId));
+            throw;
+        }
+    }
+
+    public async Task<List<CoachProofResponseDto>> GetMyCoachProofsAsync(Guid userId)
+    {
+        var profile = await GetOwnProfileOrThrowAsync(userId, tracking: false);
+        return MapProofs(profile);
+    }
+
+    public async Task DeleteMyCoachProofAsync(Guid userId, Guid proofId)
+    {
+        var profile = await GetOwnProfileOrThrowAsync(userId, tracking: true);
+
+        if (profile.Status == CoachProfileStatus.SUSPENDED)
+        {
+            throw new AppException(
+                ErrorCodes.CoachProfileSuspended,
+                "Hồ sơ huấn luyện viên đang bị tạm khóa, không thể xoá minh chứng.",
+                StatusCodes.Status403Forbidden);
+        }
+
+        var proof = profile.Proofs.FirstOrDefault(p => p.Id == proofId);
+
+        if (proof is null)
+        {
+            throw new AppException(
+                ErrorCodes.CoachProfileNotFound,
+                "Không tìm thấy ảnh minh chứng.",
+                StatusCodes.Status404NotFound);
+        }
+
+        _context.CoachProfileProofs.Remove(proof);
+
+        await _context.SaveChangesAsync();
+
+        await _cloudinary.DeleteImageByPublicIdAsync(proof.PublicId);
+    }
+
     private async Task<CoachProfile> GetOwnProfileOrThrowAsync(Guid userId, bool tracking)
     {
         var query = _context.CoachProfiles
+            .Include(x => x.User)
             .Include(x => x.CoachSports)
             .ThenInclude(x => x.Sport)
+            .Include(x => x.Proofs)
             .AsQueryable();
 
         if (!tracking)
@@ -340,6 +464,7 @@ public class CoachService : ICoachService
             .Include(x => x.User)
             .Include(x => x.CoachSports)
             .ThenInclude(x => x.Sport)
+            .Include(x => x.Proofs)
             .AsQueryable();
 
         if (!tracking)
@@ -495,12 +620,16 @@ public class CoachService : ICoachService
             HourlyRate = profile.HourlyRate,
             City = profile.City,
             District = profile.District,
+            Achievements = profile.Achievements,
+            Email = profile.User?.Email ?? string.Empty,
+            PhoneNumber = profile.User?.PhoneNumber,
             Status = profile.Status.ToString(),
             RejectionReason = profile.RejectionReason,
             ApprovedAt = profile.ApprovedAt,
             CreatedAt = profile.CreatedAt,
             UpdatedAt = profile.UpdatedAt,
-            Sports = MapSports(profile)
+            Sports = MapSports(profile),
+            Proofs = MapProofs(profile)
         };
     }
 
@@ -535,18 +664,21 @@ public class CoachService : ICoachService
             UserId = profile.UserId,
             UserFullName = profile.User?.FullName ?? string.Empty,
             UserEmail = profile.User?.Email ?? string.Empty,
+            UserPhoneNumber = profile.User?.PhoneNumber,
             DisplayName = profile.DisplayName,
             Bio = profile.Bio,
             ExperienceYears = profile.ExperienceYears,
             HourlyRate = profile.HourlyRate,
             City = profile.City,
             District = profile.District,
+            Achievements = profile.Achievements,
             Status = profile.Status.ToString(),
             RejectionReason = profile.RejectionReason,
             ApprovedAt = profile.ApprovedAt,
             CreatedAt = profile.CreatedAt,
             UpdatedAt = profile.UpdatedAt,
-            Sports = MapSports(profile)
+            Sports = MapSports(profile),
+            Proofs = MapProofs(profile)
         };
     }
 
@@ -593,6 +725,27 @@ public class CoachService : ICoachService
         return bio is not null && bio.Length > bioPreviewLength
             ? bio[..bioPreviewLength] + "…"
             : bio;
+    }
+
+    private static List<CoachProofResponseDto> MapProofs(CoachProfile profile)
+    {
+        return profile.Proofs
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.CreatedAt)
+            .Select(MapProof)
+            .ToList();
+    }
+
+    private static CoachProofResponseDto MapProof(CoachProfileProof proof)
+    {
+        return new CoachProofResponseDto
+        {
+            Id = proof.Id,
+            ImageUrl = proof.ImageUrl,
+            ProofType = proof.ProofType.ToString(),
+            SortOrder = proof.SortOrder,
+            CreatedAt = proof.CreatedAt
+        };
     }
 
     private static List<CoachSportResponseDto> MapSports(CoachProfile profile)

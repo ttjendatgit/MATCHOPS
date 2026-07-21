@@ -17,6 +17,11 @@ public class CoachApplyRequestDtoValidator : AbstractValidator<CoachApplyRequest
             .WithMessage("Giới thiệu không được vượt quá 2000 ký tự.")
             .When(x => x.Bio is not null);
 
+        RuleFor(x => x.Achievements)
+            .MaximumLength(2000)
+            .WithMessage("Thành tích/chứng chỉ không được vượt quá 2000 ký tự.")
+            .When(x => x.Achievements is not null);
+
         RuleFor(x => x.ExperienceYears)
             .GreaterThanOrEqualTo(0)
             .WithMessage("Số năm kinh nghiệm không được nhỏ hơn 0.");
@@ -64,6 +69,11 @@ public class CoachUpdateMyProfileRequestDtoValidator : AbstractValidator<CoachUp
             .WithMessage("Giới thiệu không được vượt quá 2000 ký tự.")
             .When(x => x.Bio is not null);
 
+        RuleFor(x => x.Achievements)
+            .MaximumLength(2000)
+            .WithMessage("Thành tích/chứng chỉ không được vượt quá 2000 ký tự.")
+            .When(x => x.Achievements is not null);
+
         RuleFor(x => x.ExperienceYears)
             .GreaterThanOrEqualTo(0)
             .WithMessage("Số năm kinh nghiệm không được nhỏ hơn 0.")
@@ -100,4 +110,18 @@ public class CoachUpdateMyProfileRequestDtoValidator : AbstractValidator<CoachUp
 
     private static bool HasTrimmedLengthAtMost(string? value, int maxLength) =>
         value is not null && value.Trim().Length <= maxLength;
+}
+
+public class UploadCoachProofRequestDtoValidator : AbstractValidator<UploadCoachProofRequestDto>
+{
+    public UploadCoachProofRequestDtoValidator()
+    {
+        RuleFor(x => x.Files)
+            .NotEmpty()
+            .WithMessage("Vui lòng chọn ít nhất một ảnh minh chứng.");
+
+        RuleFor(x => x.ProofType)
+            .IsInEnum()
+            .WithMessage("Loại minh chứng không hợp lệ.");
+    }
 }

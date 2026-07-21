@@ -45,6 +45,8 @@ public class AdminCoachProfileDetailDto
 
     public string UserEmail { get; set; } = string.Empty;
 
+    public string? UserPhoneNumber { get; set; }
+
     public string? DisplayName { get; set; }
 
     public string? Bio { get; set; }
@@ -57,6 +59,8 @@ public class AdminCoachProfileDetailDto
 
     public string District { get; set; } = string.Empty;
 
+    public string? Achievements { get; set; }
+
     public string Status { get; set; } = string.Empty;
 
     public string? RejectionReason { get; set; }
@@ -68,6 +72,8 @@ public class AdminCoachProfileDetailDto
     public DateTime UpdatedAt { get; set; }
 
     public List<CoachSportResponseDto> Sports { get; set; } = new();
+
+    public List<CoachProofResponseDto> Proofs { get; set; } = new();
 }
 
 public class AdminCoachProfileListResponseDto

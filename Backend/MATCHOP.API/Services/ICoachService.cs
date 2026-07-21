@@ -9,6 +9,11 @@ public interface ICoachService
     Task<CoachProfileMeResponseDto> GetMyProfileAsync(Guid userId);
     Task<CoachProfileMeResponseDto> UpdateMyProfileAsync(Guid userId, CoachUpdateMyProfileRequestDto dto);
 
+    // Own-profile proofs
+    Task<List<CoachProofResponseDto>> UploadMyCoachProofsAsync(Guid userId, List<IFormFile> files, CoachProofType proofType);
+    Task<List<CoachProofResponseDto>> GetMyCoachProofsAsync(Guid userId);
+    Task DeleteMyCoachProofAsync(Guid userId, Guid proofId);
+
     // Admin
     Task<AdminCoachProfileListResponseDto> GetCoachProfilesForAdminAsync(
         CoachProfileStatus? status,
