@@ -13,6 +13,7 @@ public class CoachProfile
     public decimal? HourlyRate { get; set; }
     public string City { get; set; } = null!;
     public string District { get; set; } = null!;
+    public string? Achievements { get; set; }
 
     public CoachProfileStatus Status { get; set; } = CoachProfileStatus.PENDING_APPROVAL;
     public string? RejectionReason { get; set; }
@@ -24,4 +25,5 @@ public class CoachProfile
     // Navigation properties
     public User User { get; set; } = null!;
     public ICollection<CoachSport> CoachSports { get; set; } = new List<CoachSport>();
+    public ICollection<CoachProfileProof> Proofs { get; set; } = new List<CoachProfileProof>();
 }

@@ -171,6 +171,14 @@ public enum CoachProfileStatus
     SUSPENDED = 4
 }
 
+public enum CoachProofType
+{
+    CERTIFICATION = 1,
+    ACHIEVEMENT = 2,
+    TRAINING_CREDENTIAL = 3,
+    OTHER = 4
+}
+
 public enum MembershipTier
 {
     FREE     = 1,

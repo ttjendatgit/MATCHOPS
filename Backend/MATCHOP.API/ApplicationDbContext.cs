@@ -25,6 +25,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<UserSkill> UserSkills => Set<UserSkill>();
     public DbSet<CoachProfile> CoachProfiles => Set<CoachProfile>();
     public DbSet<CoachSport> CoachSports => Set<CoachSport>();
+    public DbSet<CoachProfileProof> CoachProfileProofs => Set<CoachProfileProof>();
     public DbSet<MatchPost> MatchPosts => Set<MatchPost>();
     public DbSet<MatchQueue> MatchQueues => Set<MatchQueue>();
     public DbSet<MatchRoom> MatchRooms => Set<MatchRoom>();
@@ -608,6 +609,9 @@ public class ApplicationDbContext : DbContext
              .IsRequired()
              .HasMaxLength(100);
 
+            e.Property(x => x.Achievements)
+             .HasMaxLength(2000);
+
             e.Property(x => x.Status)
              .HasConversion<int>();
 
@@ -662,6 +666,47 @@ public class ApplicationDbContext : DbContext
 
             e.HasIndex(x => x.SportId)
              .HasDatabaseName("ix_coach_sports_sport_id");
+        });
+
+        // ── CoachProfileProof ────────────────────────────────────────────
+        modelBuilder.Entity<CoachProfileProof>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.CoachProfileId)
+             .IsRequired();
+
+            e.Property(x => x.ImageUrl)
+             .IsRequired()
+             .HasMaxLength(1000);
+
+            e.Property(x => x.PublicId)
+             .IsRequired()
+             .HasMaxLength(500);
+
+            e.Property(x => x.ProofType)
+             .IsRequired()
+             .HasConversion<int>();
+
+            e.Property(x => x.SortOrder)
+             .HasDefaultValue(0);
+
+            e.Property(x => x.CreatedAt)
+             .HasDefaultValueSql("NOW()");
+
+            e.HasOne(x => x.CoachProfile)
+             .WithMany(cp => cp.Proofs)
+             .HasForeignKey(x => x.CoachProfileId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.CoachProfileId)
+             .HasDatabaseName("ix_coach_profile_proofs_coach_profile_id");
+
+            e.HasIndex(x => new { x.CoachProfileId, x.SortOrder })
+             .HasDatabaseName("ix_coach_profile_proofs_coach_profile_sort_order");
         });
 
         // ── MatchPost ─────────────────────────────────────────────────
