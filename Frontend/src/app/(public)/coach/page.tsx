@@ -193,7 +193,7 @@ function EmptyState({
           ? "Thử thay đổi bộ lọc hoặc từ khoá tìm kiếm để xem thêm kết quả."
           : "Các huấn luyện viên đã được MatchOps xác minh sẽ xuất hiện tại đây ngay khi có hồ sơ được duyệt."}
       </p>
-      {hasFilters && (
+      {hasFilters ? (
         <button
           type="button"
           onClick={onReset}
@@ -206,6 +206,22 @@ function EmptyState({
         >
           Xoá bộ lọc
         </button>
+      ) : (
+        !isError && (
+          <Link
+            href="/coach/apply"
+            className={cn(
+              "flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold",
+              "bg-[#FF8000] text-white",
+              "transition-all duration-200 hover:bg-[#FF8000]/85",
+              "hover:shadow-[0_0_20px_rgba(255,128,0,0.4)] active:scale-[0.98]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950",
+            )}
+          >
+            Trở thành huấn luyện viên đầu tiên
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          </Link>
+        )
       )}
     </div>
   );
@@ -337,11 +353,45 @@ export default function CoachPage() {
             khu vực. Bạn có thể xem hồ sơ chi tiết để tìm người phù hợp — tính năng đặt lịch
             trực tiếp với huấn luyện viên sẽ sớm được ra mắt.
           </p>
+
+          <div className="mt-7 flex flex-col gap-4 sm:flex-row sm:items-center">
+            <Link
+              href="/coach/apply"
+              className={cn(
+                "inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold",
+                "bg-[#FF8000] text-white",
+                "transition-all duration-200 hover:bg-[#FF8000]/90",
+                "hover:shadow-[0_0_24px_rgba(255,128,0,0.45)] active:scale-[0.98]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950",
+              )}
+            >
+              Đăng ký làm huấn luyện viên
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+
+            <a
+              href="#coach-list"
+              className={cn(
+                "inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.12] px-5 py-3 text-sm font-semibold text-slate-200",
+                "bg-white/[0.03] transition-all duration-200 hover:border-[#86D232]/30 hover:bg-white/[0.06] hover:text-white",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#86D232]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950",
+              )}
+            >
+              Xem danh sách huấn luyện viên
+            </a>
+          </div>
+
+          <p className="mt-3 text-xs leading-relaxed text-slate-500">
+            Hồ sơ sẽ được MatchOps xét duyệt trước khi hiển thị công khai.
+          </p>
         </div>
       </div>
 
       {/* ── Filter bar ── */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+      <div
+        id="coach-list"
+        className="mb-4 flex scroll-mt-24 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
+      >
         <div className="relative min-w-0 flex-1 sm:max-w-xs">
           <Search
             className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
