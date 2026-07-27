@@ -1,14 +1,17 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Building2, Users, Dumbbell,
-  ChevronRight, LogOut, ShieldCheck, UserCheck,
+  LogOut, UserCheck, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { BrandLogo } from "@/components/branding";
+import { clearAuthData, getStoredUser } from "@/lib/auth";
+import type { User } from "@/types/auth";
 
 const navItems = [
   { href: "/admin",          icon: LayoutDashboard, label: "Tổng quan" },
@@ -18,27 +21,69 @@ const navItems = [
   { href: "/admin/sports",   icon: Dumbbell,        label: "Môn thể thao" },
 ];
 
-export function AdminSidebar() {
+interface AdminSidebarProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+export function AdminSidebar({ open, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    setUser(getStoredUser());
+  }, []);
 
   const isActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 
+  const handleLogout = () => {
+    clearAuthData();
+    router.push("/");
+  };
+
+  const initials = (user?.fullName ?? "Admin")
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r border-slate-100 bg-white">
-      {/* Logo */}
-      <div className="flex h-16 items-center gap-2 border-b border-slate-100 px-5">
-        <Link href="/admin" aria-label="MatchOps Admin">
-          <BrandLogo size="sm" tone="dark" />
+    <aside
+      className={cn(
+        "fixed inset-y-0 left-0 z-50 flex w-64 flex-col transition-transform duration-300 ease-in-out",
+        "border-r border-[rgba(255,128,0,0.2)] bg-[#0A0A0A]",
+        "lg:translate-x-0",
+        open ? "translate-x-0" : "-translate-x-full"
+      )}
+    >
+      {/* Logo area */}
+      <div className="relative flex h-16 shrink-0 items-center gap-2.5 border-b border-[rgba(255,128,0,0.15)] px-5 overflow-hidden">
+        <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-[#86D232]/60 via-[#86D232]/30 to-transparent" />
+        <Link href="/admin" aria-label="MatchOps Admin — Tổng quan">
+          <BrandLogo size="sm" />
         </Link>
-        <span className="ml-auto rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+        <span className="ml-auto rounded-md bg-[rgba(255,128,0,0.15)] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#FF8000]">
           ADMIN
         </span>
+        <button
+          onClick={onClose}
+          aria-label="Đóng menu"
+          className="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[#C4C7C9] transition-colors hover:bg-[#141414] hover:text-white lg:hidden"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        <ul className="space-y-1">
+        <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-[#C4C7C9]/40">
+          Quản trị hệ thống
+        </p>
+        <ul className="space-y-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
@@ -46,16 +91,29 @@ export function AdminSidebar() {
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  onClick={onClose}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
                     active
-                      ? "bg-slate-900 text-white"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      ? "bg-[rgba(134,210,50,0.12)] text-white"
+                      : "text-[#C4C7C9] hover:bg-[#141414] hover:text-white"
                   )}
                 >
-                  <Icon className={cn("h-4 w-4 shrink-0", active ? "text-white" : "text-slate-400")} />
-                  {item.label}
-                  {active && <ChevronRight className="ml-auto h-3.5 w-3.5 text-white/60" />}
+                  {active && (
+                    <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-[#86D232]" />
+                  )}
+                  <Icon
+                    className={cn(
+                      "h-4 w-4 shrink-0 transition-all duration-150",
+                      active
+                        ? "text-[#86D232]"
+                        : "text-[#C4C7C9]/60 group-hover:text-[#C4C7C9] group-hover:scale-110"
+                    )}
+                  />
+                  <span className="flex-1">{item.label}</span>
+                  {active && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#86D232]" />
+                  )}
                 </Link>
               </li>
             );
@@ -63,17 +121,25 @@ export function AdminSidebar() {
         </ul>
       </nav>
 
-      {/* User */}
-      <div className="border-t border-slate-100 p-4">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-slate-900 text-white text-xs">AD</AvatarFallback>
+      {/* User footer */}
+      <div className="shrink-0 border-t border-[rgba(255,128,0,0.15)] p-4">
+        <div className="flex items-center gap-3 rounded-lg bg-[#141414] px-3 py-2.5">
+          <Avatar className="h-8 w-8 shrink-0">
+            <AvatarFallback className="bg-[rgba(134,210,50,0.2)] text-xs font-bold text-[#86D232]">
+              {initials}
+            </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-slate-900">Admin</p>
-            <p className="truncate text-xs text-slate-500">admin@matchops.vn</p>
+            <p className="truncate text-sm font-semibold text-white">
+              {user?.fullName ?? "Admin"}
+            </p>
+            <p className="truncate text-xs text-[#C4C7C9]/60">{user?.email ?? "admin@matchops.vn"}</p>
           </div>
-          <button className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+          <button
+            onClick={handleLogout}
+            title="Đăng xuất"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[#C4C7C9]/50 transition-colors hover:bg-[rgba(255,75,75,0.15)] hover:text-[#FF4B4B]"
+          >
             <LogOut className="h-4 w-4" />
           </button>
         </div>

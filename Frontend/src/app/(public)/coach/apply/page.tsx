@@ -51,6 +51,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 const MAX_PROOFS = 5;
@@ -117,6 +124,79 @@ const STATUS_META: Record<
       "Hồ sơ huấn luyện viên của bạn đang bị tạm khóa và không thể chỉnh sửa. Vui lòng liên hệ đội ngũ hỗ trợ MatchOps để biết thêm chi tiết.",
   },
 };
+
+// ─── Post-submit success dialog ─────────────────────────────────────────────
+
+const PENDING_NEXT_STEPS = [
+  "Theo dõi trạng thái hồ sơ tại trang đăng ký huấn luyện viên",
+  "Bạn có thể bổ sung thành tích hoặc ảnh minh chứng nếu cần",
+  "Khi được duyệt, hồ sơ sẽ xuất hiện trong danh sách huấn luyện viên",
+];
+
+const ACTIVE_NEXT_STEPS = [
+  "Theo dõi trạng thái hồ sơ tại trang đăng ký huấn luyện viên",
+  "Bạn có thể bổ sung thành tích hoặc ảnh minh chứng nếu cần",
+  "Hồ sơ của bạn vẫn đang hiển thị công khai trong danh sách huấn luyện viên",
+];
+
+function ApplySuccessDialog({
+  status,
+  onOpenChange,
+}: {
+  status: CoachProfileStatus | null;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const router = useRouter();
+  const isActive = status === "ACTIVE";
+
+  return (
+    <Dialog open={status !== null} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md text-center sm:text-center">
+        <DialogHeader className="items-center text-center sm:text-center">
+          <div className="mx-auto mb-1 flex h-14 w-14 items-center justify-center rounded-full border border-[#86D232]/30 bg-[#86D232]/10 shadow-[0_0_24px_rgba(134,210,50,0.25)]">
+            <CheckCircle2 className="h-7 w-7 text-[#86D232]" aria-hidden />
+          </div>
+          <DialogTitle className="text-center text-xl">
+            {isActive
+              ? "Hồ sơ huấn luyện viên đã được cập nhật"
+              : "Hồ sơ huấn luyện viên đã được gửi"}
+          </DialogTitle>
+          <DialogDescription className="text-center">
+            {isActive
+              ? "MatchOps đã cập nhật hồ sơ của bạn. Hồ sơ vẫn đang hiển thị công khai trên trang Huấn luyện viên."
+              : "MatchOps đã nhận hồ sơ của bạn. Hồ sơ sẽ được admin xét duyệt trước khi hiển thị công khai."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <ul className="space-y-2.5 rounded-xl border border-white/[0.06] bg-slate-950/50 p-4 text-left">
+          {(isActive ? ACTIVE_NEXT_STEPS : PENDING_NEXT_STEPS).map((step) => (
+            <li key={step} className="flex items-start gap-2 text-sm leading-snug text-slate-300">
+              <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#86D232]" aria-hidden />
+              {step}
+            </li>
+          ))}
+        </ul>
+
+        <div className="flex flex-col gap-2 pt-1">
+          <Button type="button" className="w-full" onClick={() => onOpenChange(false)}>
+            Xem hồ sơ của tôi
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              onOpenChange(false);
+              router.push("/coach");
+            }}
+          >
+            Về danh sách huấn luyện viên
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // ─── Sport chip (keyboard-accessible multi-select) ─────────────────────────
 
@@ -301,6 +381,7 @@ export default function CoachApplyPage() {
 
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [successStatus, setSuccessStatus] = useState<CoachProfileStatus | null>(null);
 
   // Proofs — existing (server-confirmed) vs. selected-but-not-yet-uploaded.
   const [proofs, setProofs] = useState<CoachProofResponse[]>([]);
@@ -448,6 +529,7 @@ export default function CoachApplyPage() {
         if (res.success) {
           toast.success("Đăng ký huấn luyện viên thành công. Hồ sơ đang chờ admin duyệt.");
           await fetchMe();
+          setSuccessStatus(res.data?.status ?? "PENDING_APPROVAL");
         } else {
           toast.error(res.message || "Đăng ký thất bại.");
         }
@@ -470,6 +552,7 @@ export default function CoachApplyPage() {
         if (res.success) {
           toast.success("Cập nhật hồ sơ huấn luyện viên thành công.");
           await fetchMe();
+          setSuccessStatus(res.data?.status ?? profile?.status ?? "PENDING_APPROVAL");
         } else {
           toast.error(res.message || "Cập nhật thất bại.");
         }
@@ -1137,6 +1220,11 @@ export default function CoachApplyPage() {
           )}
         </div>
       </div>
+
+      <ApplySuccessDialog
+        status={successStatus}
+        onOpenChange={(open) => !open && setSuccessStatus(null)}
+      />
     </div>
   );
 }

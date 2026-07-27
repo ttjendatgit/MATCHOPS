@@ -150,8 +150,8 @@ export default function AdminCoachesPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 font-heading">Huấn luyện viên</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-white font-heading">Huấn luyện viên</h1>
+          <p className="mt-1 text-sm text-[#C4C7C9]">
             Xét duyệt hồ sơ ứng tuyển và quản lý trạng thái huấn luyện viên trên nền tảng.
           </p>
         </div>
@@ -173,12 +173,12 @@ export default function AdminCoachesPage() {
             </div>
 
             <Select value={status} onValueChange={(v) => { setStatus(v as CoachProfileStatus | "ALL"); setPage(1); }}>
-              <SelectTrigger aria-label="Lọc theo trạng thái">
+              <SelectTrigger aria-label="Lọc theo trạng thái" className="border-[rgba(134,210,50,0.28)] bg-[#141414] text-white">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="border-white/10 bg-[#141414] text-white">
                 {STATUS_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  <SelectItem key={opt.value} value={opt.value} className="focus:bg-white/10 focus:text-white">{opt.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -201,13 +201,13 @@ export default function AdminCoachesPage() {
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <div className="w-full sm:w-56">
               <Select value={sportId} onValueChange={(v) => { setSportId(v); setPage(1); }}>
-                <SelectTrigger aria-label="Lọc theo môn thể thao">
+                <SelectTrigger aria-label="Lọc theo môn thể thao" className="border-[rgba(134,210,50,0.28)] bg-[#141414] text-white">
                   <SelectValue placeholder="Môn thể thao" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Tất cả môn thể thao</SelectItem>
+                <SelectContent className="border-white/10 bg-[#141414] text-white">
+                  <SelectItem value="ALL" className="focus:bg-white/10 focus:text-white">Tất cả môn thể thao</SelectItem>
                   {sports.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    <SelectItem key={s.id} value={s.id} className="focus:bg-white/10 focus:text-white">{s.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -387,7 +387,7 @@ export default function AdminCoachesPage() {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between gap-3 px-1 text-sm text-slate-500">
+          <div className="flex items-center justify-between gap-3 px-1 text-sm text-[#C4C7C9]/70">
             <p>
               Trang {page}/{totalPages} · {totalCount} hồ sơ
             </p>

@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   Settings,
+  ShieldCheck,
   Star,
   User as UserIcon,
   Users,
@@ -316,6 +317,16 @@ export function PublicNavbar() {
                   </Link>
                 )}
 
+                {user.role === "ADMIN" && (
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-1.5 rounded-full border border-[#86D232]/30 bg-[#86D232]/[0.08] px-3.5 py-2 text-xs font-semibold text-[#86D232] transition-all duration-200 hover:border-[#86D232]/50 hover:bg-[#86D232]/[0.14] hover:shadow-[0_0_14px_rgba(134,210,50,0.25)]"
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+                    Quản trị
+                  </Link>
+                )}
+
                 <Link
                   href="/bookings"
                   className="flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-xs font-medium text-slate-300 transition-all duration-200 hover:border-[#FF8000]/22 hover:bg-[#FF8000]/[0.05] hover:text-white"
@@ -442,6 +453,17 @@ export function PublicNavbar() {
                 >
                   <LayoutDashboard className="h-4 w-4" aria-hidden />
                   Dashboard
+                </Link>
+              )}
+
+              {user.role === "ADMIN" && (
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-2 rounded-xl border border-[#86D232]/20 bg-[#86D232]/[0.06] px-3.5 py-2.5 text-sm font-semibold text-[#86D232] transition-all duration-200 hover:border-[#86D232]/35 hover:bg-[#86D232]/[0.12]"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <ShieldCheck className="h-4 w-4" aria-hidden />
+                  Quản trị hệ thống
                 </Link>
               )}
 
