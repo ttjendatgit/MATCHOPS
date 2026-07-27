@@ -95,3 +95,71 @@ export interface CoachProfileMeResponse {
   sports: CoachSport[];
   proofs: CoachProofResponse[];
 }
+
+// ─── Admin review ───────────────────────────────────────────────────────────
+
+export interface AdminCoachListItem {
+  id: string;
+  userId: string;
+  userFullName: string;
+  userEmail: string;
+  displayName: string | null;
+  bioPreview: string | null;
+  experienceYears: number | null;
+  hourlyRate: number | null;
+  city: string;
+  district: string;
+  status: CoachProfileStatus;
+  rejectionReason: string | null;
+  approvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  sports: CoachSport[];
+}
+
+export interface AdminCoachDetail {
+  id: string;
+  userId: string;
+  userFullName: string;
+  userEmail: string;
+  userPhoneNumber: string | null;
+  displayName: string | null;
+  bio: string | null;
+  experienceYears: number | null;
+  hourlyRate: number | null;
+  city: string;
+  district: string;
+  achievements: string | null;
+  status: CoachProfileStatus;
+  rejectionReason: string | null;
+  approvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  sports: CoachSport[];
+  proofs: CoachProofResponse[];
+}
+
+export interface AdminCoachListResponse {
+  items: AdminCoachListItem[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface AdminCoachListFilters {
+  status?: CoachProfileStatus;
+  city?: string;
+  district?: string;
+  sportId?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface RejectCoachProfileRequest {
+  rejectionReason: string;
+}
+
+export interface SuspendCoachProfileRequest {
+  reason?: string | null;
+}

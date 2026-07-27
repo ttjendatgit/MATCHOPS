@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Building2, Users, Dumbbell,
-  ChevronRight, LogOut, ShieldCheck,
+  ChevronRight, LogOut, ShieldCheck, UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -13,6 +13,7 @@ import { BrandLogo } from "@/components/branding";
 const navItems = [
   { href: "/admin",          icon: LayoutDashboard, label: "Tổng quan" },
   { href: "/admin/venues",   icon: Building2,       label: "Duyệt cơ sở" },
+  { href: "/admin/coaches",  icon: UserCheck,       label: "Huấn luyện viên" },
   { href: "/admin/users",    icon: Users,           label: "Người dùng" },
   { href: "/admin/sports",   icon: Dumbbell,        label: "Môn thể thao" },
 ];
