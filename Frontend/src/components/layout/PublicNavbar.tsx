@@ -17,8 +17,25 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { getStoredUser, clearAuthData, verifySession } from "@/lib/auth";
+import { getStoredUser, getStoredToken, clearAuthData, verifySession } from "@/lib/auth";
 import type { User } from "@/types/auth";
+
+/**
+ * Decode the role claim from a JWT without cryptographic verification.
+ * We only decode for display-matching; server-side is authoritative.
+ * Returns null if token is missing or cannot be decoded.
+ */
+function decodeTokenRole(token: string | null): string | null {
+  if (!token) return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] ?? null;
+  } catch {
+    return null;
+  }
+}
 
 // ─── Nav data ─────────────────────────────────────────────────────────────────
 
@@ -227,8 +244,20 @@ export function PublicNavbar() {
 
   // On first mount, validate the stored token against /api/auth/me so stale
   // or expired tokens are cleared and the navbar reflects the real auth state.
+  // Also detect role mismatches: if the role stored in localStorage doesn't match
+  // the role encoded in the JWT (e.g. DB was updated but token wasn't refreshed),
+  // force a server-side session verification to pick up the authoritative role.
   useEffect(() => {
-    verifySession().then(setUser);
+    const stored = getStoredUser();
+    const tokenRole = decodeTokenRole(getStoredToken());
+    if (stored && tokenRole && stored.role !== tokenRole) {
+      // Token claims a different role than localStorage — verify with server.
+      verifySession().then((fresh) => {
+        if (fresh) setUser(fresh);
+      });
+    } else {
+      verifySession().then(setUser);
+    }
   }, []);
 
   // Scroll-aware — becomes opaque glass after 20 px.

@@ -465,8 +465,9 @@ export const MOCK_MY_BOOKINGS: Booking[] = [
 // ─── Payment methods ──────────────────────────────────────────────────────────
 // Chỉ bao gồm các payment methods đã implement trong backend
 // VNPAY: Tích hợp cổng thanh toán VNPay (đã implement)
+// CASH: Thanh toán tiền mặt tại sân – booking xác nhận ngay, không cần cọc (đã implement)
 // MOCK: Mock payment cho testing (đã implement)
-// BANK_TRANSFER, MOMO, CASH: Chưa implement trong backend
+// BANK_TRANSFER, MOMO: Chưa implement trong backend
 
 export const MOCK_PAYMENT_METHODS: PaymentMethodOption[] = [
   {
@@ -474,6 +475,12 @@ export const MOCK_PAYMENT_METHODS: PaymentMethodOption[] = [
     label: "VNPay",
     description: "Cổng thanh toán VNPay – hỗ trợ thẻ ATM, VISA, Mastercard",
     iconName: "CreditCard",
+  },
+  {
+    id: "CASH",
+    label: "Tiền mặt tại sân",
+    description: "Đặt sân trước, thanh toán tiền mặt khi đến chơi",
+    iconName: "Banknote",
   },
   {
     id: "MOCK",

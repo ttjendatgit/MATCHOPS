@@ -181,6 +181,81 @@ public class BookingService : IBookingService
         }
     }
 
+    public async Task<BookingResponseDto> PayMyBookingCashAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var userId = GetCurrentUserIdOrThrow();
+        ValidateGuid(id, "BookingId");
+
+        var booking = await _bookingRepository.GetByIdAndUserIdAsync(id, userId, cancellationToken);
+        if (booking is null)
+            throw new AppException(
+                ErrorCodes.BookingNotFound,
+                "Không tìm thấy booking của bạn.",
+                StatusCodes.Status404NotFound);
+
+        // Cash payment vẫn cho phép thanh toán trước khi booking hết hạn —
+        // không expire booking ở đây, chỉ chặn khi đã hết hạn hoàn toàn.
+        if (booking.Status != BookingStatus.PENDING_PAYMENT ||
+            booking.PaymentStatus != BookingPaymentStatus.UNPAID)
+            throw new AppException(
+                ErrorCodes.BookingAlreadyPaid,
+                "Booking này không còn ở trạng thái chờ thanh toán.",
+                StatusCodes.Status400BadRequest);
+
+        if (booking.Status == BookingStatus.PENDING_PAYMENT &&
+            booking.ExpireAt is not null &&
+            booking.ExpireAt <= DateTime.UtcNow)
+        {
+            MarkBookingExpired(booking);
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
+            throw new AppException(
+                ErrorCodes.BookingExpired,
+                "Booking đã hết hạn thanh toán. Vui lòng đặt lại khung giờ.",
+                StatusCodes.Status400BadRequest);
+        }
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            booking.Status = BookingStatus.CONFIRMED;
+            booking.PaymentStatus = BookingPaymentStatus.PAID;
+            booking.ExpireAt = null;
+            booking.UpdatedAt = DateTime.UtcNow;
+
+            foreach (var slot in booking.BookingSlots
+                .Where(s => s.Status == BookingSlotStatus.HOLDING))
+            {
+                slot.Status = BookingSlotStatus.BOOKED;
+                slot.UpdatedAt = DateTime.UtcNow;
+            }
+
+            _context.Payments.Add(new Payment
+            {
+                Id = Guid.NewGuid(),
+                BookingId = booking.Id,
+                UserId = userId,
+                Amount = booking.TotalPrice,
+                Method = PaymentMethod.CASH,
+                Status = PaymentTransactionStatus.SUCCESS,
+                TransactionCode = $"CASH-{DateTime.UtcNow:yyyyMMddHHmmss}-{booking.Id:N}"[..36],
+                PaidAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            var updated = await _bookingRepository.GetByIdAsync(booking.Id, cancellationToken);
+            return MapToResponse(updated!);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
     public async Task<BookingResponseDto> CancelMyBookingAsync(Guid id, CancelBookingDto dto, CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserIdOrThrow();

@@ -91,7 +91,7 @@ export default function AdminSettingsPage() {
     setExporting("membership");
     try {
       const res = await apiFetch<ApiResponse<{ subscriptions: AdminSubscriptionDto[]; statistics: MembershipStatisticsDto }>>(
-        "/api/admin/reports/membership",
+        "/admin/reports/membership",
         { token }
       );
 

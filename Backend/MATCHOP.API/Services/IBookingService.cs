@@ -8,6 +8,7 @@ public interface IBookingService
     Task<List<BookingResponseDto>> GetMyBookingsAsync(CancellationToken cancellationToken = default);
     Task<BookingResponseDto> GetMyBookingByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<BookingResponseDto> PayMyBookingMockAsync(Guid id, MockPaymentRequestDto dto, CancellationToken cancellationToken = default);
+    Task<BookingResponseDto> PayMyBookingCashAsync(Guid id, CancellationToken cancellationToken = default);
     Task<BookingResponseDto> CancelMyBookingAsync(Guid id, CancelBookingDto dto, CancellationToken cancellationToken = default);
     Task<List<BookingResponseDto>> GetOwnerBookingsAsync(DateOnly? date, Guid? venueId, Guid? courtId, CancellationToken cancellationToken = default);
     Task<BookingResponseDto> GetOwnerBookingByIdAsync(Guid id, CancellationToken cancellationToken = default);

@@ -87,14 +87,14 @@ export default function AdminMembershipPage() {
 
     try {
       const [subRes, plansRes, statsRes] = await Promise.all([
-        apiFetch<ApiResponse<AdminSubscriptionDto[]>>("/api/admin/membership/subscriptions", { token }),
-        apiFetch<ApiResponse<MembershipPlanDto[]>>("/api/admin/membership/plans", { token }),
-        apiFetch<ApiResponse<MembershipStatisticsDto>>("/api/admin/membership/statistics", { token }),
+        apiFetch<ApiResponse<AdminSubscriptionDto[]>>("/admin/membership/subscriptions", { token }),
+        apiFetch<ApiResponse<MembershipPlanDto[]>>("/admin/membership/plans", { token }),
+        apiFetch<ApiResponse<MembershipStatisticsDto>>("/admin/membership/statistics", { token }),
       ]);
 
-      if (subRes.data) setSubscriptions(subRes.data);
-      if (plansRes.data) setPlans(plansRes.data);
-      if (statsRes.data) setStats(statsRes.data);
+      if (subRes.data?.data) setSubscriptions(subRes.data.data);
+      if (plansRes.data?.data) setPlans(plansRes.data.data);
+      if (statsRes.data?.data) setStats(statsRes.data.data);
     } catch (err) {
       console.error("Failed to load membership data:", err);
     } finally {

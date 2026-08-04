@@ -56,6 +56,15 @@ public class BookingsController : ControllerBase
         return Ok(ApiResponse<BookingResponseDto>.Ok(result, "Thanh toán mock thành công."));
     }
 
+    /// <summary>POST /api/my/bookings/{id}/pay/cash — USER xác nhận thanh toán tiền mặt tại sân</summary>
+    [HttpPost("api/my/bookings/{id:guid}/pay/cash")]
+    [Authorize(Roles = "USER")]
+    public async Task<IActionResult> PayMyBookingCash(Guid id, CancellationToken cancellationToken = default)
+    {
+        var result = await _bookingService.PayMyBookingCashAsync(id, cancellationToken);
+        return Ok(ApiResponse<BookingResponseDto>.Ok(result, "Đặt sân thành công. Vui lòng thanh toán tiền mặt tại sân."));
+    }
+
     /// <summary>PATCH /api/my/bookings/{id}/cancel — USER hủy booking</summary>
     [HttpPatch("api/my/bookings/{id:guid}/cancel")]
     [Authorize(Roles = "USER")]

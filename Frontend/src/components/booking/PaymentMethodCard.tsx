@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Wallet, CreditCard, Banknote } from "lucide-react";
+import { Building2, Wallet, CreditCard, Banknote, FlaskConical } from "lucide-react";
 import type { PaymentMethod, PaymentMethodOption } from "@/lib/mock/bookingMockData";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +30,19 @@ const ICON_CONFIG: Record<
     iconColor: "text-amber-400",
     iconBg: "bg-amber-500/10 border border-amber-800/30",
   },
+  MOCK: {
+    icon: FlaskConical,
+    iconColor: "text-emerald-400",
+    iconBg: "bg-emerald-500/10 border border-emerald-800/30",
+  },
+};
+
+// Fallback used when a payment method id is added without a matching
+// ICON_CONFIG entry. Prevents a runtime crash if data and config drift.
+const FALLBACK_CONFIG = {
+  icon: Wallet,
+  iconColor: "text-slate-400",
+  iconBg: "bg-slate-500/10 border border-slate-800/30",
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -45,7 +58,7 @@ export function PaymentMethodCard({
   isSelected,
   onSelect,
 }: PaymentMethodCardProps) {
-  const cfg = ICON_CONFIG[method.id];
+  const cfg = ICON_CONFIG[method.id] ?? FALLBACK_CONFIG;
   const Icon = cfg.icon;
 
   return (
