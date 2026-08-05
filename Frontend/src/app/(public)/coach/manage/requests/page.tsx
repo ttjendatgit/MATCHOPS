@@ -340,11 +340,11 @@ export default function CoachIncomingRequestsPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
       <Link
-        href="/coach/apply"
+        href="/coach/manage"
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]/50 rounded"
       >
         <ChevronLeft className="h-4 w-4" aria-hidden />
-        Quay lại hồ sơ huấn luyện viên
+        Quay lại trang quản lý huấn luyện viên
       </Link>
 
       <div className="mb-8 flex flex-wrap items-end justify-between gap-3">

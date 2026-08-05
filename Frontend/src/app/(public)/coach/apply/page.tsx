@@ -27,6 +27,7 @@ import {
   Star,
   Trash2,
   User,
+  UserCog,
   Users,
   Wallet,
   X,
@@ -1299,6 +1300,20 @@ export default function CoachApplyPage() {
                 )}
 
                 <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+                  <Link
+                    href="/coach/manage"
+                    className="inline-flex items-center gap-1.5 rounded text-xs font-medium text-[#FF8000] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]/50"
+                  >
+                    <UserCog className="h-3.5 w-3.5" aria-hidden />
+                    Vào trang quản lý huấn luyện viên
+                  </Link>
+                  <Link
+                    href="/coach/manage/requests"
+                    className="inline-flex items-center gap-1.5 rounded text-xs font-medium text-[#FF8000] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]/50"
+                  >
+                    <ClipboardList className="h-3.5 w-3.5" aria-hidden />
+                    Yêu cầu buổi huấn luyện
+                  </Link>
                   {status === "ACTIVE" && (
                     <Link
                       href="/coach"
@@ -1308,13 +1323,6 @@ export default function CoachApplyPage() {
                       Xem trang Huấn luyện viên công khai
                     </Link>
                   )}
-                  <Link
-                    href="/coach/manage/requests"
-                    className="inline-flex items-center gap-1.5 rounded text-xs font-medium text-[#FF8000] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]/50"
-                  >
-                    <ClipboardList className="h-3.5 w-3.5" aria-hidden />
-                    Yêu cầu buổi huấn luyện
-                  </Link>
                 </div>
               </CardContent>
             </Card>
