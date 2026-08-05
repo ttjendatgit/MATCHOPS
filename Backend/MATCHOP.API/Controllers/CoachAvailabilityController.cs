@@ -35,6 +35,15 @@ public class CoachAvailabilityController : ControllerBase
         return Ok(ApiResponse<List<CoachAvailabilitySlotResponseDto>>.Ok(result));
     }
 
+    /// <summary>Public, read-only weekly availability preview for an ACTIVE coach profile.</summary>
+    [HttpGet("{coachProfileId:guid}/availability")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetPublicAvailability(Guid coachProfileId)
+    {
+        var result = await _availabilityService.GetPublicAvailabilityAsync(coachProfileId);
+        return Ok(ApiResponse<List<CoachAvailabilitySlotResponseDto>>.Ok(result));
+    }
+
     [HttpPut("me/availability")]
     public async Task<IActionResult> ReplaceMyAvailability(UpdateCoachAvailabilityRequestDto dto)
     {

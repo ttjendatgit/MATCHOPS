@@ -74,6 +74,30 @@ public class CoachAvailabilityService : ICoachAvailabilityService
         return await GetMyAvailabilityAsync(userId);
     }
 
+    public async Task<List<CoachAvailabilitySlotResponseDto>> GetPublicAvailabilityAsync(Guid coachProfileId)
+    {
+        var isActiveProfile = await _context.CoachProfiles
+            .AsNoTracking()
+            .AnyAsync(x => x.Id == coachProfileId && x.Status == CoachProfileStatus.ACTIVE);
+
+        if (!isActiveProfile)
+        {
+            throw new AppException(
+                ErrorCodes.CoachProfileNotFound,
+                "Không tìm thấy huấn luyện viên.",
+                StatusCodes.Status404NotFound);
+        }
+
+        var slots = await _context.CoachAvailabilitySlots
+            .AsNoTracking()
+            .Where(x => x.CoachProfileId == coachProfileId && x.IsEnabled)
+            .OrderBy(x => x.DayOfWeek)
+            .ThenBy(x => x.StartTime)
+            .ToListAsync();
+
+        return slots.Select(Map).ToList();
+    }
+
     private async Task<CoachProfile> GetOwnCoachProfileOrThrowAsync(Guid userId)
     {
         var profile = await _context.CoachProfiles

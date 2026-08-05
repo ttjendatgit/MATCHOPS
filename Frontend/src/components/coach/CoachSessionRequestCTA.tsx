@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -44,6 +44,12 @@ interface CoachSessionRequestCTAProps {
   coachId: string;
   coachDisplayName: string;
   sports: CoachSport[];
+  /** "YYYY-MM-DD" prefilled from a selected weekly availability slot. */
+  prefillDate?: string | null;
+  /** "HH:mm-HH:mm" prefilled from a selected weekly availability slot. */
+  prefillTimeSlot?: string | null;
+  /** Human-readable summary of the selected slot, shown as a persistent selection indicator. */
+  prefillLabel?: string | null;
 }
 
 const MAX_TIME_SLOT_LENGTH = 100;
@@ -96,6 +102,9 @@ export function CoachSessionRequestCTA({
   coachId,
   coachDisplayName,
   sports,
+  prefillDate,
+  prefillTimeSlot,
+  prefillLabel,
 }: CoachSessionRequestCTAProps) {
   const router = useRouter();
 
@@ -115,13 +124,21 @@ export function CoachSessionRequestCTA({
 
   function resetForm() {
     setSportId(sports.length === 1 ? sports[0].sportId : "");
-    setPreferredDate("");
-    setPreferredTimeSlot("");
+    // Fall back to the selected availability slot (if any) rather than blanking it —
+    // closing the dialog without submitting shouldn't lose the user's slot pick.
+    setPreferredDate(prefillDate ?? "");
+    setPreferredTimeSlot(prefillTimeSlot ?? "");
     setDurationMinutes("");
     setLocationNote("");
     setMessage("");
     setFormError(null);
   }
+
+  // Sync prefilled values whenever the user picks a different availability slot.
+  useEffect(() => {
+    if (prefillDate) setPreferredDate(prefillDate);
+    if (prefillTimeSlot) setPreferredTimeSlot(prefillTimeSlot);
+  }, [prefillDate, prefillTimeSlot]);
 
   function handleCtaClick() {
     if (!getStoredToken()) {
@@ -208,6 +225,19 @@ export function CoachSessionRequestCTA({
 
   return (
     <>
+      {prefillLabel && (
+        <div className="mb-3 flex items-start gap-2 rounded-xl border border-[#86D232]/25 bg-[#86D232]/5 p-3 text-xs">
+          <CalendarClock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#86D232]" aria-hidden />
+          <div>
+            <p className="font-semibold text-[#86D232]">Khung giờ đã chọn: {prefillLabel}</p>
+            <p className="mt-1 leading-relaxed text-slate-400">
+              Khung giờ này dựa trên lịch rảnh thường tuần của huấn luyện viên. Huấn luyện viên sẽ
+              xác nhận lại trước khi tạo buổi huấn luyện.
+            </p>
+          </div>
+        </div>
+      )}
+
       <Button
         type="button"
         onClick={handleCtaClick}
