@@ -76,6 +76,24 @@ export interface CoachProofResponse {
   createdAt: string;
 }
 
+export type CoachVerificationDocumentType =
+  | "COACHING_CERTIFICATE"
+  | "TRAINING_CERTIFICATE"
+  | "SPORT_ACHIEVEMENT"
+  | "CLUB_CONFIRMATION"
+  | "OTHER";
+
+export interface CoachVerificationDocumentResponse {
+  id: string;
+  fileUrl: string;
+  originalFileName: string;
+  contentType: string;
+  fileSizeBytes: number;
+  documentType: CoachVerificationDocumentType | string;
+  sortOrder: number;
+  createdAt: string;
+}
+
 export interface CoachProfileMeResponse {
   id: string;
   displayName: string | null;
@@ -94,6 +112,7 @@ export interface CoachProfileMeResponse {
   updatedAt: string;
   sports: CoachSport[];
   proofs: CoachProofResponse[];
+  verificationDocuments: CoachVerificationDocumentResponse[];
 }
 
 // ─── Admin review ───────────────────────────────────────────────────────────
@@ -137,6 +156,7 @@ export interface AdminCoachDetail {
   updatedAt: string;
   sports: CoachSport[];
   proofs: CoachProofResponse[];
+  verificationDocuments: CoachVerificationDocumentResponse[];
 }
 
 export interface AdminCoachListResponse {

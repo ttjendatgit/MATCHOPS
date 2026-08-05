@@ -109,4 +109,35 @@ public class CoachesController : ControllerBase
         await _coachService.DeleteMyCoachProofAsync(userId, proofId);
         return Ok(ApiResponse<object>.Ok("Đã xoá ảnh minh chứng."));
     }
+
+    // ── Authenticated (own verification documents) ───────────────────────────
+
+    [HttpPost("me/verification-documents")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadMyVerificationDocuments([FromForm] UploadCoachVerificationDocumentRequestDto dto)
+    {
+        var userId = GetCurrentUserId();
+        var result = await _coachService.UploadMyVerificationDocumentsAsync(userId, dto.Files, dto.DocumentType);
+        return StatusCode(201, ApiResponse<List<CoachVerificationDocumentResponseDto>>.Ok(
+            result, "Tải lên tài liệu xác minh thành công."));
+    }
+
+    [HttpGet("me/verification-documents")]
+    [Authorize]
+    public async Task<IActionResult> GetMyVerificationDocuments()
+    {
+        var userId = GetCurrentUserId();
+        var result = await _coachService.GetMyVerificationDocumentsAsync(userId);
+        return Ok(ApiResponse<List<CoachVerificationDocumentResponseDto>>.Ok(result));
+    }
+
+    [HttpDelete("me/verification-documents/{documentId:guid}")]
+    [Authorize]
+    public async Task<IActionResult> DeleteMyVerificationDocument(Guid documentId)
+    {
+        var userId = GetCurrentUserId();
+        await _coachService.DeleteMyVerificationDocumentAsync(userId, documentId);
+        return Ok(ApiResponse<object>.Ok("Đã xoá tài liệu xác minh."));
+    }
 }

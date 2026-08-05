@@ -22,6 +22,17 @@ public interface ICloudinaryService
     Task DeleteImageByPublicIdAsync(string? publicId);
 
     Task DeleteImagesByPublicIdsAsync(IEnumerable<string?> publicIds);
+
+    // ── Verification documents (PDF + image) ────────────────────────────
+    // Kept separate from the image-only proof methods above: verification
+    // documents accept PDFs, which Cloudinary must upload via the raw
+    // resource type (image uploads reject non-image content).
+    Task<List<UploadImageResultDto>> UploadVerificationDocumentsAsync(
+        List<IFormFile>? files,
+        string folder,
+        int maxCount);
+
+    Task DeleteVerificationDocumentAsync(string? publicId, string? contentType);
 }
 
 public class CloudinaryService : ICloudinaryService
@@ -40,6 +51,18 @@ public class CloudinaryService : ICloudinaryService
 
     private const long MaxSizeBytes = 5 * 1024 * 1024; // 5MB
     private const long MaxTotalSizeBytes = 20 * 1024 * 1024; // 20MB
+
+    private static readonly string[] AllowedDocumentExtensions =
+    {
+        ".pdf", ".jpg", ".jpeg", ".png", ".webp"
+    };
+
+    private static readonly string[] AllowedDocumentContentTypes =
+    {
+        "application/pdf", "image/jpeg", "image/png", "image/webp"
+    };
+
+    private const long MaxDocumentSizeBytes = 5 * 1024 * 1024; // 5MB
 
     public CloudinaryService(IConfiguration config)
     {
@@ -165,6 +188,154 @@ public class CloudinaryService : ICloudinaryService
         foreach (var publicId in publicIds)
         {
             await DeleteImageByPublicIdAsync(publicId);
+        }
+    }
+
+    public async Task<List<UploadImageResultDto>> UploadVerificationDocumentsAsync(
+        List<IFormFile>? files,
+        string folder,
+        int maxCount)
+    {
+        if (files == null || files.Count == 0)
+        {
+            return new List<UploadImageResultDto>();
+        }
+
+        if (files.Count > maxCount)
+        {
+            throw new AppException(
+                ErrorCodes.ValidationError,
+                $"Chỉ được tải tối đa {maxCount} tài liệu.",
+                400);
+        }
+
+        foreach (var file in files)
+        {
+            ValidateDocument(file);
+        }
+
+        var uploaded = new List<(UploadImageResultDto Result, bool IsRaw)>();
+
+        try
+        {
+            foreach (var file in files)
+            {
+                var isRaw = !IsImageContentType(file.ContentType);
+                var result = isRaw
+                    ? await UploadRawDocumentAsync(file, folder)
+                    : await UploadImageWithResultAsync(file, folder);
+
+                uploaded.Add((result, isRaw));
+            }
+
+            return uploaded.Select(u => u.Result).ToList();
+        }
+        catch
+        {
+            foreach (var (result, isRaw) in uploaded)
+            {
+                var deleteParams = new DeletionParams(result.PublicId)
+                {
+                    ResourceType = isRaw ? ResourceType.Raw : ResourceType.Image
+                };
+                await _cloudinary.DestroyAsync(deleteParams);
+            }
+            throw;
+        }
+    }
+
+    public async Task DeleteVerificationDocumentAsync(string? publicId, string? contentType)
+    {
+        if (string.IsNullOrWhiteSpace(publicId))
+        {
+            return;
+        }
+
+        var deleteParams = new DeletionParams(publicId)
+        {
+            ResourceType = IsImageContentType(contentType) ? ResourceType.Image : ResourceType.Raw
+        };
+
+        await _cloudinary.DestroyAsync(deleteParams);
+    }
+
+    private async Task<UploadImageResultDto> UploadRawDocumentAsync(IFormFile file, string folder)
+    {
+        await using var stream = file.OpenReadStream();
+
+        var uploadParams = new RawUploadParams
+        {
+            File = new FileDescription(file.FileName, stream),
+            Folder = $"matchop/{folder}",
+            UseFilename = false,
+            UniqueFilename = true,
+            Overwrite = false
+        };
+
+        var result = await _cloudinary.UploadAsync(uploadParams, "auto");
+
+        if (result.Error is not null)
+        {
+            throw new AppException(
+                ErrorCodes.UPLOAD_FAILED,
+                $"Tải lên tài liệu thất bại: {result.Error.Message}",
+                500);
+        }
+
+        if (result.SecureUrl is null || string.IsNullOrWhiteSpace(result.PublicId))
+        {
+            throw new AppException(
+                ErrorCodes.UPLOAD_FAILED,
+                "Tải lên tài liệu thất bại: Cloudinary không trả về đủ thông tin.",
+                500);
+        }
+
+        return new UploadImageResultDto
+        {
+            Url = result.SecureUrl.ToString(),
+            PublicId = result.PublicId
+        };
+    }
+
+    private static bool IsImageContentType(string? contentType) =>
+        !string.IsNullOrWhiteSpace(contentType) &&
+        contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+
+    private static void ValidateDocument(IFormFile file)
+    {
+        if (file == null || file.Length <= 0)
+        {
+            throw new AppException(
+                ErrorCodes.INVALID_FILE_TYPE,
+                "Tài liệu không được rỗng.",
+                400);
+        }
+
+        if (file.Length > MaxDocumentSizeBytes)
+        {
+            throw new AppException(
+                ErrorCodes.FILE_TOO_LARGE,
+                "Kích thước mỗi tài liệu không được vượt quá 5MB.",
+                400);
+        }
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+        if (!AllowedDocumentExtensions.Contains(ext))
+        {
+            throw new AppException(
+                ErrorCodes.INVALID_FILE_TYPE,
+                "Chỉ chấp nhận tài liệu định dạng PDF, JPG, JPEG, PNG, WEBP.",
+                400);
+        }
+
+        if (string.IsNullOrWhiteSpace(file.ContentType) ||
+            !AllowedDocumentContentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new AppException(
+                ErrorCodes.INVALID_FILE_TYPE,
+                "Content-Type của tài liệu không hợp lệ.",
+                400);
         }
     }
 

@@ -179,6 +179,15 @@ public enum CoachProofType
     OTHER = 4
 }
 
+public enum CoachVerificationDocumentType
+{
+    COACHING_CERTIFICATE = 1,
+    TRAINING_CERTIFICATE = 2,
+    SPORT_ACHIEVEMENT = 3,
+    CLUB_CONFIRMATION = 4,
+    OTHER = 5
+}
+
 public enum MembershipTier
 {
     FREE     = 1,

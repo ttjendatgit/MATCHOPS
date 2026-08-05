@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ChevronLeft, Mail, Phone, CalendarClock, MapPin, Wallet, Dumbbell,
-  Award, Image as ImageIcon, ShieldCheck, AlertTriangle, Loader2,
+  Award, Image as ImageIcon, ShieldCheck, AlertTriangle, Loader2, FileText,
   ChevronRight as ChevronRightIcon, ExternalLink, UserRound, RefreshCcw,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -21,7 +21,8 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
 import type { ApiResponse } from "@/types/api";
 import type {
-  AdminCoachDetail, CoachProofType, RejectCoachProfileRequest, SuspendCoachProfileRequest,
+  AdminCoachDetail, CoachProofType, CoachVerificationDocumentType,
+  RejectCoachProfileRequest, SuspendCoachProfileRequest,
 } from "@/types/coach";
 
 const PROOF_TYPE_LABELS: Record<CoachProofType, string> = {
@@ -33,6 +34,38 @@ const PROOF_TYPE_LABELS: Record<CoachProofType, string> = {
 
 function proofTypeLabel(proofType: string): string {
   return PROOF_TYPE_LABELS[proofType as CoachProofType] ?? proofType;
+}
+
+const VERIFICATION_DOCUMENT_TYPE_LABELS: Record<CoachVerificationDocumentType, string> = {
+  COACHING_CERTIFICATE: "Chứng chỉ huấn luyện",
+  TRAINING_CERTIFICATE: "Chứng chỉ đào tạo",
+  SPORT_ACHIEVEMENT: "Thành tích thi đấu",
+  CLUB_CONFIRMATION: "Xác nhận câu lạc bộ/trung tâm",
+  OTHER: "Khác",
+};
+
+function verificationDocumentTypeLabel(documentType: string): string {
+  return (
+    VERIFICATION_DOCUMENT_TYPE_LABELS[documentType as CoachVerificationDocumentType] ??
+    documentType
+  );
+}
+
+const READABLE_CONTENT_TYPES: Record<string, string> = {
+  "application/pdf": "PDF",
+  "image/jpeg": "JPEG",
+  "image/png": "PNG",
+  "image/webp": "WEBP",
+};
+
+function readableContentType(contentType: string): string {
+  return READABLE_CONTENT_TYPES[contentType] ?? contentType;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatCurrency(value: number | null): string {
@@ -165,6 +198,7 @@ export default function AdminCoachDetailPage() {
 
   const name = profile.displayName || profile.userFullName;
   const proofs = profile.proofs ?? [];
+  const verificationDocuments = profile.verificationDocuments ?? [];
   const activeProof = lightboxIndex !== null ? proofs[lightboxIndex] : null;
 
   return (
@@ -293,6 +327,75 @@ export default function AdminCoachDetailPage() {
                           {label}
                         </span>
                       </button>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Verification documents — formal review materials, admin-only */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FileText className="h-4 w-4 text-[#FF8000]" aria-hidden />
+                Tài liệu xác minh
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="flex items-start gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 text-xs leading-relaxed text-[#C4C7C9]/80">
+                <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#86D232]" aria-hidden />
+                Tài liệu này chỉ hiển thị trong khu vực quản trị để phục vụ xét duyệt hồ sơ.
+              </p>
+
+              {verificationDocuments.length === 0 ? (
+                <p className="text-sm text-[#C4C7C9]/60">Chưa có tài liệu xác minh nào được tải lên.</p>
+              ) : (
+                <div className="space-y-2">
+                  {verificationDocuments.map((doc) => {
+                    const isImage = doc.contentType.startsWith("image/");
+                    const label = verificationDocumentTypeLabel(doc.documentType);
+                    return (
+                      <div
+                        key={doc.id}
+                        className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950 p-3"
+                      >
+                        {isImage ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={doc.fileUrl}
+                            alt={`Tài liệu xác minh: ${doc.originalFileName}`}
+                            className="h-14 w-14 shrink-0 rounded-lg border border-white/10 object-cover"
+                          />
+                        ) : (
+                          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-slate-900">
+                            <FileText className="h-6 w-6 text-[#FF8000]" aria-hidden />
+                          </span>
+                        )}
+
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-white">{doc.originalFileName}</p>
+                          <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-[#C4C7C9]/70">
+                            <span>{label}</span>
+                            <span aria-hidden>·</span>
+                            <span>{readableContentType(doc.contentType)}</span>
+                            <span aria-hidden>·</span>
+                            <span>{formatFileSize(doc.fileSizeBytes)}</span>
+                            <span aria-hidden>·</span>
+                            <span>{new Date(doc.createdAt).toLocaleDateString("vi-VN")}</span>
+                          </p>
+                        </div>
+
+                        <a
+                          href={doc.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`Mở tài liệu ${doc.originalFileName}`}
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#C4C7C9]/60 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]/60"
+                        >
+                          <ExternalLink className="h-4 w-4" aria-hidden />
+                        </a>
+                      </div>
                     );
                   })}
                 </div>

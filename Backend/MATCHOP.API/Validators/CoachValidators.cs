@@ -125,3 +125,17 @@ public class UploadCoachProofRequestDtoValidator : AbstractValidator<UploadCoach
             .WithMessage("Loại minh chứng không hợp lệ.");
     }
 }
+
+public class UploadCoachVerificationDocumentRequestDtoValidator : AbstractValidator<UploadCoachVerificationDocumentRequestDto>
+{
+    public UploadCoachVerificationDocumentRequestDtoValidator()
+    {
+        RuleFor(x => x.Files)
+            .NotEmpty()
+            .WithMessage("Vui lòng chọn ít nhất một tài liệu xác minh.");
+
+        RuleFor(x => x.DocumentType)
+            .IsInEnum()
+            .WithMessage("Loại tài liệu xác minh không hợp lệ.");
+    }
+}

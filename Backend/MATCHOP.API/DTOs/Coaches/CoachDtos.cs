@@ -67,6 +67,32 @@ public class UploadCoachProofRequestDto
     public CoachProofType ProofType { get; set; }
 }
 
+public class CoachVerificationDocumentResponseDto
+{
+    public Guid Id { get; set; }
+
+    public string FileUrl { get; set; } = string.Empty;
+
+    public string OriginalFileName { get; set; } = string.Empty;
+
+    public string ContentType { get; set; } = string.Empty;
+
+    public long FileSizeBytes { get; set; }
+
+    public string DocumentType { get; set; } = string.Empty;
+
+    public int SortOrder { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+}
+
+public class UploadCoachVerificationDocumentRequestDto
+{
+    public List<IFormFile> Files { get; set; } = new();
+
+    public CoachVerificationDocumentType DocumentType { get; set; }
+}
+
 public class CoachProfileMeResponseDto
 {
     public Guid Id { get; set; }
@@ -102,4 +128,6 @@ public class CoachProfileMeResponseDto
     public List<CoachSportResponseDto> Sports { get; set; } = new();
 
     public List<CoachProofResponseDto> Proofs { get; set; } = new();
+
+    public List<CoachVerificationDocumentResponseDto> VerificationDocuments { get; set; } = new();
 }

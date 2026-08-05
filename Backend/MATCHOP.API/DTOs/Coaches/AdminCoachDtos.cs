@@ -74,6 +74,8 @@ public class AdminCoachProfileDetailDto
     public List<CoachSportResponseDto> Sports { get; set; } = new();
 
     public List<CoachProofResponseDto> Proofs { get; set; } = new();
+
+    public List<CoachVerificationDocumentResponseDto> VerificationDocuments { get; set; } = new();
 }
 
 public class AdminCoachProfileListResponseDto

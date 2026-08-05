@@ -9,6 +9,7 @@ namespace MATCHOP.API.Services;
 public class CoachService : ICoachService
 {
     private const int MaxProofCount = 5;
+    private const int MaxVerificationDocumentCount = 5;
 
     private readonly ApplicationDbContext _context;
     private readonly ICloudinaryService _cloudinary;
@@ -279,6 +280,130 @@ public class CoachService : ICoachService
         await _cloudinary.DeleteImageByPublicIdAsync(proof.PublicId);
     }
 
+    // ── Own-profile verification documents ──────────────────────────────────
+
+    public async Task<List<CoachVerificationDocumentResponseDto>> UploadMyVerificationDocumentsAsync(
+        Guid userId,
+        List<IFormFile> files,
+        CoachVerificationDocumentType documentType)
+    {
+        var profile = await GetOwnProfileOrThrowAsync(userId, tracking: true);
+
+        if (profile.Status == CoachProfileStatus.SUSPENDED)
+        {
+            throw new AppException(
+                ErrorCodes.CoachProfileSuspended,
+                "Hồ sơ huấn luyện viên đang bị tạm khóa, không thể tải lên tài liệu xác minh.",
+                StatusCodes.Status403Forbidden);
+        }
+
+        var incomingCount = files?.Count ?? 0;
+
+        if (incomingCount == 0)
+        {
+            throw new AppException(
+                ErrorCodes.ValidationError,
+                "Vui lòng chọn ít nhất một tài liệu xác minh.");
+        }
+
+        if (profile.VerificationDocuments.Count + incomingCount > MaxVerificationDocumentCount)
+        {
+            throw new AppException(
+                ErrorCodes.ValidationError,
+                $"Chỉ được lưu tối đa {MaxVerificationDocumentCount} tài liệu xác minh cho mỗi hồ sơ.");
+        }
+
+        var uploaded = await _cloudinary.UploadVerificationDocumentsAsync(
+            files, "coach-verification-documents", MaxVerificationDocumentCount);
+
+        try
+        {
+            var nextSortOrder = profile.VerificationDocuments.Count == 0
+                ? 0
+                : profile.VerificationDocuments.Max(d => d.SortOrder) + 1;
+
+            var newDocuments = new List<CoachVerificationDocument>();
+
+            for (var i = 0; i < uploaded.Count; i++)
+            {
+                var file = files![i];
+                var result = uploaded[i];
+
+                newDocuments.Add(new CoachVerificationDocument
+                {
+                    Id = Guid.NewGuid(),
+                    CoachProfileId = profile.Id,
+                    FileUrl = result.Url,
+                    PublicId = result.PublicId,
+                    OriginalFileName = file.FileName,
+                    ContentType = file.ContentType,
+                    FileSizeBytes = file.Length,
+                    DocumentType = documentType,
+                    SortOrder = nextSortOrder++,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            _context.CoachVerificationDocuments.AddRange(newDocuments);
+
+            if (profile.Status == CoachProfileStatus.REJECTED)
+            {
+                profile.Status = CoachProfileStatus.PENDING_APPROVAL;
+                profile.RejectionReason = null;
+                profile.ApprovedAt = null;
+            }
+
+            profile.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return newDocuments.Select(MapVerificationDocument).ToList();
+        }
+        catch
+        {
+            for (var i = 0; i < uploaded.Count; i++)
+            {
+                await _cloudinary.DeleteVerificationDocumentAsync(uploaded[i].PublicId, files![i].ContentType);
+            }
+            throw;
+        }
+    }
+
+    public async Task<List<CoachVerificationDocumentResponseDto>> GetMyVerificationDocumentsAsync(Guid userId)
+    {
+        var profile = await GetOwnProfileOrThrowAsync(userId, tracking: false);
+        return MapVerificationDocuments(profile);
+    }
+
+    public async Task DeleteMyVerificationDocumentAsync(Guid userId, Guid documentId)
+    {
+        var profile = await GetOwnProfileOrThrowAsync(userId, tracking: true);
+
+        if (profile.Status == CoachProfileStatus.SUSPENDED)
+        {
+            throw new AppException(
+                ErrorCodes.CoachProfileSuspended,
+                "Hồ sơ huấn luyện viên đang bị tạm khóa, không thể xoá tài liệu xác minh.",
+                StatusCodes.Status403Forbidden);
+        }
+
+        var document = profile.VerificationDocuments.FirstOrDefault(d => d.Id == documentId);
+
+        if (document is null)
+        {
+            throw new AppException(
+                ErrorCodes.CoachProfileNotFound,
+                "Không tìm thấy tài liệu xác minh.",
+                StatusCodes.Status404NotFound);
+        }
+
+        _context.CoachVerificationDocuments.Remove(document);
+
+        await _context.SaveChangesAsync();
+
+        await _cloudinary.DeleteVerificationDocumentAsync(document.PublicId, document.ContentType);
+    }
+
     private async Task<CoachProfile> GetOwnProfileOrThrowAsync(Guid userId, bool tracking)
     {
         var query = _context.CoachProfiles
@@ -286,6 +411,7 @@ public class CoachService : ICoachService
             .Include(x => x.CoachSports)
             .ThenInclude(x => x.Sport)
             .Include(x => x.Proofs)
+            .Include(x => x.VerificationDocuments)
             .AsQueryable();
 
         if (!tracking)
@@ -465,6 +591,7 @@ public class CoachService : ICoachService
             .Include(x => x.CoachSports)
             .ThenInclude(x => x.Sport)
             .Include(x => x.Proofs)
+            .Include(x => x.VerificationDocuments)
             .AsQueryable();
 
         if (!tracking)
@@ -629,7 +756,8 @@ public class CoachService : ICoachService
             CreatedAt = profile.CreatedAt,
             UpdatedAt = profile.UpdatedAt,
             Sports = MapSports(profile),
-            Proofs = MapProofs(profile)
+            Proofs = MapProofs(profile),
+            VerificationDocuments = MapVerificationDocuments(profile)
         };
     }
 
@@ -678,7 +806,8 @@ public class CoachService : ICoachService
             CreatedAt = profile.CreatedAt,
             UpdatedAt = profile.UpdatedAt,
             Sports = MapSports(profile),
-            Proofs = MapProofs(profile)
+            Proofs = MapProofs(profile),
+            VerificationDocuments = MapVerificationDocuments(profile)
         };
     }
 
@@ -745,6 +874,30 @@ public class CoachService : ICoachService
             ProofType = proof.ProofType.ToString(),
             SortOrder = proof.SortOrder,
             CreatedAt = proof.CreatedAt
+        };
+    }
+
+    private static List<CoachVerificationDocumentResponseDto> MapVerificationDocuments(CoachProfile profile)
+    {
+        return profile.VerificationDocuments
+            .OrderBy(d => d.SortOrder)
+            .ThenBy(d => d.CreatedAt)
+            .Select(MapVerificationDocument)
+            .ToList();
+    }
+
+    private static CoachVerificationDocumentResponseDto MapVerificationDocument(CoachVerificationDocument document)
+    {
+        return new CoachVerificationDocumentResponseDto
+        {
+            Id = document.Id,
+            FileUrl = document.FileUrl,
+            OriginalFileName = document.OriginalFileName,
+            ContentType = document.ContentType,
+            FileSizeBytes = document.FileSizeBytes,
+            DocumentType = document.DocumentType.ToString(),
+            SortOrder = document.SortOrder,
+            CreatedAt = document.CreatedAt
         };
     }
 

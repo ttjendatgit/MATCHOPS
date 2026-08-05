@@ -26,6 +26,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<CoachProfile> CoachProfiles => Set<CoachProfile>();
     public DbSet<CoachSport> CoachSports => Set<CoachSport>();
     public DbSet<CoachProfileProof> CoachProfileProofs => Set<CoachProfileProof>();
+    public DbSet<CoachVerificationDocument> CoachVerificationDocuments => Set<CoachVerificationDocument>();
     public DbSet<MatchPost> MatchPosts => Set<MatchPost>();
     public DbSet<MatchQueue> MatchQueues => Set<MatchQueue>();
     public DbSet<MatchRoom> MatchRooms => Set<MatchRoom>();
@@ -707,6 +708,61 @@ public class ApplicationDbContext : DbContext
 
             e.HasIndex(x => new { x.CoachProfileId, x.SortOrder })
              .HasDatabaseName("ix_coach_profile_proofs_coach_profile_sort_order");
+        });
+
+        // ── CoachVerificationDocument ────────────────────────────────────
+        // Formal review documents (certificates, club confirmations, etc.)
+        // kept separate from CoachProfileProof so image "achievement" media
+        // and admin-reviewed verification paperwork don't get conflated.
+        modelBuilder.Entity<CoachVerificationDocument>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.CoachProfileId)
+             .IsRequired();
+
+            e.Property(x => x.FileUrl)
+             .IsRequired()
+             .HasMaxLength(1000);
+
+            e.Property(x => x.PublicId)
+             .IsRequired()
+             .HasMaxLength(500);
+
+            e.Property(x => x.OriginalFileName)
+             .IsRequired()
+             .HasMaxLength(255);
+
+            e.Property(x => x.ContentType)
+             .IsRequired()
+             .HasMaxLength(100);
+
+            e.Property(x => x.FileSizeBytes)
+             .IsRequired();
+
+            e.Property(x => x.DocumentType)
+             .IsRequired()
+             .HasConversion<int>();
+
+            e.Property(x => x.SortOrder)
+             .HasDefaultValue(0);
+
+            e.Property(x => x.CreatedAt)
+             .HasDefaultValueSql("NOW()");
+
+            e.HasOne(x => x.CoachProfile)
+             .WithMany(cp => cp.VerificationDocuments)
+             .HasForeignKey(x => x.CoachProfileId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.CoachProfileId)
+             .HasDatabaseName("ix_coach_verification_documents_coach_profile_id");
+
+            e.HasIndex(x => new { x.CoachProfileId, x.SortOrder })
+             .HasDatabaseName("ix_coach_verification_documents_coach_profile_sort_order");
         });
 
         // ── MatchPost ─────────────────────────────────────────────────

@@ -13,6 +13,8 @@ import {
   ChevronLeft,
   Clock,
   Dumbbell,
+  ExternalLink,
+  FileText,
   Image as ImageIcon,
   Loader2,
   Lock,
@@ -21,6 +23,7 @@ import {
   Settings2,
   ShieldCheck,
   Sparkles,
+  Trash2,
   User,
   Users,
   Wallet,
@@ -38,6 +41,8 @@ import type {
   CoachProofResponse,
   CoachProofType,
   CoachUpdateMyProfileRequest,
+  CoachVerificationDocumentResponse,
+  CoachVerificationDocumentType,
 } from "@/types/coach";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +76,38 @@ const PROOF_TYPE_LABELS: Record<CoachProofType, string> = {
 
 function proofTypeLabel(proofType: string): string {
   return PROOF_TYPE_LABELS[proofType as CoachProofType] ?? proofType;
+}
+
+// ─── Verification documents (formal admin review materials) ────────────────
+
+const MAX_VERIFICATION_DOCUMENTS = 5;
+const MAX_DOCUMENT_SIZE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_DOCUMENT_MIME_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
+
+const VERIFICATION_DOCUMENT_TYPE_LABELS: Record<CoachVerificationDocumentType, string> = {
+  COACHING_CERTIFICATE: "Chứng chỉ huấn luyện",
+  TRAINING_CERTIFICATE: "Chứng chỉ đào tạo",
+  SPORT_ACHIEVEMENT: "Thành tích thi đấu",
+  CLUB_CONFIRMATION: "Xác nhận câu lạc bộ/trung tâm",
+  OTHER: "Khác",
+};
+
+function verificationDocumentTypeLabel(documentType: string): string {
+  return (
+    VERIFICATION_DOCUMENT_TYPE_LABELS[documentType as CoachVerificationDocumentType] ??
+    documentType
+  );
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 interface Sport {
@@ -295,6 +332,89 @@ function ProofGallery({
   );
 }
 
+// ─── Verification document list (formal, admin-reviewed documents) ─────────
+
+function VerificationDocumentGallery({
+  documents,
+  deletingDocumentId,
+  onDelete,
+}: {
+  documents: CoachVerificationDocumentResponse[];
+  deletingDocumentId: string | null;
+  onDelete: (documentId: string) => void;
+}) {
+  if (documents.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      {documents.map((doc) => {
+        const isImage = doc.contentType.startsWith("image/");
+        const label = verificationDocumentTypeLabel(doc.documentType);
+        return (
+          <div
+            key={doc.id}
+            className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950 p-3"
+          >
+            {isImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={doc.fileUrl}
+                alt={`Tài liệu xác minh: ${doc.originalFileName}`}
+                className="h-12 w-12 shrink-0 rounded-lg border border-white/10 object-cover"
+              />
+            ) : (
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-slate-900">
+                <FileText className="h-5 w-5 text-[#FF8000]" aria-hidden />
+              </span>
+            )}
+
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-white">{doc.originalFileName}</p>
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-slate-500">
+                <span>{label}</span>
+                <span aria-hidden>·</span>
+                <span>{formatFileSize(doc.fileSizeBytes)}</span>
+                <span aria-hidden>·</span>
+                <span>{new Date(doc.createdAt).toLocaleDateString("vi-VN")}</span>
+              </p>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1">
+              <a
+                href={doc.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Mở tài liệu ${doc.originalFileName}`}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]/60"
+              >
+                <ExternalLink className="h-4 w-4" aria-hidden />
+              </a>
+              <button
+                type="button"
+                onClick={() => onDelete(doc.id)}
+                disabled={deletingDocumentId === doc.id}
+                aria-label={`Xoá tài liệu ${doc.originalFileName}`}
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-colors",
+                  "hover:bg-red-500/20 hover:text-red-400",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400",
+                  "disabled:cursor-not-allowed disabled:opacity-60",
+                )}
+              >
+                {deletingDocumentId === doc.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                )}
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Left media / trust panel ────────────────────────────────────────────────
 
 function CoachMediaPanel() {
@@ -392,6 +512,16 @@ export default function CoachApplyPage() {
   const [uploadingProofs, setUploadingProofs] = useState(false);
   const [deletingProofId, setDeletingProofId] = useState<string | null>(null);
 
+  // Verification documents — same existing/selected-but-not-yet-uploaded split as proofs.
+  const [verificationDocuments, setVerificationDocuments] = useState<CoachVerificationDocumentResponse[]>([]);
+  const [selectedDocFiles, setSelectedDocFiles] = useState<File[]>([]);
+  const [selectedDocPreviews, setSelectedDocPreviews] = useState<string[]>([]);
+  const [selectedDocumentType, setSelectedDocumentType] =
+    useState<CoachVerificationDocumentType>("COACHING_CERTIFICATE");
+  const [documentError, setDocumentError] = useState<string | null>(null);
+  const [uploadingDocuments, setUploadingDocuments] = useState(false);
+  const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null);
+
   // Populate the form whenever a real profile is loaded (initial load or
   // after a successful apply/update refetch).
   useEffect(() => {
@@ -405,6 +535,7 @@ export default function CoachApplyPage() {
     setAchievements(profile.achievements ?? "");
     setSelectedSportIds(profile.sports.map((s) => s.sportId));
     setProofs(profile.proofs ?? []);
+    setVerificationDocuments(profile.verificationDocuments ?? []);
   }, [profile]);
 
   // Object-URL previews for files chosen but not yet uploaded — created
@@ -417,6 +548,20 @@ export default function CoachApplyPage() {
       urls.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [selectedFiles]);
+
+  // Same object-URL preview pattern for verification documents — only
+  // images get a preview URL; PDFs render a file icon instead (see gallery).
+  useEffect(() => {
+    const urls = selectedDocFiles.map((file) =>
+      file.type.startsWith("image/") ? URL.createObjectURL(file) : ""
+    );
+    setSelectedDocPreviews(urls);
+    return () => {
+      urls.forEach((url) => {
+        if (url) URL.revokeObjectURL(url);
+      });
+    };
+  }, [selectedDocFiles]);
 
   const fetchMe = useCallback(async () => {
     const token = getStoredToken();
@@ -644,6 +789,99 @@ export default function CoachApplyPage() {
       toast.error(message);
     } finally {
       setDeletingProofId(null);
+    }
+  };
+
+  // ── Verification document upload/delete ─────────────────────────────────
+
+  const handleDocFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const chosen = Array.from(e.target.files ?? []);
+    e.target.value = ""; // allow re-selecting the same file after removing it
+    if (chosen.length === 0) return;
+
+    const totalAfter = verificationDocuments.length + selectedDocFiles.length + chosen.length;
+    if (totalAfter > MAX_VERIFICATION_DOCUMENTS) {
+      const remaining = MAX_VERIFICATION_DOCUMENTS - verificationDocuments.length - selectedDocFiles.length;
+      toast.error(
+        remaining > 0
+          ? `Chỉ có thể chọn thêm tối đa ${remaining} tài liệu (giới hạn ${MAX_VERIFICATION_DOCUMENTS} tài liệu xác minh).`
+          : `Bạn đã đạt giới hạn ${MAX_VERIFICATION_DOCUMENTS} tài liệu xác minh.`
+      );
+      return;
+    }
+
+    const oversized = chosen.find((file) => file.size > MAX_DOCUMENT_SIZE_BYTES);
+    if (oversized) {
+      toast.error(`Tệp "${oversized.name}" vượt quá giới hạn 5MB.`);
+      return;
+    }
+
+    const invalidType = chosen.find((file) => !ALLOWED_DOCUMENT_MIME_TYPES.includes(file.type));
+    if (invalidType) {
+      toast.error(`Tệp "${invalidType.name}" không đúng định dạng. Chỉ chấp nhận PDF, JPG, PNG, WEBP.`);
+      return;
+    }
+
+    setSelectedDocFiles((prev) => [...prev, ...chosen]);
+  };
+
+  const removeSelectedDocFile = (index: number) => {
+    setSelectedDocFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUploadDocuments = async () => {
+    if (selectedDocFiles.length === 0) return;
+
+    const token = getStoredToken();
+    setDocumentError(null);
+    setUploadingDocuments(true);
+    try {
+      const formData = new FormData();
+      selectedDocFiles.forEach((file) => formData.append("Files", file));
+      formData.append("DocumentType", selectedDocumentType);
+
+      const res = await apiUpload<ApiResponse<CoachVerificationDocumentResponse[]>>(
+        "/coaches/me/verification-documents",
+        formData,
+        { token }
+      );
+
+      if (res.success) {
+        toast.success("Tải lên tài liệu xác minh thành công.");
+        setSelectedDocFiles([]);
+        await fetchMe();
+      } else {
+        toast.error(res.message || "Tải lên tài liệu xác minh thất bại.");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Không thể tải lên tài liệu xác minh.";
+      setDocumentError(message);
+      toast.error(message);
+    } finally {
+      setUploadingDocuments(false);
+    }
+  };
+
+  const handleDeleteDocument = async (documentId: string) => {
+    const token = getStoredToken();
+    setDeletingDocumentId(documentId);
+    try {
+      const res = await apiFetch<ApiResponse<unknown>>(
+        `/coaches/me/verification-documents/${documentId}`,
+        { method: "DELETE", token }
+      );
+      if (res.success) {
+        toast.success("Đã xoá tài liệu xác minh.");
+        await fetchMe();
+      } else {
+        toast.error(res.message || "Không thể xoá tài liệu xác minh.");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Không thể xoá tài liệu xác minh.";
+      toast.error(message);
+    } finally {
+      setDeletingDocumentId(null);
     }
   };
 
@@ -1164,6 +1402,188 @@ export default function CoachApplyPage() {
                               </>
                             ) : (
                               `Tải lên${selectedFiles.length > 0 ? ` ${selectedFiles.length} ảnh` : ""}`
+                            )}
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Verification documents — formal admin review materials, kept
+                      distinct from the visual proof gallery above. */}
+                  <div className="space-y-4 border-t border-white/[0.06] pt-6">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                        <FileText className="h-3.5 w-3.5 text-[#FF8000]" aria-hidden />
+                        Tài liệu xác minh
+                      </div>
+                      <span className="text-xs font-medium text-slate-500">
+                        Đã tải {verificationDocuments.length}/{MAX_VERIFICATION_DOCUMENTS} tài liệu
+                      </span>
+                    </div>
+
+                    <p className="text-sm leading-relaxed text-slate-400">
+                      Tải lên chứng chỉ, giấy xác nhận hoặc tài liệu chuyên môn giúp admin đánh
+                      giá hồ sơ của bạn chính xác hơn.
+                    </p>
+
+                    {/* Privacy copy */}
+                    <div className="space-y-1.5 rounded-xl border border-white/[0.06] bg-slate-950/40 p-3 text-xs leading-relaxed text-slate-500">
+                      <p className="flex items-start gap-1.5">
+                        <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#86D232]" aria-hidden />
+                        Tài liệu chỉ dùng để đội ngũ MatchOps xét duyệt, không hiển thị công khai.
+                      </p>
+                      <p className="flex items-start gap-1.5">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden />
+                        Không tải lên CCCD/CMND/Hộ chiếu hoặc giấy tờ định danh cá nhân trong
+                        phiên bản này.
+                      </p>
+                    </div>
+
+                    {mode === "apply" ? (
+                      <p className="text-sm text-slate-400">
+                        Bạn có thể tải lên tài liệu xác minh (chứng chỉ, giấy xác nhận...) sau khi
+                        gửi hồ sơ ứng tuyển.
+                      </p>
+                    ) : (
+                      <>
+                        <VerificationDocumentGallery
+                          documents={verificationDocuments}
+                          deletingDocumentId={deletingDocumentId}
+                          onDelete={handleDeleteDocument}
+                        />
+
+                        <div className="space-y-3 rounded-xl border border-dashed border-white/[0.12] p-4">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <div className="flex-1 space-y-2">
+                              <Label htmlFor="coach-document-files" className="text-white">
+                                Chọn tài liệu xác minh
+                              </Label>
+                              <input
+                                id="coach-document-files"
+                                type="file"
+                                accept="application/pdf,image/jpeg,image/png,image/webp"
+                                multiple
+                                onChange={handleDocFilesSelected}
+                                disabled={
+                                  verificationDocuments.length + selectedDocFiles.length >=
+                                  MAX_VERIFICATION_DOCUMENTS
+                                }
+                                className={cn(
+                                  "block w-full text-sm text-slate-400",
+                                  "file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-2",
+                                  "file:text-sm file:font-medium file:text-white hover:file:bg-slate-700",
+                                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]",
+                                  "disabled:cursor-not-allowed disabled:opacity-50",
+                                )}
+                              />
+                              <p className="text-xs text-slate-500">
+                                PDF, JPG, PNG hoặc WEBP — tối đa 5MB mỗi tệp.
+                              </p>
+                            </div>
+                            <div className="space-y-2 sm:w-56">
+                              <Label htmlFor="coach-document-type" className="text-white">
+                                Loại tài liệu
+                              </Label>
+                              <Select
+                                value={selectedDocumentType}
+                                onValueChange={(v) =>
+                                  setSelectedDocumentType(v as CoachVerificationDocumentType)
+                                }
+                              >
+                                <SelectTrigger
+                                  id="coach-document-type"
+                                  className="border-white/10 bg-slate-900 text-white"
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="border-white/10 bg-slate-900 text-white">
+                                  {(
+                                    Object.keys(
+                                      VERIFICATION_DOCUMENT_TYPE_LABELS
+                                    ) as CoachVerificationDocumentType[]
+                                  ).map((type) => (
+                                    <SelectItem key={type} value={type}>
+                                      {VERIFICATION_DOCUMENT_TYPE_LABELS[type]}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          {selectedDocFiles.length > 0 && (
+                            <>
+                              <div className="space-y-2">
+                                {selectedDocFiles.map((file, index) => (
+                                  <div
+                                    key={`${file.name}-${index}`}
+                                    className="flex items-center gap-3 rounded-xl border border-[#FF8000]/30 bg-slate-950 p-3"
+                                  >
+                                    {selectedDocPreviews[index] ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img
+                                        src={selectedDocPreviews[index]}
+                                        alt={`Tài liệu đã chọn: ${file.name}`}
+                                        className="h-12 w-12 shrink-0 rounded-lg border border-white/10 object-cover"
+                                      />
+                                    ) : (
+                                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-slate-900">
+                                        <FileText className="h-5 w-5 text-[#FF8000]" aria-hidden />
+                                      </span>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-sm font-medium text-white">
+                                        {file.name}
+                                      </p>
+                                      <p className="mt-0.5 text-xs text-slate-500">
+                                        {formatFileSize(file.size)}
+                                      </p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeSelectedDocFile(index)}
+                                      aria-label={`Bỏ chọn tệp ${file.name}`}
+                                      className={cn(
+                                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                                        "text-slate-400 transition-colors hover:bg-red-500/20 hover:text-red-400",
+                                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400",
+                                      )}
+                                    >
+                                      <X className="h-4 w-4" aria-hidden />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                              <p className="text-xs text-slate-500">
+                                {selectedDocFiles.length} tệp đã chọn, chưa tải lên.
+                              </p>
+                            </>
+                          )}
+
+                          {documentError && (
+                            <div
+                              role="alert"
+                              className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400"
+                            >
+                              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                              {documentError}
+                            </div>
+                          )}
+
+                          <Button
+                            type="button"
+                            onClick={handleUploadDocuments}
+                            disabled={selectedDocFiles.length === 0 || uploadingDocuments}
+                            className="w-full bg-slate-800 text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                          >
+                            {uploadingDocuments ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                                Đang tải lên...
+                              </>
+                            ) : (
+                              `Tải lên${selectedDocFiles.length > 0 ? ` ${selectedDocFiles.length} tệp` : ""}`
                             )}
                           </Button>
                         </div>

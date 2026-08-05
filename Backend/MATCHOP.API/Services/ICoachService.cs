@@ -14,6 +14,14 @@ public interface ICoachService
     Task<List<CoachProofResponseDto>> GetMyCoachProofsAsync(Guid userId);
     Task DeleteMyCoachProofAsync(Guid userId, Guid proofId);
 
+    // Own-profile verification documents
+    Task<List<CoachVerificationDocumentResponseDto>> UploadMyVerificationDocumentsAsync(
+        Guid userId,
+        List<IFormFile> files,
+        CoachVerificationDocumentType documentType);
+    Task<List<CoachVerificationDocumentResponseDto>> GetMyVerificationDocumentsAsync(Guid userId);
+    Task DeleteMyVerificationDocumentAsync(Guid userId, Guid documentId);
+
     // Admin
     Task<AdminCoachProfileListResponseDto> GetCoachProfilesForAdminAsync(
         CoachProfileStatus? status,
