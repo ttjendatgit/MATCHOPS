@@ -68,6 +68,8 @@ import {
 import { cn } from "@/lib/utils";
 
 const MAX_PROOFS = 5;
+const MAX_PROOF_SIZE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_PROOF_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 const PROOF_TYPE_LABELS: Record<CoachProofType, string> = {
   CERTIFICATION: "Chứng chỉ",
@@ -186,13 +188,17 @@ const ACTIVE_NEXT_STEPS = [
 
 function ApplySuccessDialog({
   status,
+  meta,
   onOpenChange,
 }: {
   status: CoachProfileStatus | null;
+  meta: { hasQueuedFiles: boolean; failedGroups: string[] } | null;
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
   const isActive = status === "ACTIVE";
+  const hasUploadFailures = (meta?.failedGroups.length ?? 0) > 0;
+  const filesIncluded = !!meta?.hasQueuedFiles && !hasUploadFailures;
 
   return (
     <Dialog open={status !== null} onOpenChange={onOpenChange}>
@@ -204,6 +210,8 @@ function ApplySuccessDialog({
           <DialogTitle className="text-center text-xl">
             {isActive
               ? "Hồ sơ huấn luyện viên đã được cập nhật"
+              : filesIncluded
+              ? "Hồ sơ và tệp đính kèm đã được gửi"
               : "Hồ sơ huấn luyện viên đã được gửi"}
           </DialogTitle>
           <DialogDescription className="text-center">
@@ -212,6 +220,19 @@ function ApplySuccessDialog({
               : "MatchOps đã nhận hồ sơ của bạn. Hồ sơ sẽ được admin xét duyệt trước khi hiển thị công khai."}
           </DialogDescription>
         </DialogHeader>
+
+        {hasUploadFailures && (
+          <div
+            role="alert"
+            className="flex items-start gap-2 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-left text-sm text-amber-300"
+          >
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <span>
+              Hồ sơ đã được gửi, nhưng một số tệp chưa tải lên thành công (
+              {meta!.failedGroups.join(", ")}). Bạn có thể thử tải lại trong trang này.
+            </span>
+          </div>
+        )}
 
         <ul className="space-y-2.5 rounded-xl border border-white/[0.06] bg-slate-950/50 p-4 text-left">
           {(isActive ? ACTIVE_NEXT_STEPS : PENDING_NEXT_STEPS).map((step) => (
@@ -573,7 +594,12 @@ export default function CoachApplyPage() {
 
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitStage, setSubmitStage] = useState<"applying" | "uploading" | null>(null);
   const [successStatus, setSuccessStatus] = useState<CoachProfileStatus | null>(null);
+  const [successMeta, setSuccessMeta] = useState<{
+    hasQueuedFiles: boolean;
+    failedGroups: string[];
+  } | null>(null);
 
   // Proofs — existing (server-confirmed) vs. selected-but-not-yet-uploaded.
   const [proofs, setProofs] = useState<CoachProofResponse[]>([]);
@@ -748,6 +774,7 @@ export default function CoachApplyPage() {
     setSubmitting(true);
     try {
       if (mode === "apply") {
+        setSubmitStage("applying");
         const body: CoachApplyRequest = {
           displayName: displayName.trim() || undefined,
           bio: bio.trim() || undefined,
@@ -763,13 +790,48 @@ export default function CoachApplyPage() {
           token,
           body: JSON.stringify(body),
         });
-        if (res.success) {
-          toast.success("Đăng ký huấn luyện viên thành công. Hồ sơ đang chờ admin duyệt.");
-          await fetchMe();
-          setSuccessStatus(res.data?.status ?? "PENDING_APPROVAL");
-        } else {
+
+        if (!res.success) {
           toast.error(res.message || "Đăng ký thất bại.");
+          return;
         }
+
+        // Application created — now flush the queued files (proofs,
+        // verification documents, portfolio images) against the profile
+        // that just started existing. Uploads run in parallel; a failure in
+        // one group doesn't block the others or lose the selection (the
+        // corresponding selectedXFiles array is only cleared on success, so
+        // the user can retry from the now-visible profile-mode uploader).
+        const hasQueuedFiles =
+          selectedFiles.length > 0 ||
+          selectedDocFiles.length > 0 ||
+          selectedPortfolioFiles.length > 0;
+
+        const failedGroups: string[] = [];
+
+        if (hasQueuedFiles) {
+          setSubmitStage("uploading");
+          const [proofResult, docResult, portfolioResult] = await Promise.all([
+            uploadQueuedProofs(token),
+            uploadQueuedDocuments(token),
+            uploadQueuedPortfolio(token),
+          ]);
+          if (!proofResult.ok) failedGroups.push("ảnh minh chứng");
+          if (!docResult.ok) failedGroups.push("tài liệu xác minh");
+          if (!portfolioResult.ok) failedGroups.push("ảnh portfolio");
+        }
+
+        await fetchMe();
+
+        if (failedGroups.length === 0) {
+          toast.success(
+            hasQueuedFiles
+              ? "Hồ sơ và tệp đính kèm đã được gửi."
+              : "Đăng ký huấn luyện viên thành công. Hồ sơ đang chờ admin duyệt."
+          );
+        }
+        setSuccessMeta({ hasQueuedFiles, failedGroups });
+        setSuccessStatus(res.data?.status ?? "PENDING_APPROVAL");
       } else if (mode === "profile") {
         const body: CoachUpdateMyProfileRequest = {
           displayName: displayName.trim(),
@@ -789,6 +851,7 @@ export default function CoachApplyPage() {
         if (res.success) {
           toast.success("Cập nhật hồ sơ huấn luyện viên thành công.");
           await fetchMe();
+          setSuccessMeta(null);
           setSuccessStatus(res.data?.status ?? profile?.status ?? "PENDING_APPROVAL");
         } else {
           toast.error(res.message || "Cập nhật thất bại.");
@@ -800,6 +863,7 @@ export default function CoachApplyPage() {
       toast.error(message);
     } finally {
       setSubmitting(false);
+      setSubmitStage(null);
     }
   };
 
@@ -821,6 +885,18 @@ export default function CoachApplyPage() {
       return;
     }
 
+    const oversized = chosen.find((file) => file.size > MAX_PROOF_SIZE_BYTES);
+    if (oversized) {
+      toast.error(`Tệp "${oversized.name}" vượt quá giới hạn 5MB.`);
+      return;
+    }
+
+    const invalidType = chosen.find((file) => !ALLOWED_PROOF_MIME_TYPES.includes(file.type));
+    if (invalidType) {
+      toast.error(`Tệp "${invalidType.name}" không đúng định dạng. Chỉ chấp nhận JPG, PNG, WEBP.`);
+      return;
+    }
+
     setSelectedFiles((prev) => [...prev, ...chosen]);
   };
 
@@ -828,37 +904,54 @@ export default function CoachApplyPage() {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Uploads whatever is currently queued in selectedFiles. Used both by the
+  // standalone "Tải lên" button (profile mode) and by the apply-mode submit
+  // flow, which needs the outcome without a fetchMe()/toast per file group.
+  const uploadQueuedProofs = useCallback(
+    async (token: string | null): Promise<{ ok: boolean; message?: string }> => {
+      if (selectedFiles.length === 0) return { ok: true };
+
+      setProofError(null);
+      setUploadingProofs(true);
+      try {
+        const formData = new FormData();
+        selectedFiles.forEach((file) => formData.append("Files", file));
+        formData.append("ProofType", selectedProofType);
+
+        const res = await apiUpload<ApiResponse<CoachProofResponse[]>>(
+          "/coaches/me/proofs",
+          formData,
+          { token }
+        );
+
+        if (res.success) {
+          setSelectedFiles([]);
+          return { ok: true };
+        }
+        const message = res.message || "Tải lên ảnh minh chứng thất bại.";
+        setProofError(message);
+        return { ok: false, message };
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Không thể tải lên ảnh minh chứng.";
+        setProofError(message);
+        return { ok: false, message };
+      } finally {
+        setUploadingProofs(false);
+      }
+    },
+    [selectedFiles, selectedProofType]
+  );
+
   const handleUploadProofs = async () => {
     if (selectedFiles.length === 0) return;
-
     const token = getStoredToken();
-    setProofError(null);
-    setUploadingProofs(true);
-    try {
-      const formData = new FormData();
-      selectedFiles.forEach((file) => formData.append("Files", file));
-      formData.append("ProofType", selectedProofType);
-
-      const res = await apiUpload<ApiResponse<CoachProofResponse[]>>(
-        "/coaches/me/proofs",
-        formData,
-        { token }
-      );
-
-      if (res.success) {
-        toast.success("Tải lên ảnh minh chứng thành công.");
-        setSelectedFiles([]);
-        await fetchMe();
-      } else {
-        toast.error(res.message || "Tải lên ảnh minh chứng thất bại.");
-      }
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Không thể tải lên ảnh minh chứng.";
-      setProofError(message);
-      toast.error(message);
-    } finally {
-      setUploadingProofs(false);
+    const result = await uploadQueuedProofs(token);
+    if (result.ok) {
+      toast.success("Tải lên ảnh minh chứng thành công.");
+      await fetchMe();
+    } else {
+      toast.error(result.message || "Tải lên ảnh minh chứng thất bại.");
     }
   };
 
@@ -921,37 +1014,51 @@ export default function CoachApplyPage() {
     setSelectedDocFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const uploadQueuedDocuments = useCallback(
+    async (token: string | null): Promise<{ ok: boolean; message?: string }> => {
+      if (selectedDocFiles.length === 0) return { ok: true };
+
+      setDocumentError(null);
+      setUploadingDocuments(true);
+      try {
+        const formData = new FormData();
+        selectedDocFiles.forEach((file) => formData.append("Files", file));
+        formData.append("DocumentType", selectedDocumentType);
+
+        const res = await apiUpload<ApiResponse<CoachVerificationDocumentResponse[]>>(
+          "/coaches/me/verification-documents",
+          formData,
+          { token }
+        );
+
+        if (res.success) {
+          setSelectedDocFiles([]);
+          return { ok: true };
+        }
+        const message = res.message || "Tải lên tài liệu xác minh thất bại.";
+        setDocumentError(message);
+        return { ok: false, message };
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Không thể tải lên tài liệu xác minh.";
+        setDocumentError(message);
+        return { ok: false, message };
+      } finally {
+        setUploadingDocuments(false);
+      }
+    },
+    [selectedDocFiles, selectedDocumentType]
+  );
+
   const handleUploadDocuments = async () => {
     if (selectedDocFiles.length === 0) return;
-
     const token = getStoredToken();
-    setDocumentError(null);
-    setUploadingDocuments(true);
-    try {
-      const formData = new FormData();
-      selectedDocFiles.forEach((file) => formData.append("Files", file));
-      formData.append("DocumentType", selectedDocumentType);
-
-      const res = await apiUpload<ApiResponse<CoachVerificationDocumentResponse[]>>(
-        "/coaches/me/verification-documents",
-        formData,
-        { token }
-      );
-
-      if (res.success) {
-        toast.success("Tải lên tài liệu xác minh thành công.");
-        setSelectedDocFiles([]);
-        await fetchMe();
-      } else {
-        toast.error(res.message || "Tải lên tài liệu xác minh thất bại.");
-      }
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Không thể tải lên tài liệu xác minh.";
-      setDocumentError(message);
-      toast.error(message);
-    } finally {
-      setUploadingDocuments(false);
+    const result = await uploadQueuedDocuments(token);
+    if (result.ok) {
+      toast.success("Tải lên tài liệu xác minh thành công.");
+      await fetchMe();
+    } else {
+      toast.error(result.message || "Tải lên tài liệu xác minh thất bại.");
     }
   };
 
@@ -1014,40 +1121,54 @@ export default function CoachApplyPage() {
     setSelectedPortfolioFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const uploadQueuedPortfolio = useCallback(
+    async (token: string | null): Promise<{ ok: boolean; message?: string }> => {
+      if (selectedPortfolioFiles.length === 0) return { ok: true };
+
+      setPortfolioError(null);
+      setUploadingPortfolio(true);
+      try {
+        const formData = new FormData();
+        selectedPortfolioFiles.forEach((file) => formData.append("Files", file));
+        if (portfolioCaption.trim()) {
+          formData.append("Caption", portfolioCaption.trim());
+        }
+
+        const res = await apiUpload<ApiResponse<CoachPortfolioImageResponse[]>>(
+          "/coaches/me/portfolio-images",
+          formData,
+          { token }
+        );
+
+        if (res.success) {
+          setSelectedPortfolioFiles([]);
+          setPortfolioCaption("");
+          return { ok: true };
+        }
+        const message = res.message || "Tải lên ảnh portfolio thất bại.";
+        setPortfolioError(message);
+        return { ok: false, message };
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Không thể tải lên ảnh portfolio.";
+        setPortfolioError(message);
+        return { ok: false, message };
+      } finally {
+        setUploadingPortfolio(false);
+      }
+    },
+    [selectedPortfolioFiles, portfolioCaption]
+  );
+
   const handleUploadPortfolioImages = async () => {
     if (selectedPortfolioFiles.length === 0) return;
-
     const token = getStoredToken();
-    setPortfolioError(null);
-    setUploadingPortfolio(true);
-    try {
-      const formData = new FormData();
-      selectedPortfolioFiles.forEach((file) => formData.append("Files", file));
-      if (portfolioCaption.trim()) {
-        formData.append("Caption", portfolioCaption.trim());
-      }
-
-      const res = await apiUpload<ApiResponse<CoachPortfolioImageResponse[]>>(
-        "/coaches/me/portfolio-images",
-        formData,
-        { token }
-      );
-
-      if (res.success) {
-        toast.success("Tải lên ảnh portfolio thành công.");
-        setSelectedPortfolioFiles([]);
-        setPortfolioCaption("");
-        await fetchMe();
-      } else {
-        toast.error(res.message || "Tải lên ảnh portfolio thất bại.");
-      }
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Không thể tải lên ảnh portfolio.";
-      setPortfolioError(message);
-      toast.error(message);
-    } finally {
-      setUploadingPortfolio(false);
+    const result = await uploadQueuedPortfolio(token);
+    if (result.ok) {
+      toast.success("Tải lên ảnh portfolio thành công.");
+      await fetchMe();
+    } else {
+      toast.error(result.message || "Tải lên ảnh portfolio thất bại.");
     }
   };
 
@@ -1443,7 +1564,7 @@ export default function CoachApplyPage() {
                     )}
                   </div>
 
-                  {/* Proofs */}
+                  {/* Proofs — admin-review only (orange accent) */}
                   <div className="space-y-4 border-t border-white/[0.06] pt-6">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -1451,9 +1572,17 @@ export default function CoachApplyPage() {
                         Ảnh minh chứng
                       </div>
                       <span className="text-xs font-medium text-slate-500">
-                        Đã tải {proofs.length}/{MAX_PROOFS} ảnh minh chứng
+                        {mode === "apply"
+                          ? `Đã chọn ${selectedFiles.length}/${MAX_PROOFS} ảnh`
+                          : `Đã tải ${proofs.length}/${MAX_PROOFS} ảnh minh chứng`}
                       </span>
                     </div>
+
+                    <p className="text-sm leading-relaxed text-slate-400">
+                      {mode === "apply"
+                        ? "Chọn ảnh minh chứng để gửi kèm hồ sơ. Ảnh này chỉ dùng cho đội ngũ MatchOps xét duyệt."
+                        : "Ảnh minh chứng (chứng chỉ, thành tích...) giúp đội ngũ MatchOps đánh giá hồ sơ của bạn."}
+                    </p>
 
                     {/* Privacy copy */}
                     <div className="space-y-1.5 rounded-xl border border-white/[0.06] bg-slate-950/40 p-3 text-xs leading-relaxed text-slate-500">
@@ -1468,133 +1597,135 @@ export default function CoachApplyPage() {
                       </p>
                     </div>
 
-                    {mode === "apply" ? (
-                      <p className="text-sm text-slate-400">
-                        Bạn có thể tải lên ảnh minh chứng (chứng chỉ, thành tích...) sau khi gửi
-                        hồ sơ ứng tuyển.
-                      </p>
-                    ) : (
-                      <>
-                        <ProofGallery
-                          proofs={proofs}
-                          readOnly={false}
-                          deletingProofId={deletingProofId}
-                          onDelete={handleDeleteProof}
-                        />
+                    <ProofGallery
+                      proofs={proofs}
+                      readOnly={false}
+                      deletingProofId={deletingProofId}
+                      onDelete={handleDeleteProof}
+                    />
 
-                        <div className="space-y-3 rounded-xl border border-dashed border-white/[0.12] p-4">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                            <div className="flex-1 space-y-2">
-                              <Label htmlFor="coach-proof-files" className="text-white">
-                                Chọn ảnh minh chứng
-                              </Label>
-                              <input
-                                id="coach-proof-files"
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp"
-                                multiple
-                                onChange={handleFilesSelected}
-                                disabled={proofs.length + selectedFiles.length >= MAX_PROOFS}
-                                className={cn(
-                                  "block w-full text-sm text-slate-400",
-                                  "file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-2",
-                                  "file:text-sm file:font-medium file:text-white hover:file:bg-slate-700",
-                                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]",
-                                  "disabled:cursor-not-allowed disabled:opacity-50",
-                                )}
-                              />
-                            </div>
-                            <div className="space-y-2 sm:w-52">
-                              <Label htmlFor="coach-proof-type" className="text-white">
-                                Loại minh chứng
-                              </Label>
-                              <Select
-                                value={selectedProofType}
-                                onValueChange={(v) => setSelectedProofType(v as CoachProofType)}
-                              >
-                                <SelectTrigger
-                                  id="coach-proof-type"
-                                  className="border-white/10 bg-slate-900 text-white"
-                                >
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="border-white/10 bg-slate-900 text-white">
-                                  {(Object.keys(PROOF_TYPE_LABELS) as CoachProofType[]).map(
-                                    (type) => (
-                                      <SelectItem key={type} value={type}>
-                                        {PROOF_TYPE_LABELS[type]}
-                                      </SelectItem>
-                                    )
-                                  )}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-
-                          {selectedFiles.length > 0 && (
-                            <>
-                              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                                {selectedFiles.map((file, index) => (
-                                  <div
-                                    key={`${file.name}-${index}`}
-                                    className="group relative overflow-hidden rounded-xl border border-[#FF8000]/30 bg-slate-950"
-                                  >
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                      src={selectedPreviews[index]}
-                                      alt={`Ảnh minh chứng đã chọn: ${file.name}`}
-                                      className="h-28 w-full object-cover"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => removeSelectedFile(index)}
-                                      aria-label={`Bỏ chọn ảnh ${file.name}`}
-                                      className={cn(
-                                        "absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full",
-                                        "bg-slate-950/80 text-slate-300 backdrop-blur-sm transition-colors",
-                                        "hover:bg-red-500/80 hover:text-white",
-                                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400",
-                                      )}
-                                    >
-                                      <X className="h-3.5 w-3.5" aria-hidden />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                              <p className="text-xs text-slate-500">
-                                {selectedFiles.length} ảnh đã chọn, chưa tải lên.
-                              </p>
-                            </>
-                          )}
-
-                          {proofError && (
-                            <div
-                              role="alert"
-                              className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400"
-                            >
-                              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                              {proofError}
-                            </div>
-                          )}
-
-                          <Button
-                            type="button"
-                            onClick={handleUploadProofs}
-                            disabled={selectedFiles.length === 0 || uploadingProofs}
-                            className="w-full bg-slate-800 text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                          >
-                            {uploadingProofs ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                                Đang tải lên...
-                              </>
-                            ) : (
-                              `Tải lên${selectedFiles.length > 0 ? ` ${selectedFiles.length} ảnh` : ""}`
+                    <div className="space-y-3 rounded-xl border border-dashed border-white/[0.12] p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div className="flex-1 space-y-2">
+                          <Label htmlFor="coach-proof-files" className="text-white">
+                            Chọn ảnh minh chứng
+                          </Label>
+                          <input
+                            id="coach-proof-files"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            multiple
+                            onChange={handleFilesSelected}
+                            disabled={
+                              proofs.length + selectedFiles.length >= MAX_PROOFS || submitting
+                            }
+                            className={cn(
+                              "block w-full text-sm text-slate-400",
+                              "file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-2",
+                              "file:text-sm file:font-medium file:text-white hover:file:bg-slate-700",
+                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]",
+                              "disabled:cursor-not-allowed disabled:opacity-50",
                             )}
-                          </Button>
+                          />
+                          <p className="text-xs text-slate-500">
+                            JPG, PNG hoặc WEBP — tối đa 5MB mỗi ảnh.
+                          </p>
                         </div>
-                      </>
-                    )}
+                        <div className="space-y-2 sm:w-52">
+                          <Label htmlFor="coach-proof-type" className="text-white">
+                            Loại minh chứng
+                          </Label>
+                          <Select
+                            value={selectedProofType}
+                            onValueChange={(v) => setSelectedProofType(v as CoachProofType)}
+                          >
+                            <SelectTrigger
+                              id="coach-proof-type"
+                              className="border-white/10 bg-slate-900 text-white"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="border-white/10 bg-slate-900 text-white">
+                              {(Object.keys(PROOF_TYPE_LABELS) as CoachProofType[]).map(
+                                (type) => (
+                                  <SelectItem key={type} value={type}>
+                                    {PROOF_TYPE_LABELS[type]}
+                                  </SelectItem>
+                                )
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {selectedFiles.length > 0 && (
+                        <>
+                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                            {selectedFiles.map((file, index) => (
+                              <div
+                                key={`${file.name}-${index}`}
+                                className="group relative overflow-hidden rounded-xl border border-[#FF8000]/30 bg-slate-950"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={selectedPreviews[index]}
+                                  alt={`Ảnh minh chứng đã chọn: ${file.name}`}
+                                  className="h-28 w-full object-cover"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeSelectedFile(index)}
+                                  disabled={submitting}
+                                  aria-label={`Bỏ chọn ảnh ${file.name}`}
+                                  className={cn(
+                                    "absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full",
+                                    "bg-slate-950/80 text-slate-300 backdrop-blur-sm transition-colors",
+                                    "hover:bg-red-500/80 hover:text-white",
+                                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400",
+                                    "disabled:cursor-not-allowed disabled:opacity-50",
+                                  )}
+                                >
+                                  <X className="h-3.5 w-3.5" aria-hidden />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-xs text-slate-500">
+                            {mode === "apply"
+                              ? `${selectedFiles.length} ảnh đã chọn — sẽ tự động tải lên sau khi gửi hồ sơ.`
+                              : `${selectedFiles.length} ảnh đã chọn, chưa tải lên.`}
+                          </p>
+                        </>
+                      )}
+
+                      {proofError && (
+                        <div
+                          role="alert"
+                          className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400"
+                        >
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                          {proofError}
+                        </div>
+                      )}
+
+                      {mode !== "apply" && (
+                        <Button
+                          type="button"
+                          onClick={handleUploadProofs}
+                          disabled={selectedFiles.length === 0 || uploadingProofs}
+                          className="w-full bg-slate-800 text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                        >
+                          {uploadingProofs ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                              Đang tải lên...
+                            </>
+                          ) : (
+                            `Tải lên${selectedFiles.length > 0 ? ` ${selectedFiles.length} ảnh` : ""}`
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Verification documents — formal admin review materials, kept
@@ -1606,13 +1737,16 @@ export default function CoachApplyPage() {
                         Tài liệu xác minh
                       </div>
                       <span className="text-xs font-medium text-slate-500">
-                        Đã tải {verificationDocuments.length}/{MAX_VERIFICATION_DOCUMENTS} tài liệu
+                        {mode === "apply"
+                          ? `Đã chọn ${selectedDocFiles.length}/${MAX_VERIFICATION_DOCUMENTS} tài liệu`
+                          : `Đã tải ${verificationDocuments.length}/${MAX_VERIFICATION_DOCUMENTS} tài liệu`}
                       </span>
                     </div>
 
                     <p className="text-sm leading-relaxed text-slate-400">
-                      Tải lên chứng chỉ, giấy xác nhận hoặc tài liệu chuyên môn giúp admin đánh
-                      giá hồ sơ của bạn chính xác hơn.
+                      {mode === "apply"
+                        ? "Chọn tài liệu xác minh để gửi kèm hồ sơ. Tài liệu này chỉ dùng cho đội ngũ MatchOps xét duyệt."
+                        : "Tải lên chứng chỉ, giấy xác nhận hoặc tài liệu chuyên môn giúp admin đánh giá hồ sơ của bạn chính xác hơn."}
                     </p>
 
                     {/* Privacy copy */}
@@ -1628,155 +1762,152 @@ export default function CoachApplyPage() {
                       </p>
                     </div>
 
-                    {mode === "apply" ? (
-                      <p className="text-sm text-slate-400">
-                        Bạn có thể tải lên tài liệu xác minh (chứng chỉ, giấy xác nhận...) sau khi
-                        gửi hồ sơ ứng tuyển.
-                      </p>
-                    ) : (
-                      <>
-                        <VerificationDocumentGallery
-                          documents={verificationDocuments}
-                          deletingDocumentId={deletingDocumentId}
-                          onDelete={handleDeleteDocument}
-                        />
+                    <VerificationDocumentGallery
+                      documents={verificationDocuments}
+                      deletingDocumentId={deletingDocumentId}
+                      onDelete={handleDeleteDocument}
+                    />
 
-                        <div className="space-y-3 rounded-xl border border-dashed border-white/[0.12] p-4">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                            <div className="flex-1 space-y-2">
-                              <Label htmlFor="coach-document-files" className="text-white">
-                                Chọn tài liệu xác minh
-                              </Label>
-                              <input
-                                id="coach-document-files"
-                                type="file"
-                                accept="application/pdf,image/jpeg,image/png,image/webp"
-                                multiple
-                                onChange={handleDocFilesSelected}
-                                disabled={
-                                  verificationDocuments.length + selectedDocFiles.length >=
-                                  MAX_VERIFICATION_DOCUMENTS
-                                }
-                                className={cn(
-                                  "block w-full text-sm text-slate-400",
-                                  "file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-2",
-                                  "file:text-sm file:font-medium file:text-white hover:file:bg-slate-700",
-                                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]",
-                                  "disabled:cursor-not-allowed disabled:opacity-50",
-                                )}
-                              />
-                              <p className="text-xs text-slate-500">
-                                PDF, JPG, PNG hoặc WEBP — tối đa 5MB mỗi tệp.
-                              </p>
-                            </div>
-                            <div className="space-y-2 sm:w-56">
-                              <Label htmlFor="coach-document-type" className="text-white">
-                                Loại tài liệu
-                              </Label>
-                              <Select
-                                value={selectedDocumentType}
-                                onValueChange={(v) =>
-                                  setSelectedDocumentType(v as CoachVerificationDocumentType)
-                                }
-                              >
-                                <SelectTrigger
-                                  id="coach-document-type"
-                                  className="border-white/10 bg-slate-900 text-white"
-                                >
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="border-white/10 bg-slate-900 text-white">
-                                  {(
-                                    Object.keys(
-                                      VERIFICATION_DOCUMENT_TYPE_LABELS
-                                    ) as CoachVerificationDocumentType[]
-                                  ).map((type) => (
-                                    <SelectItem key={type} value={type}>
-                                      {VERIFICATION_DOCUMENT_TYPE_LABELS[type]}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-
-                          {selectedDocFiles.length > 0 && (
-                            <>
-                              <div className="space-y-2">
-                                {selectedDocFiles.map((file, index) => (
-                                  <div
-                                    key={`${file.name}-${index}`}
-                                    className="flex items-center gap-3 rounded-xl border border-[#FF8000]/30 bg-slate-950 p-3"
-                                  >
-                                    {selectedDocPreviews[index] ? (
-                                      // eslint-disable-next-line @next/next/no-img-element
-                                      <img
-                                        src={selectedDocPreviews[index]}
-                                        alt={`Tài liệu đã chọn: ${file.name}`}
-                                        className="h-12 w-12 shrink-0 rounded-lg border border-white/10 object-cover"
-                                      />
-                                    ) : (
-                                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-slate-900">
-                                        <FileText className="h-5 w-5 text-[#FF8000]" aria-hidden />
-                                      </span>
-                                    )}
-                                    <div className="min-w-0 flex-1">
-                                      <p className="truncate text-sm font-medium text-white">
-                                        {file.name}
-                                      </p>
-                                      <p className="mt-0.5 text-xs text-slate-500">
-                                        {formatFileSize(file.size)}
-                                      </p>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => removeSelectedDocFile(index)}
-                                      aria-label={`Bỏ chọn tệp ${file.name}`}
-                                      className={cn(
-                                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                                        "text-slate-400 transition-colors hover:bg-red-500/20 hover:text-red-400",
-                                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400",
-                                      )}
-                                    >
-                                      <X className="h-4 w-4" aria-hidden />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                              <p className="text-xs text-slate-500">
-                                {selectedDocFiles.length} tệp đã chọn, chưa tải lên.
-                              </p>
-                            </>
-                          )}
-
-                          {documentError && (
-                            <div
-                              role="alert"
-                              className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400"
-                            >
-                              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                              {documentError}
-                            </div>
-                          )}
-
-                          <Button
-                            type="button"
-                            onClick={handleUploadDocuments}
-                            disabled={selectedDocFiles.length === 0 || uploadingDocuments}
-                            className="w-full bg-slate-800 text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                          >
-                            {uploadingDocuments ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                                Đang tải lên...
-                              </>
-                            ) : (
-                              `Tải lên${selectedDocFiles.length > 0 ? ` ${selectedDocFiles.length} tệp` : ""}`
+                    <div className="space-y-3 rounded-xl border border-dashed border-white/[0.12] p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div className="flex-1 space-y-2">
+                          <Label htmlFor="coach-document-files" className="text-white">
+                            Chọn tài liệu xác minh
+                          </Label>
+                          <input
+                            id="coach-document-files"
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            multiple
+                            onChange={handleDocFilesSelected}
+                            disabled={
+                              verificationDocuments.length + selectedDocFiles.length >=
+                                MAX_VERIFICATION_DOCUMENTS || submitting
+                            }
+                            className={cn(
+                              "block w-full text-sm text-slate-400",
+                              "file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-2",
+                              "file:text-sm file:font-medium file:text-white hover:file:bg-slate-700",
+                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]",
+                              "disabled:cursor-not-allowed disabled:opacity-50",
                             )}
-                          </Button>
+                          />
+                          <p className="text-xs text-slate-500">
+                            PDF, JPG, PNG hoặc WEBP — tối đa 5MB mỗi tệp.
+                          </p>
                         </div>
-                      </>
-                    )}
+                        <div className="space-y-2 sm:w-56">
+                          <Label htmlFor="coach-document-type" className="text-white">
+                            Loại tài liệu
+                          </Label>
+                          <Select
+                            value={selectedDocumentType}
+                            onValueChange={(v) =>
+                              setSelectedDocumentType(v as CoachVerificationDocumentType)
+                            }
+                          >
+                            <SelectTrigger
+                              id="coach-document-type"
+                              className="border-white/10 bg-slate-900 text-white"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="border-white/10 bg-slate-900 text-white">
+                              {(
+                                Object.keys(
+                                  VERIFICATION_DOCUMENT_TYPE_LABELS
+                                ) as CoachVerificationDocumentType[]
+                              ).map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {VERIFICATION_DOCUMENT_TYPE_LABELS[type]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {selectedDocFiles.length > 0 && (
+                        <>
+                          <div className="space-y-2">
+                            {selectedDocFiles.map((file, index) => (
+                              <div
+                                key={`${file.name}-${index}`}
+                                className="flex items-center gap-3 rounded-xl border border-[#FF8000]/30 bg-slate-950 p-3"
+                              >
+                                {selectedDocPreviews[index] ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={selectedDocPreviews[index]}
+                                    alt={`Tài liệu đã chọn: ${file.name}`}
+                                    className="h-12 w-12 shrink-0 rounded-lg border border-white/10 object-cover"
+                                  />
+                                ) : (
+                                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-slate-900">
+                                    <FileText className="h-5 w-5 text-[#FF8000]" aria-hidden />
+                                  </span>
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-medium text-white">
+                                    {file.name}
+                                  </p>
+                                  <p className="mt-0.5 text-xs text-slate-500">
+                                    {formatFileSize(file.size)}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeSelectedDocFile(index)}
+                                  disabled={submitting}
+                                  aria-label={`Bỏ chọn tệp ${file.name}`}
+                                  className={cn(
+                                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                                    "text-slate-400 transition-colors hover:bg-red-500/20 hover:text-red-400",
+                                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400",
+                                    "disabled:cursor-not-allowed disabled:opacity-50",
+                                  )}
+                                >
+                                  <X className="h-4 w-4" aria-hidden />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-xs text-slate-500">
+                            {mode === "apply"
+                              ? `${selectedDocFiles.length} tệp đã chọn — sẽ tự động tải lên sau khi gửi hồ sơ.`
+                              : `${selectedDocFiles.length} tệp đã chọn, chưa tải lên.`}
+                          </p>
+                        </>
+                      )}
+
+                      {documentError && (
+                        <div
+                          role="alert"
+                          className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400"
+                        >
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                          {documentError}
+                        </div>
+                      )}
+
+                      {mode !== "apply" && (
+                        <Button
+                          type="button"
+                          onClick={handleUploadDocuments}
+                          disabled={selectedDocFiles.length === 0 || uploadingDocuments}
+                          className="w-full bg-slate-800 text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                        >
+                          {uploadingDocuments ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                              Đang tải lên...
+                            </>
+                          ) : (
+                            `Tải lên${selectedDocFiles.length > 0 ? ` ${selectedDocFiles.length} tệp` : ""}`
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Public portfolio images — coach-curated public gallery, visually
@@ -1789,13 +1920,16 @@ export default function CoachApplyPage() {
                         Ảnh portfolio công khai
                       </div>
                       <span className="text-xs font-medium text-slate-500">
-                        Đã tải {portfolioImages.length}/{MAX_PORTFOLIO_IMAGES} ảnh
+                        {mode === "apply"
+                          ? `Đã chọn ${selectedPortfolioFiles.length}/${MAX_PORTFOLIO_IMAGES} ảnh`
+                          : `Đã tải ${portfolioImages.length}/${MAX_PORTFOLIO_IMAGES} ảnh`}
                       </span>
                     </div>
 
                     <p className="text-sm leading-relaxed text-slate-400">
-                      Tải lên ảnh hoạt động huấn luyện hoặc thành tích bạn muốn hiển thị trên hồ
-                      sơ công khai.
+                      {mode === "apply"
+                        ? "Chọn ảnh portfolio công khai để hiển thị trên hồ sơ sau khi được duyệt."
+                        : "Tải lên ảnh hoạt động huấn luyện hoặc thành tích bạn muốn hiển thị trên hồ sơ công khai."}
                     </p>
 
                     {/* Privacy copy */}
@@ -1812,125 +1946,123 @@ export default function CoachApplyPage() {
                       </p>
                     </div>
 
-                    {mode === "apply" ? (
-                      <p className="text-sm text-slate-400">
-                        Bạn có thể tải lên ảnh portfolio công khai sau khi gửi hồ sơ ứng tuyển.
-                      </p>
-                    ) : (
-                      <>
-                        <PortfolioImageGallery
-                          images={portfolioImages}
-                          deletingImageId={deletingPortfolioImageId}
-                          onDelete={handleDeletePortfolioImage}
-                        />
+                    <PortfolioImageGallery
+                      images={portfolioImages}
+                      deletingImageId={deletingPortfolioImageId}
+                      onDelete={handleDeletePortfolioImage}
+                    />
 
-                        <div className="space-y-3 rounded-xl border border-dashed border-[#86D232]/25 p-4">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                            <div className="flex-1 space-y-2">
-                              <Label htmlFor="coach-portfolio-files" className="text-white">
-                                Chọn ảnh portfolio
-                              </Label>
-                              <input
-                                id="coach-portfolio-files"
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp"
-                                multiple
-                                onChange={handlePortfolioFilesSelected}
-                                disabled={
-                                  portfolioImages.length + selectedPortfolioFiles.length >=
-                                  MAX_PORTFOLIO_IMAGES
-                                }
-                                className={cn(
-                                  "block w-full text-sm text-slate-400",
-                                  "file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-2",
-                                  "file:text-sm file:font-medium file:text-white hover:file:bg-slate-700",
-                                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#86D232]",
-                                  "disabled:cursor-not-allowed disabled:opacity-50",
-                                )}
-                              />
-                              <p className="text-xs text-slate-500">
-                                JPG, PNG hoặc WEBP — tối đa 5MB mỗi ảnh.
-                              </p>
-                            </div>
-                            <div className="space-y-2 sm:w-56">
-                              <Label htmlFor="coach-portfolio-caption" className="text-white">
-                                Chú thích (không bắt buộc)
-                              </Label>
-                              <Input
-                                id="coach-portfolio-caption"
-                                value={portfolioCaption}
-                                onChange={(e) => setPortfolioCaption(e.target.value)}
-                                placeholder="VD: Buổi tập cùng học viên"
-                                maxLength={300}
-                                className="border-white/10 bg-slate-900"
-                              />
-                            </div>
-                          </div>
-
-                          {selectedPortfolioFiles.length > 0 && (
-                            <>
-                              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                                {selectedPortfolioFiles.map((file, index) => (
-                                  <div
-                                    key={`${file.name}-${index}`}
-                                    className="group relative overflow-hidden rounded-xl border border-[#86D232]/40 bg-slate-950"
-                                  >
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                      src={selectedPortfolioPreviews[index]}
-                                      alt={`Ảnh portfolio đã chọn: ${file.name}`}
-                                      className="h-28 w-full object-cover"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => removeSelectedPortfolioFile(index)}
-                                      aria-label={`Bỏ chọn ảnh ${file.name}`}
-                                      className={cn(
-                                        "absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full",
-                                        "bg-slate-950/80 text-slate-300 backdrop-blur-sm transition-colors",
-                                        "hover:bg-red-500/80 hover:text-white",
-                                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400",
-                                      )}
-                                    >
-                                      <X className="h-3.5 w-3.5" aria-hidden />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                              <p className="text-xs text-slate-500">
-                                {selectedPortfolioFiles.length} ảnh đã chọn, chưa tải lên.
-                              </p>
-                            </>
-                          )}
-
-                          {portfolioError && (
-                            <div
-                              role="alert"
-                              className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400"
-                            >
-                              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                              {portfolioError}
-                            </div>
-                          )}
-
-                          <Button
-                            type="button"
-                            onClick={handleUploadPortfolioImages}
-                            disabled={selectedPortfolioFiles.length === 0 || uploadingPortfolio}
-                            className="w-full bg-[#86D232] text-[#0A0A0A] hover:bg-[#86D232]/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                          >
-                            {uploadingPortfolio ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                                Đang tải lên...
-                              </>
-                            ) : (
-                              `Tải lên${selectedPortfolioFiles.length > 0 ? ` ${selectedPortfolioFiles.length} ảnh` : ""}`
+                    <div className="space-y-3 rounded-xl border border-dashed border-[#86D232]/25 p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div className="flex-1 space-y-2">
+                          <Label htmlFor="coach-portfolio-files" className="text-white">
+                            Chọn ảnh portfolio
+                          </Label>
+                          <input
+                            id="coach-portfolio-files"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            multiple
+                            onChange={handlePortfolioFilesSelected}
+                            disabled={
+                              portfolioImages.length + selectedPortfolioFiles.length >=
+                                MAX_PORTFOLIO_IMAGES || submitting
+                            }
+                            className={cn(
+                              "block w-full text-sm text-slate-400",
+                              "file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-2",
+                              "file:text-sm file:font-medium file:text-white hover:file:bg-slate-700",
+                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#86D232]",
+                              "disabled:cursor-not-allowed disabled:opacity-50",
                             )}
-                          </Button>
+                          />
+                          <p className="text-xs text-slate-500">
+                            JPG, PNG hoặc WEBP — tối đa 5MB mỗi ảnh.
+                          </p>
                         </div>
-                      </>
-                    )}
+                        <div className="space-y-2 sm:w-56">
+                          <Label htmlFor="coach-portfolio-caption" className="text-white">
+                            Chú thích (không bắt buộc)
+                          </Label>
+                          <Input
+                            id="coach-portfolio-caption"
+                            value={portfolioCaption}
+                            onChange={(e) => setPortfolioCaption(e.target.value)}
+                            placeholder="VD: Buổi tập cùng học viên"
+                            maxLength={300}
+                            className="border-white/10 bg-slate-900"
+                          />
+                        </div>
+                      </div>
+
+                      {selectedPortfolioFiles.length > 0 && (
+                        <>
+                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                            {selectedPortfolioFiles.map((file, index) => (
+                              <div
+                                key={`${file.name}-${index}`}
+                                className="group relative overflow-hidden rounded-xl border border-[#86D232]/40 bg-slate-950"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={selectedPortfolioPreviews[index]}
+                                  alt={`Ảnh portfolio đã chọn: ${file.name}`}
+                                  className="h-28 w-full object-cover"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeSelectedPortfolioFile(index)}
+                                  disabled={submitting}
+                                  aria-label={`Bỏ chọn ảnh ${file.name}`}
+                                  className={cn(
+                                    "absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full",
+                                    "bg-slate-950/80 text-slate-300 backdrop-blur-sm transition-colors",
+                                    "hover:bg-red-500/80 hover:text-white",
+                                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400",
+                                    "disabled:cursor-not-allowed disabled:opacity-50",
+                                  )}
+                                >
+                                  <X className="h-3.5 w-3.5" aria-hidden />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-xs text-slate-500">
+                            {mode === "apply"
+                              ? `${selectedPortfolioFiles.length} ảnh đã chọn — sẽ tự động tải lên sau khi gửi hồ sơ.`
+                              : `${selectedPortfolioFiles.length} ảnh đã chọn, chưa tải lên.`}
+                          </p>
+                        </>
+                      )}
+
+                      {portfolioError && (
+                        <div
+                          role="alert"
+                          className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400"
+                        >
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                          {portfolioError}
+                        </div>
+                      )}
+
+                      {mode !== "apply" && (
+                        <Button
+                          type="button"
+                          onClick={handleUploadPortfolioImages}
+                          disabled={selectedPortfolioFiles.length === 0 || uploadingPortfolio}
+                          className="w-full bg-[#86D232] text-[#0A0A0A] hover:bg-[#86D232]/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                        >
+                          {uploadingPortfolio ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                              Đang tải lên...
+                            </>
+                          ) : (
+                            `Tải lên${selectedPortfolioFiles.length > 0 ? ` ${selectedPortfolioFiles.length} ảnh` : ""}`
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Form-level error */}
@@ -1964,7 +2096,11 @@ export default function CoachApplyPage() {
                       {submitting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                          Đang gửi...
+                          {mode === "apply"
+                            ? submitStage === "uploading"
+                              ? "Đang tải tệp đính kèm..."
+                              : "Đang gửi hồ sơ..."
+                            : "Đang gửi..."}
                         </>
                       ) : mode === "apply" ? (
                         "Gửi hồ sơ ứng tuyển"
@@ -1985,7 +2121,13 @@ export default function CoachApplyPage() {
 
       <ApplySuccessDialog
         status={successStatus}
-        onOpenChange={(open) => !open && setSuccessStatus(null)}
+        meta={successMeta}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSuccessStatus(null);
+            setSuccessMeta(null);
+          }
+        }}
       />
     </div>
   );
