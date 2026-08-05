@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarCheck2,
   ChevronDown,
+  ClipboardList,
   KeyRound,
   LayoutDashboard,
   LogOut,
@@ -96,6 +97,7 @@ const dropdownMenuItems = [
   { href: "/account/subscription", label: "Gói của tôi",     icon: Star          },
   { href: "/match/rooms",      label: "Phòng chờ ghép đối", icon: Users         },
   { href: "/bookings",         label: "Lịch đặt của tôi",   icon: CalendarCheck2},
+  { href: "/coach/requests",   label: "Yêu cầu của tôi",    icon: ClipboardList },
   { href: "/change-password",  label: "Đổi mật khẩu",       icon: KeyRound      },
   { href: "/account/settings", label: "Cài đặt tài khoản",  icon: Settings      },
 ];
@@ -425,6 +427,15 @@ export function PublicNavbar() {
               >
                 <CalendarCheck2 className="h-4 w-4" aria-hidden />
                 Lịch đặt của tôi
+              </Link>
+
+              <Link
+                href="/coach/requests"
+                className="flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2.5 text-sm font-medium text-slate-400 transition-all duration-200 hover:bg-white/[0.07] hover:text-white"
+                onClick={() => setMobileOpen(false)}
+              >
+                <ClipboardList className="h-4 w-4" aria-hidden />
+                Yêu cầu của tôi
               </Link>
 
               <Link

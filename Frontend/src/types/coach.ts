@@ -196,3 +196,49 @@ export interface RejectCoachProfileRequest {
 export interface SuspendCoachProfileRequest {
   reason?: string | null;
 }
+
+// ─── Coach session requests (Coach-8 MVP) ──────────────────────────────────
+
+export type CoachSessionRequestStatus =
+  | "PENDING"
+  | "ACCEPTED"
+  | "DECLINED"
+  | "CANCELLED"
+  | "COMPLETED";
+
+export interface CreateCoachSessionRequestPayload {
+  sportId?: string;
+  /** "YYYY-MM-DD" */
+  preferredDate?: string;
+  preferredTimeSlot?: string;
+  durationMinutes?: number;
+  locationNote?: string;
+  message?: string;
+}
+
+export interface CoachRespondSessionRequestPayload {
+  responseMessage?: string;
+}
+
+export interface CoachSessionRequestResponse {
+  id: string;
+  coachProfileId: string;
+  coachDisplayName: string;
+  requesterId: string;
+  requesterName: string;
+  requesterEmail: string | null;
+  requesterPhoneNumber: string | null;
+  sportId: string | null;
+  sportName: string | null;
+  preferredDate: string | null;
+  preferredTimeSlot: string | null;
+  durationMinutes: number | null;
+  locationNote: string | null;
+  message: string | null;
+  status: CoachSessionRequestStatus;
+  coachResponseMessage: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+  respondedAt: string | null;
+  cancelledAt: string | null;
+}

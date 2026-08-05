@@ -11,6 +11,7 @@ import {
   Check,
   CheckCircle2,
   ChevronLeft,
+  ClipboardList,
   Clock,
   Dumbbell,
   ExternalLink,
@@ -1297,15 +1298,24 @@ export default function CoachApplyPage() {
                   </div>
                 )}
 
-                {status === "ACTIVE" && (
+                <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+                  {status === "ACTIVE" && (
+                    <Link
+                      href="/coach"
+                      className="inline-flex items-center gap-1.5 rounded text-xs font-medium text-[#86D232] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#86D232]/50"
+                    >
+                      <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+                      Xem trang Huấn luyện viên công khai
+                    </Link>
+                  )}
                   <Link
-                    href="/coach"
-                    className="mt-4 inline-flex items-center gap-1.5 rounded text-xs font-medium text-[#86D232] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#86D232]/50"
+                    href="/coach/manage/requests"
+                    className="inline-flex items-center gap-1.5 rounded text-xs font-medium text-[#FF8000] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]/50"
                   >
-                    <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
-                    Xem trang Huấn luyện viên công khai
+                    <ClipboardList className="h-3.5 w-3.5" aria-hidden />
+                    Yêu cầu buổi huấn luyện
                   </Link>
-                )}
+                </div>
               </CardContent>
             </Card>
           )}

@@ -188,6 +188,15 @@ public enum CoachVerificationDocumentType
     OTHER = 5
 }
 
+public enum CoachSessionRequestStatus
+{
+    PENDING = 1,
+    ACCEPTED = 2,
+    DECLINED = 3,
+    CANCELLED = 4,
+    COMPLETED = 5
+}
+
 public enum MembershipTier
 {
     FREE     = 1,

@@ -53,5 +53,11 @@
         public const string CoachProfileNotFound = "COACH_PROFILE_NOT_FOUND";
         public const string CoachProfileAlreadyExists = "COACH_PROFILE_ALREADY_EXISTS";
         public const string CoachProfileSuspended = "COACH_PROFILE_SUSPENDED";
+        public const string CoachProfileNotActive = "COACH_PROFILE_NOT_ACTIVE";
+        public const string CoachCannotRequestOwnProfile = "COACH_CANNOT_REQUEST_OWN_PROFILE";
+        public const string CoachSportNotOffered = "COACH_SPORT_NOT_OFFERED";
+        public const string CoachSessionRequestNotFound = "COACH_SESSION_REQUEST_NOT_FOUND";
+        public const string CoachSessionRequestNotPending = "COACH_SESSION_REQUEST_NOT_PENDING";
+        public const string CoachSessionRequestDuplicate = "COACH_SESSION_REQUEST_DUPLICATE";
     }
 }

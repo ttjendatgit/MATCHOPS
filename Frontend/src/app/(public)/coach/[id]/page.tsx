@@ -8,10 +8,10 @@ import {
   Clock3,
   MapPin,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { PublicPortfolioGallery } from "@/components/coach/PublicPortfolioGallery";
+import { CoachSessionRequestCTA } from "@/components/coach/CoachSessionRequestCTA";
 import type { PublicCoachDetail } from "@/types/coach";
 
 export const metadata: Metadata = { title: "Chi tiết huấn luyện viên – MatchOps" };
@@ -213,18 +213,11 @@ export default async function CoachDetailPage({
             <h2 className="mb-1 text-base font-semibold text-white">Liên hệ huấn luyện viên</h2>
             <p className="mb-5 text-sm text-slate-500">{formatHourlyRate(coach.hourlyRate)}</p>
 
-            <div
-              className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-slate-800/60 px-4 py-3 text-sm font-semibold text-slate-500"
-              aria-disabled="true"
-              role="status"
-            >
-              <Sparkles className="h-4 w-4" aria-hidden />
-              Tính năng đặt lịch sẽ được mở sau
-            </div>
-
-            <p className="mt-3 text-center text-xs leading-relaxed text-slate-600">
-              Chức năng đặt lịch trực tiếp với huấn luyện viên đang được MatchOps phát triển.
-            </p>
+            <CoachSessionRequestCTA
+              coachId={coach.id}
+              coachDisplayName={coach.displayName}
+              sports={coach.sports}
+            />
           </div>
         </div>
       </div>

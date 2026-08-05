@@ -28,6 +28,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<CoachProfileProof> CoachProfileProofs => Set<CoachProfileProof>();
     public DbSet<CoachVerificationDocument> CoachVerificationDocuments => Set<CoachVerificationDocument>();
     public DbSet<CoachPortfolioImage> CoachPortfolioImages => Set<CoachPortfolioImage>();
+    public DbSet<CoachSessionRequest> CoachSessionRequests => Set<CoachSessionRequest>();
     public DbSet<MatchPost> MatchPosts => Set<MatchPost>();
     public DbSet<MatchQueue> MatchQueues => Set<MatchQueue>();
     public DbSet<MatchRoom> MatchRooms => Set<MatchRoom>();
@@ -810,6 +811,68 @@ public class ApplicationDbContext : DbContext
 
             e.HasIndex(x => new { x.CoachProfileId, x.SortOrder })
              .HasDatabaseName("ix_coach_portfolio_images_coach_profile_sort_order");
+        });
+
+        // ── CoachSessionRequest ───────────────────────────────────────────
+        // Lightweight MVP request/response flow between a normal user and an
+        // ACTIVE coach profile. Deliberately separate from Booking — Booking
+        // is court/venue/payment-shaped and not a fit for this flow.
+        modelBuilder.Entity<CoachSessionRequest>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.PreferredTimeSlot)
+             .HasMaxLength(100);
+
+            e.Property(x => x.LocationNote)
+             .HasMaxLength(500);
+
+            e.Property(x => x.Message)
+             .HasMaxLength(1000);
+
+            e.Property(x => x.CoachResponseMessage)
+             .HasMaxLength(1000);
+
+            e.Property(x => x.Status)
+             .IsRequired()
+             .HasConversion<int>()
+             .HasDefaultValue(CoachSessionRequestStatus.PENDING);
+
+            e.Property(x => x.CreatedAt)
+             .HasDefaultValueSql("NOW()");
+
+            e.HasOne(x => x.CoachProfile)
+             .WithMany()
+             .HasForeignKey(x => x.CoachProfileId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Requester)
+             .WithMany()
+             .HasForeignKey(x => x.RequesterId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            // Restrict, not Cascade/SetNull — Sport is shared reference data,
+            // same rationale as CoachSport.Sport above.
+            e.HasOne(x => x.Sport)
+             .WithMany()
+             .HasForeignKey(x => x.SportId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(x => new { x.CoachProfileId, x.Status })
+             .HasDatabaseName("ix_coach_session_requests_coach_profile_status");
+
+            e.HasIndex(x => new { x.RequesterId, x.Status })
+             .HasDatabaseName("ix_coach_session_requests_requester_status");
+
+            e.HasIndex(x => x.CreatedAt)
+             .HasDatabaseName("ix_coach_session_requests_created_at");
+
+            e.HasIndex(x => x.PreferredDate)
+             .HasDatabaseName("ix_coach_session_requests_preferred_date");
         });
 
         // ── MatchPost ─────────────────────────────────────────────────
