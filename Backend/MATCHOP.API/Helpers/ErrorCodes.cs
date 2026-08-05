@@ -59,5 +59,9 @@
         public const string CoachSessionRequestNotFound = "COACH_SESSION_REQUEST_NOT_FOUND";
         public const string CoachSessionRequestNotPending = "COACH_SESSION_REQUEST_NOT_PENDING";
         public const string CoachSessionRequestDuplicate = "COACH_SESSION_REQUEST_DUPLICATE";
+
+        public const string CoachSessionNotFound = "COACH_SESSION_NOT_FOUND";
+        public const string CoachSessionPaymentNotAllowed = "COACH_SESSION_PAYMENT_NOT_ALLOWED";
+        public const string CoachSessionCompleteNotAllowed = "COACH_SESSION_COMPLETE_NOT_ALLOWED";
     }
 }

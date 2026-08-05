@@ -215,7 +215,9 @@ builder.Services.AddScoped<IMembershipService, MembershipService>();
 
 // Coach
 builder.Services.AddScoped<ICoachService, CoachService>();
+builder.Services.AddScoped<ICoachSessionService, CoachSessionService>();
 builder.Services.AddScoped<ICoachSessionRequestService, CoachSessionRequestService>();
+builder.Services.AddScoped<ICoachAvailabilityService, CoachAvailabilityService>();
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

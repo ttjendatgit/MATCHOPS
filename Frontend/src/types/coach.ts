@@ -242,3 +242,69 @@ export interface CoachSessionRequestResponse {
   respondedAt: string | null;
   cancelledAt: string | null;
 }
+
+// ─── Coach availability (Coach-9 Phase A) ──────────────────────────────────
+
+/** Matches System.DayOfWeek: 0 = Sunday ... 6 = Saturday. */
+export type CoachDayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+export interface CoachAvailabilitySlot {
+  id: string;
+  dayOfWeek: CoachDayOfWeek;
+  /** "HH:mm" */
+  startTime: string;
+  /** "HH:mm" */
+  endTime: string;
+  isEnabled: boolean;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface CoachAvailabilitySlotInput {
+  dayOfWeek: CoachDayOfWeek;
+  startTime: string;
+  endTime: string;
+  isEnabled: boolean;
+}
+
+export interface UpdateCoachAvailabilityPayload {
+  slots: CoachAvailabilitySlotInput[];
+}
+
+// ─── Coach sessions (Coach-9 Phase B/C/D) ──────────────────────────────────
+
+export type CoachSessionStatus = "AWAITING_PAYMENT" | "PAID" | "CANCELLED" | "COMPLETED";
+
+export type CoachSessionPaymentStatus = "UNPAID" | "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+
+export interface CoachSessionResponse {
+  id: string;
+  coachSessionRequestId: string;
+  coachProfileId: string;
+  coachDisplayName: string;
+  requesterId: string;
+  requesterName: string;
+  requesterEmail: string | null;
+  requesterPhoneNumber: string | null;
+  sportId: string | null;
+  sportName: string | null;
+  scheduledDate: string | null;
+  scheduledTimeSlot: string | null;
+  durationMinutes: number | null;
+  locationNote: string | null;
+  priceAmount: number | null;
+  currency: string;
+  requiresManualPricing: boolean;
+  status: CoachSessionStatus;
+  paymentStatus: CoachSessionPaymentStatus;
+  paymentTransactionCode: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+  paidAt: string | null;
+  cancelledAt: string | null;
+  completedAt: string | null;
+}
+
+export interface PayCoachSessionPayload {
+  transactionCode?: string;
+}

@@ -6,6 +6,8 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowRight,
+  CalendarClock,
+  CalendarDays,
   CheckCircle2,
   ClipboardList,
   Clock,
@@ -309,6 +311,24 @@ export default function CoachManageDashboardPage() {
           description="Xem và phản hồi các yêu cầu từ người chơi."
           href="/coach/manage/requests"
           ctaLabel="Xem yêu cầu"
+        />
+
+        <TaskCard
+          icon={CalendarClock}
+          accent="orange"
+          title="Lịch rảnh làm việc"
+          description="Thiết lập khung giờ bạn thường nhận buổi huấn luyện trong tuần."
+          href="/coach/manage/availability"
+          ctaLabel="Thiết lập lịch rảnh"
+        />
+
+        <TaskCard
+          icon={CalendarDays}
+          accent="green"
+          title="Lịch buổi huấn luyện"
+          description="Xem các buổi huấn luyện đã được xác nhận, trạng thái thanh toán và đánh dấu hoàn thành."
+          href="/coach/manage/sessions"
+          ctaLabel="Xem lịch buổi huấn luyện"
         />
 
         {isActive ? (

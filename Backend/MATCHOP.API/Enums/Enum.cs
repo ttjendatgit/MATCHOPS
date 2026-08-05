@@ -197,6 +197,23 @@ public enum CoachSessionRequestStatus
     COMPLETED = 5
 }
 
+public enum CoachSessionStatus
+{
+    AWAITING_PAYMENT = 1,
+    PAID = 2,
+    CANCELLED = 3,
+    COMPLETED = 4
+}
+
+public enum CoachSessionPaymentStatus
+{
+    UNPAID = 1,
+    PENDING = 2,
+    PAID = 3,
+    FAILED = 4,
+    REFUNDED = 5
+}
+
 public enum MembershipTier
 {
     FREE     = 1,

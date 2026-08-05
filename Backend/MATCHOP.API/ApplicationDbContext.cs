@@ -29,6 +29,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<CoachVerificationDocument> CoachVerificationDocuments => Set<CoachVerificationDocument>();
     public DbSet<CoachPortfolioImage> CoachPortfolioImages => Set<CoachPortfolioImage>();
     public DbSet<CoachSessionRequest> CoachSessionRequests => Set<CoachSessionRequest>();
+    public DbSet<CoachAvailabilitySlot> CoachAvailabilitySlots => Set<CoachAvailabilitySlot>();
+    public DbSet<CoachSession> CoachSessions => Set<CoachSession>();
     public DbSet<MatchPost> MatchPosts => Set<MatchPost>();
     public DbSet<MatchQueue> MatchQueues => Set<MatchQueue>();
     public DbSet<MatchRoom> MatchRooms => Set<MatchRoom>();
@@ -873,6 +875,109 @@ public class ApplicationDbContext : DbContext
 
             e.HasIndex(x => x.PreferredDate)
              .HasDatabaseName("ix_coach_session_requests_preferred_date");
+        });
+
+        // ── CoachAvailabilitySlot ───────────────────────────────────────
+        // Simple weekly recurring availability (no calendar exceptions yet).
+        modelBuilder.Entity<CoachAvailabilitySlot>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.DayOfWeek)
+             .IsRequired();
+
+            e.Property(x => x.IsEnabled)
+             .HasDefaultValue(true);
+
+            e.Property(x => x.CreatedAt)
+             .HasDefaultValueSql("NOW()");
+
+            e.HasOne(x => x.CoachProfile)
+             .WithMany()
+             .HasForeignKey(x => x.CoachProfileId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => new { x.CoachProfileId, x.DayOfWeek })
+             .HasDatabaseName("ix_coach_availability_slots_profile_day");
+        });
+
+        // ── CoachSession ─────────────────────────────────────────────────
+        // Created when a coach accepts a CoachSessionRequest. See entity
+        // doc-comment for why this isn't Booking/Payment.
+        modelBuilder.Entity<CoachSession>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.ScheduledTimeSlot)
+             .HasMaxLength(100);
+
+            e.Property(x => x.LocationNote)
+             .HasMaxLength(500);
+
+            e.Property(x => x.PriceAmount)
+             .HasPrecision(18, 2);
+
+            e.Property(x => x.Currency)
+             .IsRequired()
+             .HasMaxLength(10)
+             .HasDefaultValue("VND");
+
+            e.Property(x => x.PaymentTransactionCode)
+             .HasMaxLength(100);
+
+            e.Property(x => x.Status)
+             .IsRequired()
+             .HasConversion<int>()
+             .HasDefaultValue(CoachSessionStatus.AWAITING_PAYMENT);
+
+            e.Property(x => x.PaymentStatus)
+             .IsRequired()
+             .HasConversion<int>()
+             .HasDefaultValue(CoachSessionPaymentStatus.UNPAID);
+
+            e.Property(x => x.CreatedAt)
+             .HasDefaultValueSql("NOW()");
+
+            e.HasOne(x => x.CoachSessionRequest)
+             .WithMany()
+             .HasForeignKey(x => x.CoachSessionRequestId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(x => x.CoachProfile)
+             .WithMany()
+             .HasForeignKey(x => x.CoachProfileId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Requester)
+             .WithMany()
+             .HasForeignKey(x => x.RequesterId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(x => x.Sport)
+             .WithMany()
+             .HasForeignKey(x => x.SportId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            // Guarantees a request can only ever produce one session.
+            e.HasIndex(x => x.CoachSessionRequestId)
+             .IsUnique()
+             .HasDatabaseName("ux_coach_sessions_request_id");
+
+            e.HasIndex(x => new { x.CoachProfileId, x.Status })
+             .HasDatabaseName("ix_coach_sessions_coach_profile_status");
+
+            e.HasIndex(x => new { x.RequesterId, x.Status })
+             .HasDatabaseName("ix_coach_sessions_requester_status");
+
+            e.HasIndex(x => x.CreatedAt)
+             .HasDatabaseName("ix_coach_sessions_created_at");
         });
 
         // ── MatchPost ─────────────────────────────────────────────────

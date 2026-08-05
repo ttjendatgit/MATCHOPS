@@ -9,10 +9,12 @@ namespace MATCHOP.API.Services;
 public class CoachSessionRequestService : ICoachSessionRequestService
 {
     private readonly ApplicationDbContext _context;
+    private readonly ICoachSessionService _coachSessionService;
 
-    public CoachSessionRequestService(ApplicationDbContext context)
+    public CoachSessionRequestService(ApplicationDbContext context, ICoachSessionService coachSessionService)
     {
         _context = context;
+        _coachSessionService = coachSessionService;
     }
 
     // ── Requester ─────────────────────────────────────────────────────────────
@@ -189,6 +191,11 @@ public class CoachSessionRequestService : ICoachSessionRequestService
     {
         var profile = await GetOwnCoachProfileOrThrowAsync(coachUserId);
 
+        // Need a tracked CoachProfile (not the AsNoTracking one above) so the
+        // HourlyRate read inside CreateForAcceptedRequestAsync is consistent;
+        // it's only read, never written, so this is a plain second lookup.
+        var trackedProfile = await _context.CoachProfiles.FirstAsync(x => x.Id == profile.Id);
+
         var request = await _context.CoachSessionRequests
             .Include(x => x.CoachProfile)
             .ThenInclude(cp => cp.User)
@@ -216,6 +223,13 @@ public class CoachSessionRequestService : ICoachSessionRequestService
         request.CoachResponseMessage = string.IsNullOrWhiteSpace(dto.ResponseMessage) ? null : dto.ResponseMessage.Trim();
         request.RespondedAt = DateTime.UtcNow;
         request.UpdatedAt = DateTime.UtcNow;
+
+        if (resolution == CoachSessionRequestStatus.ACCEPTED)
+        {
+            // Persists the request status change together with the new
+            // session in one SaveChangesAsync call (same DbContext instance).
+            await _coachSessionService.CreateForAcceptedRequestAsync(request, trackedProfile);
+        }
 
         await _context.SaveChangesAsync();
 

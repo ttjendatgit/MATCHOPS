@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   Clock,
   Clock3,
+  CreditCard,
   Dumbbell,
   Inbox,
   Loader2,
@@ -173,6 +174,14 @@ function SentRequestCard({
               onClick={() => onRequestCancel(request)}
             >
               Huỷ yêu cầu
+            </Button>
+          )}
+          {request.status === "ACCEPTED" && (
+            <Button asChild size="sm" className="gap-1.5 bg-[#86D232] text-[#0A0A0A] hover:bg-[#86D232]/90">
+              <Link href="/coach/sessions">
+                <CreditCard className="h-3.5 w-3.5" aria-hidden />
+                Xem buổi huấn luyện & thanh toán
+              </Link>
             </Button>
           )}
         </div>

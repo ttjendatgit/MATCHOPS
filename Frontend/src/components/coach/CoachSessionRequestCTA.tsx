@@ -327,6 +327,9 @@ export function CoachSessionRequestCTA({
                 maxLength={MAX_TIME_SLOT_LENGTH}
                 className="border-white/10 bg-slate-900"
               />
+              <p className="text-xs text-slate-500">
+                Huấn luyện viên sẽ xác nhận lại thời gian phù hợp.
+              </p>
             </div>
 
             <div className="space-y-2">
