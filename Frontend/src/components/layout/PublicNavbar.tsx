@@ -21,18 +21,21 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { getStoredUser, clearAuthData, verifySession } from "@/lib/auth";
+import { getStoredUser, getStoredToken, clearAuthData, verifySession } from "@/lib/auth";
+import { apiFetch, ApiError } from "@/lib/api";
 import { BrandMark } from "@/components/branding";
 import type { User } from "@/types/auth";
+import type { ApiResponse } from "@/types/api";
+import type { CoachProfileMeResponse } from "@/types/coach";
 
 // ─── Nav data ─────────────────────────────────────────────────────────────────
 
 const navLinks = [
-  { href: "/",        label: "Trang chủ",      exact: true  },
-  { href: "/venues",  label: "Sân thể thao",    exact: false },
-  { href: "/coach",   label: "Huấn luyện viên", exact: false },
-  { href: "/match",   label: "Ghép đối",        exact: false },
-  { href: "/pricing", label: "Gói thành viên",  exact: false },
+  { href: "/", label: "Trang chủ", exact: true },
+  { href: "/venues", label: "Sân thể thao", exact: false },
+  { href: "/coach", label: "Huấn luyện viên", exact: false },
+  { href: "/match", label: "Ghép đối", exact: false },
+  { href: "/pricing", label: "Gói thành viên", exact: false },
 ] as const;
 
 function checkActive(pathname: string, href: string, exact: boolean) {
@@ -91,22 +94,28 @@ function NavLink({ href, label, active, onClick }: NavLinkProps) {
 
 type UserDropdownProps = {
   user: User;
+  hasCoachProfile: boolean;
   onLogout: () => void;
 };
 
 const dropdownMenuItems = [
-  { href: "/profile",          label: "Trang cá nhân",      icon: UserIcon      },
-  { href: "/account/subscription", label: "Gói của tôi",     icon: Star          },
-  { href: "/match/rooms",      label: "Phòng chờ ghép đối", icon: Users         },
-  { href: "/bookings",         label: "Lịch đặt của tôi",   icon: CalendarCheck2},
-  { href: "/coach/requests",   label: "Yêu cầu của tôi",    icon: ClipboardList },
-  { href: "/coach/sessions",   label: "Buổi huấn luyện của tôi", icon: CalendarClock },
-  { href: "/coach/manage",     label: "Quản lý huấn luyện viên", icon: UserCog  },
-  { href: "/change-password",  label: "Đổi mật khẩu",       icon: KeyRound      },
-  { href: "/account/settings", label: "Cài đặt tài khoản",  icon: Settings      },
+  { href: "/profile", label: "Trang cá nhân", icon: UserIcon },
+  { href: "/account/subscription", label: "Gói của tôi", icon: Star },
+  { href: "/match/rooms", label: "Phòng chờ ghép đối", icon: Users },
+  { href: "/bookings", label: "Lịch đặt của tôi", icon: CalendarCheck2 },
+  { href: "/coach/requests", label: "Yêu cầu của tôi", icon: ClipboardList },
+  { href: "/coach/sessions", label: "Buổi huấn luyện của tôi", icon: CalendarClock },
+  { href: "/change-password", label: "Đổi mật khẩu", icon: KeyRound },
+  { href: "/account/settings", label: "Cài đặt tài khoản", icon: Settings },
 ];
 
-function UserDropdown({ user, onLogout }: UserDropdownProps) {
+const coachManageMenuItem = { href: "/coach/manage", label: "Quản lý huấn luyện viên", icon: UserCog };
+
+function UserDropdown({ user, hasCoachProfile, onLogout }: UserDropdownProps) {
+  const items = hasCoachProfile
+    ? [...dropdownMenuItems.slice(0, 6), coachManageMenuItem, ...dropdownMenuItems.slice(6)]
+    : dropdownMenuItems;
+
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -173,7 +182,7 @@ function UserDropdown({ user, onLogout }: UserDropdownProps) {
 
           {/* Menu items */}
           <div className="p-1.5 space-y-0.5">
-            {dropdownMenuItems.map(({ href, label, icon: Icon }) => (
+            {items.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
@@ -220,6 +229,8 @@ export function PublicNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  // null while unchecked/checking — link stays hidden until the check resolves true.
+  const [hasCoachProfile, setHasCoachProfile] = useState<boolean | null>(null);
 
   // Close mobile menu on route change + re-sync auth state on every navigation.
   useEffect(() => {
@@ -233,6 +244,36 @@ export function PublicNavbar() {
     verifySession().then(setUser);
   }, []);
 
+  // Check coach-profile ownership once per logged-in identity (not on every
+  // route change) so the "Quản lý huấn luyện viên" link only shows for users
+  // who actually have a CoachProfile. A 404 just means no profile — not an error.
+  useEffect(() => {
+    if (!user) {
+      setHasCoachProfile(null);
+      return;
+    }
+    const token = getStoredToken();
+    if (!token) {
+      setHasCoachProfile(null);
+      return;
+    }
+
+    setHasCoachProfile(null);
+
+    let cancelled = false;
+    apiFetch<ApiResponse<CoachProfileMeResponse>>("/coaches/me", { token })
+      .then((res) => {
+        if (!cancelled) setHasCoachProfile(!!(res.success && res.data));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setHasCoachProfile(err instanceof ApiError && err.status === 404 ? false : null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
   // Scroll-aware — becomes opaque glass after 20 px.
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -244,6 +285,7 @@ export function PublicNavbar() {
   function handleLogout() {
     clearAuthData();
     setUser(null);
+    setHasCoachProfile(null);
     router.push("/");
   }
 
@@ -254,10 +296,10 @@ export function PublicNavbar() {
         "motion-safe:transition-all motion-safe:duration-300",
         scrolled
           ? [
-              "bg-slate-950/88 backdrop-blur-xl",
-              "border-b border-white/[0.08]",
-              "shadow-[0_4px_32px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,128,0,0.06)]",
-            ]
+            "bg-slate-950/88 backdrop-blur-xl",
+            "border-b border-white/[0.08]",
+            "shadow-[0_4px_32px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,128,0,0.06)]",
+          ]
           : "bg-transparent border-b border-transparent"
       )}
     >
@@ -341,7 +383,7 @@ export function PublicNavbar() {
                   Lịch đặt
                 </Link>
 
-                <UserDropdown user={user} onLogout={handleLogout} />
+                <UserDropdown user={user} hasCoachProfile={!!hasCoachProfile} onLogout={handleLogout} />
               </div>
             ) : (
               /* ── Guest: login / register ── */
@@ -451,14 +493,16 @@ export function PublicNavbar() {
                 Buổi huấn luyện của tôi
               </Link>
 
-              <Link
-                href="/coach/manage"
-                className="flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2.5 text-sm font-medium text-slate-400 transition-all duration-200 hover:bg-white/[0.07] hover:text-white"
-                onClick={() => setMobileOpen(false)}
-              >
-                <UserCog className="h-4 w-4" aria-hidden />
-                Quản lý huấn luyện viên
-              </Link>
+              {hasCoachProfile && (
+                <Link
+                  href="/coach/manage"
+                  className="flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2.5 text-sm font-medium text-slate-400 transition-all duration-200 hover:bg-white/[0.07] hover:text-white"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <UserCog className="h-4 w-4" aria-hidden />
+                  Quản lý huấn luyện viên
+                </Link>
+              )}
 
               <Link
                 href="/change-password"
