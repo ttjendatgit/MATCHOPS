@@ -60,12 +60,14 @@ function DetailRow({
 export function CoachSessionDetailDialog({ session, onOpenChange, onRequestComplete }: CoachSessionDetailDialogProps) {
   const statusMeta = session ? STATUS_META[session.status] : null;
   const paymentMeta = session ? PAYMENT_STATUS_META[session.paymentStatus] : null;
+  const StatusIcon = statusMeta?.icon;
+  const PaymentIcon = paymentMeta?.icon;
   const canComplete = !!session && session.status === "PAID" && session.paymentStatus === "PAID";
 
   return (
     <Dialog open={session !== null} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] max-w-md overflow-y-auto">
-        {session && statusMeta && paymentMeta && (
+        {session && statusMeta && paymentMeta && StatusIcon && PaymentIcon && (
           <>
             <DialogHeader>
               <DialogTitle>{session.requesterName}</DialogTitle>
@@ -74,11 +76,11 @@ export function CoachSessionDetailDialog({ session, onOpenChange, onRequestCompl
 
             <div className="flex flex-wrap items-center gap-1.5">
               <Badge variant={statusMeta.badgeVariant} className="gap-1 px-2.5 py-1 text-xs">
-                <statusMeta.icon className="h-3.5 w-3.5" aria-hidden />
+                <StatusIcon className="h-3.5 w-3.5" aria-hidden />
                 {statusMeta.label}
               </Badge>
               <Badge variant={paymentMeta.badgeVariant} className="gap-1 px-2.5 py-1 text-xs">
-                <paymentMeta.icon className="h-3.5 w-3.5" aria-hidden />
+                <PaymentIcon className="h-3.5 w-3.5" aria-hidden />
                 {paymentMeta.label}
               </Badge>
             </div>
