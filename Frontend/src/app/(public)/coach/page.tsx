@@ -76,12 +76,22 @@ function CoachCard({ coach }: { coach: PublicCoachListItem }) {
     >
       {/* Header: avatar + name + location */}
       <div className="flex items-start gap-3">
-        <div
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF8000] to-[#86D232] text-sm font-black text-slate-950"
-          aria-hidden
-        >
-          {getInitials(coach.displayName)}
-        </div>
+        {coach.coverImageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={coach.coverImageUrl}
+            alt=""
+            aria-hidden
+            className="h-12 w-12 shrink-0 rounded-xl border border-white/10 object-cover"
+          />
+        ) : (
+          <div
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF8000] to-[#86D232] text-sm font-black text-slate-950"
+            aria-hidden
+          >
+            {getInitials(coach.displayName)}
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-base font-bold text-white transition-colors duration-200 group-hover:text-[#FF8000]">
             {coach.displayName}

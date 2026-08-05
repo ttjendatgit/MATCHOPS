@@ -93,6 +93,28 @@ public class UploadCoachVerificationDocumentRequestDto
     public CoachVerificationDocumentType DocumentType { get; set; }
 }
 
+public class CoachPortfolioImageResponseDto
+{
+    public Guid Id { get; set; }
+
+    public string ImageUrl { get; set; } = string.Empty;
+
+    public string? Caption { get; set; }
+
+    public int SortOrder { get; set; }
+
+    public bool IsCover { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+}
+
+public class UploadCoachPortfolioImageRequestDto
+{
+    public List<IFormFile> Files { get; set; } = new();
+
+    public string? Caption { get; set; }
+}
+
 public class CoachProfileMeResponseDto
 {
     public Guid Id { get; set; }
@@ -130,4 +152,6 @@ public class CoachProfileMeResponseDto
     public List<CoachProofResponseDto> Proofs { get; set; } = new();
 
     public List<CoachVerificationDocumentResponseDto> VerificationDocuments { get; set; } = new();
+
+    public List<CoachPortfolioImageResponseDto> PortfolioImages { get; set; } = new();
 }

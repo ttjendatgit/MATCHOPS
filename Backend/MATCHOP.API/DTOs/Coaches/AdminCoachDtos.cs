@@ -76,6 +76,8 @@ public class AdminCoachProfileDetailDto
     public List<CoachProofResponseDto> Proofs { get; set; } = new();
 
     public List<CoachVerificationDocumentResponseDto> VerificationDocuments { get; set; } = new();
+
+    public List<CoachPortfolioImageResponseDto> PortfolioImages { get; set; } = new();
 }
 
 public class AdminCoachProfileListResponseDto

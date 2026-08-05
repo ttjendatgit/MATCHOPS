@@ -21,6 +21,9 @@ public class PublicCoachListItemDto
     public DateTime CreatedAt { get; set; }
 
     public List<CoachSportResponseDto> Sports { get; set; } = new();
+
+    /// <summary>Cover portfolio image only — the full gallery lives on the detail page.</summary>
+    public string? CoverImageUrl { get; set; }
 }
 
 public class PublicCoachDetailDto
@@ -44,6 +47,8 @@ public class PublicCoachDetailDto
     public DateTime CreatedAt { get; set; }
 
     public List<CoachSportResponseDto> Sports { get; set; } = new();
+
+    public List<CoachPortfolioImageResponseDto> PortfolioImages { get; set; } = new();
 }
 
 public class PublicCoachListResponseDto

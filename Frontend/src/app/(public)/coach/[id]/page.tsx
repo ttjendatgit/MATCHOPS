@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { PublicPortfolioGallery } from "@/components/coach/PublicPortfolioGallery";
 import type { PublicCoachDetail } from "@/types/coach";
 
 export const metadata: Metadata = { title: "Chi tiết huấn luyện viên – MatchOps" };
@@ -194,6 +195,9 @@ export default async function CoachDetailPage({
               </p>
             )}
           </div>
+
+          {/* Public portfolio gallery — coach-curated, excludes any admin-only material */}
+          <PublicPortfolioGallery coachName={coach.displayName} images={coach.portfolioImages ?? []} />
 
           <Link
             href="/coach"

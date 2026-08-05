@@ -3,6 +3,15 @@ export interface CoachSport {
   sportName: string;
 }
 
+export interface CoachPortfolioImageResponse {
+  id: string;
+  imageUrl: string;
+  caption: string | null;
+  sortOrder: number;
+  isCover: boolean;
+  createdAt: string;
+}
+
 export interface PublicCoachListItem {
   id: string;
   displayName: string;
@@ -14,6 +23,7 @@ export interface PublicCoachListItem {
   approvedAt: string | null;
   createdAt: string;
   sports: CoachSport[];
+  coverImageUrl: string | null;
 }
 
 export interface PublicCoachDetail {
@@ -27,6 +37,7 @@ export interface PublicCoachDetail {
   approvedAt: string | null;
   createdAt: string;
   sports: CoachSport[];
+  portfolioImages: CoachPortfolioImageResponse[];
 }
 
 export interface PublicCoachListResponse {
@@ -113,6 +124,7 @@ export interface CoachProfileMeResponse {
   sports: CoachSport[];
   proofs: CoachProofResponse[];
   verificationDocuments: CoachVerificationDocumentResponse[];
+  portfolioImages: CoachPortfolioImageResponse[];
 }
 
 // ─── Admin review ───────────────────────────────────────────────────────────
@@ -157,6 +169,7 @@ export interface AdminCoachDetail {
   sports: CoachSport[];
   proofs: CoachProofResponse[];
   verificationDocuments: CoachVerificationDocumentResponse[];
+  portfolioImages: CoachPortfolioImageResponse[];
 }
 
 export interface AdminCoachListResponse {

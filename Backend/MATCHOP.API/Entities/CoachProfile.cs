@@ -27,4 +27,5 @@ public class CoachProfile
     public ICollection<CoachSport> CoachSports { get; set; } = new List<CoachSport>();
     public ICollection<CoachProfileProof> Proofs { get; set; } = new List<CoachProfileProof>();
     public ICollection<CoachVerificationDocument> VerificationDocuments { get; set; } = new List<CoachVerificationDocument>();
+    public ICollection<CoachPortfolioImage> PortfolioImages { get; set; } = new List<CoachPortfolioImage>();
 }

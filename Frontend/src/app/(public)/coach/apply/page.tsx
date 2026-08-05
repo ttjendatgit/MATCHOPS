@@ -23,6 +23,7 @@ import {
   Settings2,
   ShieldCheck,
   Sparkles,
+  Star,
   Trash2,
   User,
   Users,
@@ -36,6 +37,7 @@ import { getStoredToken } from "@/lib/auth";
 import type { ApiResponse } from "@/types/api";
 import type {
   CoachApplyRequest,
+  CoachPortfolioImageResponse,
   CoachProfileMeResponse,
   CoachProfileStatus,
   CoachProofResponse,
@@ -109,6 +111,12 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+// ─── Public portfolio images (coach-curated public gallery) ────────────────
+
+const MAX_PORTFOLIO_IMAGES = 8;
+const MAX_PORTFOLIO_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_PORTFOLIO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 interface Sport {
   id: string;
@@ -415,6 +423,70 @@ function VerificationDocumentGallery({
   );
 }
 
+// ─── Public portfolio gallery (coach-curated, shown on the public profile) ──
+// Deliberately green-accented (vs. the orange admin-review sections above)
+// so it reads as "this goes public" at a glance.
+
+function PortfolioImageGallery({
+  images,
+  deletingImageId,
+  onDelete,
+}: {
+  images: CoachPortfolioImageResponse[];
+  deletingImageId: string | null;
+  onDelete: (imageId: string) => void;
+}) {
+  if (images.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {images.map((image) => (
+        <div
+          key={image.id}
+          className="group relative overflow-hidden rounded-xl border border-[#86D232]/25 bg-slate-950"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={image.imageUrl}
+            alt={image.caption ? `Ảnh portfolio: ${image.caption}` : "Ảnh portfolio công khai"}
+            className="h-28 w-full object-cover"
+          />
+          {image.isCover && (
+            <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded-full bg-[#86D232] px-2 py-0.5 text-[10px] font-bold text-[#0A0A0A]">
+              <Star className="h-2.5 w-2.5" aria-hidden fill="currentColor" />
+              Ảnh bìa
+            </span>
+          )}
+          {image.caption && (
+            <span className="absolute bottom-1.5 left-1.5 right-8 truncate rounded-full bg-slate-950/80 px-2 py-0.5 text-[10px] font-medium text-slate-300 backdrop-blur-sm">
+              {image.caption}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => onDelete(image.id)}
+            disabled={deletingImageId === image.id}
+            aria-label={`Xoá ảnh portfolio${image.caption ? `: ${image.caption}` : ""}`}
+            className={cn(
+              "absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full",
+              "bg-slate-950/80 text-slate-300 backdrop-blur-sm transition-colors",
+              "hover:bg-red-500/80 hover:text-white",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400",
+              "disabled:cursor-not-allowed disabled:opacity-60",
+            )}
+          >
+            {deletingImageId === image.id ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <X className="h-3.5 w-3.5" aria-hidden />
+            )}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Left media / trust panel ────────────────────────────────────────────────
 
 function CoachMediaPanel() {
@@ -522,6 +594,15 @@ export default function CoachApplyPage() {
   const [uploadingDocuments, setUploadingDocuments] = useState(false);
   const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null);
 
+  // Public portfolio images — same existing/selected-but-not-yet-uploaded split.
+  const [portfolioImages, setPortfolioImages] = useState<CoachPortfolioImageResponse[]>([]);
+  const [selectedPortfolioFiles, setSelectedPortfolioFiles] = useState<File[]>([]);
+  const [selectedPortfolioPreviews, setSelectedPortfolioPreviews] = useState<string[]>([]);
+  const [portfolioCaption, setPortfolioCaption] = useState("");
+  const [portfolioError, setPortfolioError] = useState<string | null>(null);
+  const [uploadingPortfolio, setUploadingPortfolio] = useState(false);
+  const [deletingPortfolioImageId, setDeletingPortfolioImageId] = useState<string | null>(null);
+
   // Populate the form whenever a real profile is loaded (initial load or
   // after a successful apply/update refetch).
   useEffect(() => {
@@ -536,6 +617,7 @@ export default function CoachApplyPage() {
     setSelectedSportIds(profile.sports.map((s) => s.sportId));
     setProofs(profile.proofs ?? []);
     setVerificationDocuments(profile.verificationDocuments ?? []);
+    setPortfolioImages(profile.portfolioImages ?? []);
   }, [profile]);
 
   // Object-URL previews for files chosen but not yet uploaded — created
@@ -562,6 +644,16 @@ export default function CoachApplyPage() {
       });
     };
   }, [selectedDocFiles]);
+
+  // Object-URL previews for selected-but-not-yet-uploaded portfolio images —
+  // always images, so unlike the documents effect above every file gets one.
+  useEffect(() => {
+    const urls = selectedPortfolioFiles.map((file) => URL.createObjectURL(file));
+    setSelectedPortfolioPreviews(urls);
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [selectedPortfolioFiles]);
 
   const fetchMe = useCallback(async () => {
     const token = getStoredToken();
@@ -882,6 +974,102 @@ export default function CoachApplyPage() {
       toast.error(message);
     } finally {
       setDeletingDocumentId(null);
+    }
+  };
+
+  // ── Portfolio image upload/delete ────────────────────────────────────────
+
+  const handlePortfolioFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const chosen = Array.from(e.target.files ?? []);
+    e.target.value = ""; // allow re-selecting the same file after removing it
+    if (chosen.length === 0) return;
+
+    const totalAfter = portfolioImages.length + selectedPortfolioFiles.length + chosen.length;
+    if (totalAfter > MAX_PORTFOLIO_IMAGES) {
+      const remaining = MAX_PORTFOLIO_IMAGES - portfolioImages.length - selectedPortfolioFiles.length;
+      toast.error(
+        remaining > 0
+          ? `Chỉ có thể chọn thêm tối đa ${remaining} ảnh (giới hạn ${MAX_PORTFOLIO_IMAGES} ảnh portfolio).`
+          : `Bạn đã đạt giới hạn ${MAX_PORTFOLIO_IMAGES} ảnh portfolio.`
+      );
+      return;
+    }
+
+    const oversized = chosen.find((file) => file.size > MAX_PORTFOLIO_IMAGE_SIZE_BYTES);
+    if (oversized) {
+      toast.error(`Tệp "${oversized.name}" vượt quá giới hạn 5MB.`);
+      return;
+    }
+
+    const invalidType = chosen.find((file) => !ALLOWED_PORTFOLIO_MIME_TYPES.includes(file.type));
+    if (invalidType) {
+      toast.error(`Tệp "${invalidType.name}" không đúng định dạng. Chỉ chấp nhận JPG, PNG, WEBP.`);
+      return;
+    }
+
+    setSelectedPortfolioFiles((prev) => [...prev, ...chosen]);
+  };
+
+  const removeSelectedPortfolioFile = (index: number) => {
+    setSelectedPortfolioFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUploadPortfolioImages = async () => {
+    if (selectedPortfolioFiles.length === 0) return;
+
+    const token = getStoredToken();
+    setPortfolioError(null);
+    setUploadingPortfolio(true);
+    try {
+      const formData = new FormData();
+      selectedPortfolioFiles.forEach((file) => formData.append("Files", file));
+      if (portfolioCaption.trim()) {
+        formData.append("Caption", portfolioCaption.trim());
+      }
+
+      const res = await apiUpload<ApiResponse<CoachPortfolioImageResponse[]>>(
+        "/coaches/me/portfolio-images",
+        formData,
+        { token }
+      );
+
+      if (res.success) {
+        toast.success("Tải lên ảnh portfolio thành công.");
+        setSelectedPortfolioFiles([]);
+        setPortfolioCaption("");
+        await fetchMe();
+      } else {
+        toast.error(res.message || "Tải lên ảnh portfolio thất bại.");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Không thể tải lên ảnh portfolio.";
+      setPortfolioError(message);
+      toast.error(message);
+    } finally {
+      setUploadingPortfolio(false);
+    }
+  };
+
+  const handleDeletePortfolioImage = async (imageId: string) => {
+    const token = getStoredToken();
+    setDeletingPortfolioImageId(imageId);
+    try {
+      const res = await apiFetch<ApiResponse<unknown>>(
+        `/coaches/me/portfolio-images/${imageId}`,
+        { method: "DELETE", token }
+      );
+      if (res.success) {
+        toast.success("Đã xoá ảnh portfolio.");
+        await fetchMe();
+      } else {
+        toast.error(res.message || "Không thể xoá ảnh portfolio.");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Không thể xoá ảnh portfolio.";
+      toast.error(message);
+    } finally {
+      setDeletingPortfolioImageId(null);
     }
   };
 
@@ -1584,6 +1772,160 @@ export default function CoachApplyPage() {
                               </>
                             ) : (
                               `Tải lên${selectedDocFiles.length > 0 ? ` ${selectedDocFiles.length} tệp` : ""}`
+                            )}
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Public portfolio images — coach-curated public gallery, visually
+                      distinct (green accents) from the two orange admin-review
+                      sections above so it reads as "this goes public" at a glance. */}
+                  <div className="space-y-4 rounded-2xl border border-[#86D232]/15 bg-[#86D232]/[0.03] p-5 sm:p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#86D232]">
+                        <ImageIcon className="h-3.5 w-3.5" aria-hidden />
+                        Ảnh portfolio công khai
+                      </div>
+                      <span className="text-xs font-medium text-slate-500">
+                        Đã tải {portfolioImages.length}/{MAX_PORTFOLIO_IMAGES} ảnh
+                      </span>
+                    </div>
+
+                    <p className="text-sm leading-relaxed text-slate-400">
+                      Tải lên ảnh hoạt động huấn luyện hoặc thành tích bạn muốn hiển thị trên hồ
+                      sơ công khai.
+                    </p>
+
+                    {/* Privacy copy */}
+                    <div className="space-y-1.5 rounded-xl border border-white/[0.06] bg-slate-950/40 p-3 text-xs leading-relaxed text-slate-500">
+                      <p className="flex items-start gap-1.5">
+                        <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#86D232]" aria-hidden />
+                        Ảnh này sẽ hiển thị công khai trên trang Huấn luyện viên khi hồ sơ được
+                        duyệt.
+                      </p>
+                      <p className="flex items-start gap-1.5">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden />
+                        Chỉ tải lên hình ảnh bạn có quyền chia sẻ công khai. Không tải lên giấy
+                        tờ định danh cá nhân.
+                      </p>
+                    </div>
+
+                    {mode === "apply" ? (
+                      <p className="text-sm text-slate-400">
+                        Bạn có thể tải lên ảnh portfolio công khai sau khi gửi hồ sơ ứng tuyển.
+                      </p>
+                    ) : (
+                      <>
+                        <PortfolioImageGallery
+                          images={portfolioImages}
+                          deletingImageId={deletingPortfolioImageId}
+                          onDelete={handleDeletePortfolioImage}
+                        />
+
+                        <div className="space-y-3 rounded-xl border border-dashed border-[#86D232]/25 p-4">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <div className="flex-1 space-y-2">
+                              <Label htmlFor="coach-portfolio-files" className="text-white">
+                                Chọn ảnh portfolio
+                              </Label>
+                              <input
+                                id="coach-portfolio-files"
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                multiple
+                                onChange={handlePortfolioFilesSelected}
+                                disabled={
+                                  portfolioImages.length + selectedPortfolioFiles.length >=
+                                  MAX_PORTFOLIO_IMAGES
+                                }
+                                className={cn(
+                                  "block w-full text-sm text-slate-400",
+                                  "file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-2",
+                                  "file:text-sm file:font-medium file:text-white hover:file:bg-slate-700",
+                                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#86D232]",
+                                  "disabled:cursor-not-allowed disabled:opacity-50",
+                                )}
+                              />
+                              <p className="text-xs text-slate-500">
+                                JPG, PNG hoặc WEBP — tối đa 5MB mỗi ảnh.
+                              </p>
+                            </div>
+                            <div className="space-y-2 sm:w-56">
+                              <Label htmlFor="coach-portfolio-caption" className="text-white">
+                                Chú thích (không bắt buộc)
+                              </Label>
+                              <Input
+                                id="coach-portfolio-caption"
+                                value={portfolioCaption}
+                                onChange={(e) => setPortfolioCaption(e.target.value)}
+                                placeholder="VD: Buổi tập cùng học viên"
+                                maxLength={300}
+                                className="border-white/10 bg-slate-900"
+                              />
+                            </div>
+                          </div>
+
+                          {selectedPortfolioFiles.length > 0 && (
+                            <>
+                              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                {selectedPortfolioFiles.map((file, index) => (
+                                  <div
+                                    key={`${file.name}-${index}`}
+                                    className="group relative overflow-hidden rounded-xl border border-[#86D232]/40 bg-slate-950"
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={selectedPortfolioPreviews[index]}
+                                      alt={`Ảnh portfolio đã chọn: ${file.name}`}
+                                      className="h-28 w-full object-cover"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => removeSelectedPortfolioFile(index)}
+                                      aria-label={`Bỏ chọn ảnh ${file.name}`}
+                                      className={cn(
+                                        "absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full",
+                                        "bg-slate-950/80 text-slate-300 backdrop-blur-sm transition-colors",
+                                        "hover:bg-red-500/80 hover:text-white",
+                                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400",
+                                      )}
+                                    >
+                                      <X className="h-3.5 w-3.5" aria-hidden />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                              <p className="text-xs text-slate-500">
+                                {selectedPortfolioFiles.length} ảnh đã chọn, chưa tải lên.
+                              </p>
+                            </>
+                          )}
+
+                          {portfolioError && (
+                            <div
+                              role="alert"
+                              className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400"
+                            >
+                              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                              {portfolioError}
+                            </div>
+                          )}
+
+                          <Button
+                            type="button"
+                            onClick={handleUploadPortfolioImages}
+                            disabled={selectedPortfolioFiles.length === 0 || uploadingPortfolio}
+                            className="w-full bg-[#86D232] text-[#0A0A0A] hover:bg-[#86D232]/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                          >
+                            {uploadingPortfolio ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                                Đang tải lên...
+                              </>
+                            ) : (
+                              `Tải lên${selectedPortfolioFiles.length > 0 ? ` ${selectedPortfolioFiles.length} ảnh` : ""}`
                             )}
                           </Button>
                         </div>

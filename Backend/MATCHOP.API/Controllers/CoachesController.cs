@@ -140,4 +140,35 @@ public class CoachesController : ControllerBase
         await _coachService.DeleteMyVerificationDocumentAsync(userId, documentId);
         return Ok(ApiResponse<object>.Ok("Đã xoá tài liệu xác minh."));
     }
+
+    // ── Authenticated (own public portfolio images) ──────────────────────────
+
+    [HttpPost("me/portfolio-images")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadMyPortfolioImages([FromForm] UploadCoachPortfolioImageRequestDto dto)
+    {
+        var userId = GetCurrentUserId();
+        var result = await _coachService.UploadMyPortfolioImagesAsync(userId, dto.Files, dto.Caption);
+        return StatusCode(201, ApiResponse<List<CoachPortfolioImageResponseDto>>.Ok(
+            result, "Tải lên ảnh portfolio thành công."));
+    }
+
+    [HttpGet("me/portfolio-images")]
+    [Authorize]
+    public async Task<IActionResult> GetMyPortfolioImages()
+    {
+        var userId = GetCurrentUserId();
+        var result = await _coachService.GetMyPortfolioImagesAsync(userId);
+        return Ok(ApiResponse<List<CoachPortfolioImageResponseDto>>.Ok(result));
+    }
+
+    [HttpDelete("me/portfolio-images/{imageId:guid}")]
+    [Authorize]
+    public async Task<IActionResult> DeleteMyPortfolioImage(Guid imageId)
+    {
+        var userId = GetCurrentUserId();
+        await _coachService.DeleteMyPortfolioImageAsync(userId, imageId);
+        return Ok(ApiResponse<object>.Ok("Đã xoá ảnh portfolio."));
+    }
 }

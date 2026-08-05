@@ -139,3 +139,18 @@ public class UploadCoachVerificationDocumentRequestDtoValidator : AbstractValida
             .WithMessage("Loại tài liệu xác minh không hợp lệ.");
     }
 }
+
+public class UploadCoachPortfolioImageRequestDtoValidator : AbstractValidator<UploadCoachPortfolioImageRequestDto>
+{
+    public UploadCoachPortfolioImageRequestDtoValidator()
+    {
+        RuleFor(x => x.Files)
+            .NotEmpty()
+            .WithMessage("Vui lòng chọn ít nhất một ảnh portfolio.");
+
+        RuleFor(x => x.Caption)
+            .MaximumLength(300)
+            .WithMessage("Chú thích không được vượt quá 300 ký tự.")
+            .When(x => x.Caption is not null);
+    }
+}

@@ -5,8 +5,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ChevronLeft, Mail, Phone, CalendarClock, MapPin, Wallet, Dumbbell,
-  Award, Image as ImageIcon, ShieldCheck, AlertTriangle, Loader2, FileText,
-  ChevronRight as ChevronRightIcon, ExternalLink, UserRound, RefreshCcw,
+  Award, Image as ImageIcon, Images, ShieldCheck, AlertTriangle, Loader2, FileText,
+  ChevronRight as ChevronRightIcon, ExternalLink, UserRound, RefreshCcw, Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -199,6 +199,7 @@ export default function AdminCoachDetailPage() {
   const name = profile.displayName || profile.userFullName;
   const proofs = profile.proofs ?? [];
   const verificationDocuments = profile.verificationDocuments ?? [];
+  const portfolioImages = profile.portfolioImages ?? [];
   const activeProof = lightboxIndex !== null ? proofs[lightboxIndex] : null;
 
   return (
@@ -398,6 +399,54 @@ export default function AdminCoachDetailPage() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Public portfolio images — coach-curated, kept separate from
+              verification documents since these are meant to go public. */}
+          <Card className="border-[#86D232]/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Images className="h-4 w-4 text-[#86D232]" aria-hidden />
+                Ảnh portfolio công khai
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="flex items-start gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 text-xs leading-relaxed text-[#C4C7C9]/80">
+                <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#86D232]" aria-hidden />
+                Các ảnh này sẽ hiển thị trên hồ sơ công khai khi hồ sơ được duyệt.
+              </p>
+
+              {portfolioImages.length === 0 ? (
+                <p className="text-sm text-[#C4C7C9]/60">Chưa có ảnh portfolio nào được tải lên.</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {portfolioImages.map((image) => (
+                    <div
+                      key={image.id}
+                      className="group relative overflow-hidden rounded-xl border border-[#86D232]/20 bg-slate-950"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={image.imageUrl}
+                        alt={image.caption ? `Ảnh portfolio: ${image.caption}` : "Ảnh portfolio công khai"}
+                        className="h-28 w-full object-cover"
+                      />
+                      {image.isCover && (
+                        <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded-full bg-[#86D232] px-2 py-0.5 text-[10px] font-bold text-[#0A0A0A]">
+                          <Star className="h-2.5 w-2.5" aria-hidden fill="currentColor" />
+                          Ảnh bìa
+                        </span>
+                      )}
+                      {image.caption && (
+                        <span className="absolute bottom-1.5 left-1.5 right-1.5 truncate rounded-full bg-slate-950/85 px-2 py-0.5 text-[10px] font-medium text-slate-300 backdrop-blur-sm">
+                          {image.caption}
+                        </span>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>

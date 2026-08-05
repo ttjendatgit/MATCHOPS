@@ -10,6 +10,7 @@ public class CoachService : ICoachService
 {
     private const int MaxProofCount = 5;
     private const int MaxVerificationDocumentCount = 5;
+    private const int MaxPortfolioImageCount = 8;
 
     private readonly ApplicationDbContext _context;
     private readonly ICloudinaryService _cloudinary;
@@ -404,6 +405,141 @@ public class CoachService : ICoachService
         await _cloudinary.DeleteVerificationDocumentAsync(document.PublicId, document.ContentType);
     }
 
+    // ── Own-profile public portfolio images ──────────────────────────────────
+
+    public async Task<List<CoachPortfolioImageResponseDto>> UploadMyPortfolioImagesAsync(
+        Guid userId,
+        List<IFormFile> files,
+        string? caption)
+    {
+        var profile = await GetOwnProfileOrThrowAsync(userId, tracking: true);
+
+        if (profile.Status == CoachProfileStatus.SUSPENDED)
+        {
+            throw new AppException(
+                ErrorCodes.CoachProfileSuspended,
+                "Hồ sơ huấn luyện viên đang bị tạm khóa, không thể tải lên ảnh portfolio.",
+                StatusCodes.Status403Forbidden);
+        }
+
+        var incomingCount = files?.Count ?? 0;
+
+        if (incomingCount == 0)
+        {
+            throw new AppException(
+                ErrorCodes.ValidationError,
+                "Vui lòng chọn ít nhất một ảnh portfolio.");
+        }
+
+        if (profile.PortfolioImages.Count + incomingCount > MaxPortfolioImageCount)
+        {
+            throw new AppException(
+                ErrorCodes.ValidationError,
+                $"Chỉ được lưu tối đa {MaxPortfolioImageCount} ảnh portfolio cho mỗi hồ sơ.");
+        }
+
+        var uploaded = await _cloudinary.UploadImagesAsync(files, "coach-portfolio", MaxPortfolioImageCount);
+
+        try
+        {
+            var trimmedCaption = string.IsNullOrWhiteSpace(caption) ? null : caption.Trim();
+            var hasCover = profile.PortfolioImages.Any(p => p.IsCover);
+
+            var nextSortOrder = profile.PortfolioImages.Count == 0
+                ? 0
+                : profile.PortfolioImages.Max(p => p.SortOrder) + 1;
+
+            var newImages = new List<CoachPortfolioImage>();
+
+            foreach (var result in uploaded)
+            {
+                newImages.Add(new CoachPortfolioImage
+                {
+                    Id = Guid.NewGuid(),
+                    CoachProfileId = profile.Id,
+                    ImageUrl = result.Url,
+                    PublicId = result.PublicId,
+                    Caption = trimmedCaption,
+                    SortOrder = nextSortOrder++,
+                    // First image ever uploaded becomes the cover by default so the
+                    // public list always has something to show once approved.
+                    IsCover = !hasCover && newImages.Count == 0,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            _context.CoachPortfolioImages.AddRange(newImages);
+
+            if (profile.Status == CoachProfileStatus.REJECTED)
+            {
+                profile.Status = CoachProfileStatus.PENDING_APPROVAL;
+                profile.RejectionReason = null;
+                profile.ApprovedAt = null;
+            }
+
+            profile.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return newImages.Select(MapPortfolioImage).ToList();
+        }
+        catch
+        {
+            await _cloudinary.DeleteImagesByPublicIdsAsync(uploaded.Select(u => u.PublicId));
+            throw;
+        }
+    }
+
+    public async Task<List<CoachPortfolioImageResponseDto>> GetMyPortfolioImagesAsync(Guid userId)
+    {
+        var profile = await GetOwnProfileOrThrowAsync(userId, tracking: false);
+        return MapPortfolioImages(profile);
+    }
+
+    public async Task DeleteMyPortfolioImageAsync(Guid userId, Guid imageId)
+    {
+        var profile = await GetOwnProfileOrThrowAsync(userId, tracking: true);
+
+        if (profile.Status == CoachProfileStatus.SUSPENDED)
+        {
+            throw new AppException(
+                ErrorCodes.CoachProfileSuspended,
+                "Hồ sơ huấn luyện viên đang bị tạm khóa, không thể xoá ảnh portfolio.",
+                StatusCodes.Status403Forbidden);
+        }
+
+        var image = profile.PortfolioImages.FirstOrDefault(p => p.Id == imageId);
+
+        if (image is null)
+        {
+            throw new AppException(
+                ErrorCodes.CoachProfileNotFound,
+                "Không tìm thấy ảnh portfolio.",
+                StatusCodes.Status404NotFound);
+        }
+
+        _context.CoachPortfolioImages.Remove(image);
+
+        // Promote the next image (by sort order) to cover if the deleted one was it,
+        // so the public list keeps showing a cover photo whenever images remain.
+        if (image.IsCover)
+        {
+            var next = profile.PortfolioImages
+                .Where(p => p.Id != imageId)
+                .OrderBy(p => p.SortOrder)
+                .FirstOrDefault();
+
+            if (next is not null)
+            {
+                next.IsCover = true;
+            }
+        }
+
+        await _context.SaveChangesAsync();
+
+        await _cloudinary.DeleteImageByPublicIdAsync(image.PublicId);
+    }
+
     private async Task<CoachProfile> GetOwnProfileOrThrowAsync(Guid userId, bool tracking)
     {
         var query = _context.CoachProfiles
@@ -412,6 +548,7 @@ public class CoachService : ICoachService
             .ThenInclude(x => x.Sport)
             .Include(x => x.Proofs)
             .Include(x => x.VerificationDocuments)
+            .Include(x => x.PortfolioImages)
             .AsQueryable();
 
         if (!tracking)
@@ -592,6 +729,7 @@ public class CoachService : ICoachService
             .ThenInclude(x => x.Sport)
             .Include(x => x.Proofs)
             .Include(x => x.VerificationDocuments)
+            .Include(x => x.PortfolioImages)
             .AsQueryable();
 
         if (!tracking)
@@ -638,6 +776,7 @@ public class CoachService : ICoachService
             .Include(x => x.User)
             .Include(x => x.CoachSports)
             .ThenInclude(x => x.Sport)
+            .Include(x => x.PortfolioImages)
             .AsNoTracking()
             .Where(x => x.Status == CoachProfileStatus.ACTIVE)
             .AsQueryable();
@@ -702,6 +841,7 @@ public class CoachService : ICoachService
             .Include(x => x.User)
             .Include(x => x.CoachSports)
             .ThenInclude(x => x.Sport)
+            .Include(x => x.PortfolioImages)
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id && x.Status == CoachProfileStatus.ACTIVE);
 
@@ -757,7 +897,8 @@ public class CoachService : ICoachService
             UpdatedAt = profile.UpdatedAt,
             Sports = MapSports(profile),
             Proofs = MapProofs(profile),
-            VerificationDocuments = MapVerificationDocuments(profile)
+            VerificationDocuments = MapVerificationDocuments(profile),
+            PortfolioImages = MapPortfolioImages(profile)
         };
     }
 
@@ -807,7 +948,8 @@ public class CoachService : ICoachService
             UpdatedAt = profile.UpdatedAt,
             Sports = MapSports(profile),
             Proofs = MapProofs(profile),
-            VerificationDocuments = MapVerificationDocuments(profile)
+            VerificationDocuments = MapVerificationDocuments(profile),
+            PortfolioImages = MapPortfolioImages(profile)
         };
     }
 
@@ -824,7 +966,8 @@ public class CoachService : ICoachService
             District = profile.District,
             ApprovedAt = profile.ApprovedAt,
             CreatedAt = profile.CreatedAt,
-            Sports = MapSports(profile)
+            Sports = MapSports(profile),
+            CoverImageUrl = ResolveCoverImageUrl(profile)
         };
     }
 
@@ -841,8 +984,22 @@ public class CoachService : ICoachService
             District = profile.District,
             ApprovedAt = profile.ApprovedAt,
             CreatedAt = profile.CreatedAt,
-            Sports = MapSports(profile)
+            Sports = MapSports(profile),
+            PortfolioImages = MapPortfolioImages(profile)
         };
+    }
+
+    private static string? ResolveCoverImageUrl(CoachProfile profile)
+    {
+        if (profile.PortfolioImages.Count == 0)
+        {
+            return null;
+        }
+
+        var cover = profile.PortfolioImages.FirstOrDefault(p => p.IsCover)
+            ?? profile.PortfolioImages.OrderBy(p => p.SortOrder).ThenBy(p => p.CreatedAt).First();
+
+        return cover.ImageUrl;
     }
 
     private static string ResolvePublicDisplayName(CoachProfile profile) =>
@@ -898,6 +1055,28 @@ public class CoachService : ICoachService
             DocumentType = document.DocumentType.ToString(),
             SortOrder = document.SortOrder,
             CreatedAt = document.CreatedAt
+        };
+    }
+
+    private static List<CoachPortfolioImageResponseDto> MapPortfolioImages(CoachProfile profile)
+    {
+        return profile.PortfolioImages
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.CreatedAt)
+            .Select(MapPortfolioImage)
+            .ToList();
+    }
+
+    private static CoachPortfolioImageResponseDto MapPortfolioImage(CoachPortfolioImage image)
+    {
+        return new CoachPortfolioImageResponseDto
+        {
+            Id = image.Id,
+            ImageUrl = image.ImageUrl,
+            Caption = image.Caption,
+            SortOrder = image.SortOrder,
+            IsCover = image.IsCover,
+            CreatedAt = image.CreatedAt
         };
     }
 

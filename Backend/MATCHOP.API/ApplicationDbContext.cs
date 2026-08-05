@@ -27,6 +27,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<CoachSport> CoachSports => Set<CoachSport>();
     public DbSet<CoachProfileProof> CoachProfileProofs => Set<CoachProfileProof>();
     public DbSet<CoachVerificationDocument> CoachVerificationDocuments => Set<CoachVerificationDocument>();
+    public DbSet<CoachPortfolioImage> CoachPortfolioImages => Set<CoachPortfolioImage>();
     public DbSet<MatchPost> MatchPosts => Set<MatchPost>();
     public DbSet<MatchQueue> MatchQueues => Set<MatchQueue>();
     public DbSet<MatchRoom> MatchRooms => Set<MatchRoom>();
@@ -763,6 +764,52 @@ public class ApplicationDbContext : DbContext
 
             e.HasIndex(x => new { x.CoachProfileId, x.SortOrder })
              .HasDatabaseName("ix_coach_verification_documents_coach_profile_sort_order");
+        });
+
+        // ── CoachPortfolioImage ───────────────────────────────────────────
+        // Public-facing gallery images the coach opts to display on their
+        // profile — separate from CoachProfileProof (admin-review evidence)
+        // and CoachVerificationDocument (admin-only formal documents).
+        modelBuilder.Entity<CoachPortfolioImage>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.CoachProfileId)
+             .IsRequired();
+
+            e.Property(x => x.ImageUrl)
+             .IsRequired()
+             .HasMaxLength(1000);
+
+            e.Property(x => x.PublicId)
+             .IsRequired()
+             .HasMaxLength(500);
+
+            e.Property(x => x.Caption)
+             .HasMaxLength(300);
+
+            e.Property(x => x.SortOrder)
+             .HasDefaultValue(0);
+
+            e.Property(x => x.IsCover)
+             .HasDefaultValue(false);
+
+            e.Property(x => x.CreatedAt)
+             .HasDefaultValueSql("NOW()");
+
+            e.HasOne(x => x.CoachProfile)
+             .WithMany(cp => cp.PortfolioImages)
+             .HasForeignKey(x => x.CoachProfileId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.CoachProfileId)
+             .HasDatabaseName("ix_coach_portfolio_images_coach_profile_id");
+
+            e.HasIndex(x => new { x.CoachProfileId, x.SortOrder })
+             .HasDatabaseName("ix_coach_portfolio_images_coach_profile_sort_order");
         });
 
         // ── MatchPost ─────────────────────────────────────────────────
