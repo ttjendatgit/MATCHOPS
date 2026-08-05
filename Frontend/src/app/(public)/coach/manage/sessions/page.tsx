@@ -1,104 +1,109 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   AlertTriangle,
-  Ban,
   CalendarClock,
-  CheckCircle2,
+  CalendarRange,
   ChevronLeft,
-  Clock,
+  ChevronRight,
   Clock3,
   Dumbbell,
   Inbox,
+  List,
   Loader2,
-  Mail,
-  MapPin,
-  Phone,
   UserPlus,
-  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch, ApiError } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
 import type { ApiResponse } from "@/types/api";
-import type { CoachSessionResponse, CoachSessionStatus } from "@/types/coach";
+import type { CoachSessionResponse } from "@/types/coach";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { CoachSessionCalendar } from "@/components/coach/CoachSessionCalendar";
+import { CoachSessionDayDialog } from "@/components/coach/CoachSessionDayDialog";
+import { CoachSessionDetailDialog } from "@/components/coach/CoachSessionDetailDialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  STATUS_META,
+  addDays,
+  computeWeekStats,
+  formatPrice,
+  formatWeekRangeLabel,
+  getSessionsForDay,
+  getWeekDays,
+  getWeekStart,
+} from "@/lib/coach-session-calendar";
 
-// ─── Status metadata ────────────────────────────────────────────────────────
+type PageMode = "loading" | "ready" | "no-profile" | "error";
+type ViewMode = "calendar" | "list";
 
-const STATUS_META: Record<
-  CoachSessionStatus,
-  { label: string; icon: typeof Clock; badgeVariant: "warning" | "success" | "destructive" | "info" }
-> = {
-  AWAITING_PAYMENT: { label: "Chờ thanh toán", icon: Clock,        badgeVariant: "warning" },
-  PAID:              { label: "Đã thanh toán",  icon: CheckCircle2, badgeVariant: "success" },
-  CANCELLED:         { label: "Đã huỷ",         icon: Ban,          badgeVariant: "destructive" },
-  COMPLETED:         { label: "Đã hoàn thành",  icon: CheckCircle2, badgeVariant: "info" },
-};
+// ─── Week stat tile ─────────────────────────────────────────────────────────
 
-function formatDate(dateStr: string | null): string | null {
-  if (!dateStr) return null;
-  try {
-    const [y, m, d] = dateStr.split("-").map(Number);
-    return new Date(y, m - 1, d).toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  } catch {
-    return dateStr;
-  }
+function WeekStatTile({
+  icon: Icon,
+  label,
+  value,
+  accentClassName,
+}: {
+  icon: typeof Clock3;
+  label: string;
+  value: number;
+  accentClassName?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/[0.08] bg-slate-900/50 p-4">
+      <div className="mb-1 flex items-center gap-1.5 text-xs text-slate-500">
+        <Icon className={cn("h-3.5 w-3.5", accentClassName)} aria-hidden />
+        {label}
+      </div>
+      <p className="text-xl font-bold text-white tabular-nums">{value}</p>
+    </div>
+  );
 }
 
-function formatPrice(amount: number | null, currency: string): string {
-  if (amount === null) return "Cần xác nhận giá thủ công";
-  return `${amount.toLocaleString("vi-VN")} ${currency}`;
-}
+// ─── List-view session card (fallback view) ────────────────────────────────
 
-// ─── Session card ────────────────────────────────────────────────────────────
-
-function CoachSessionCard({
+function SessionListCard({
   session,
+  onOpenDetail,
   onComplete,
 }: {
   session: CoachSessionResponse;
+  onOpenDetail: (session: CoachSessionResponse) => void;
   onComplete: (session: CoachSessionResponse) => void;
 }) {
   const meta = STATUS_META[session.status];
   const StatusIcon = meta.icon;
-  const scheduledDate = formatDate(session.scheduledDate);
+  const canComplete = session.status === "PAID" && session.paymentStatus === "PAID";
 
   return (
     <Card className="overflow-hidden border-white/10 bg-slate-900/50">
       <div className="h-px w-full bg-gradient-to-r from-transparent via-[#86D232]/40 to-transparent" aria-hidden />
-      <CardContent className="space-y-4 p-5 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <CardContent className="space-y-3 p-5 sm:p-6">
+        <button
+          type="button"
+          onClick={() => onOpenDetail(session)}
+          className="flex w-full flex-wrap items-start justify-between gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]"
+        >
           <div className="min-w-0">
             <h3 className="truncate text-base font-bold text-white">{session.requesterName}</h3>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-              {session.requesterEmail && (
+              {session.scheduledTimeSlot && (
                 <span className="flex items-center gap-1">
-                  <Mail className="h-3 w-3" aria-hidden />
-                  {session.requesterEmail}
+                  <Clock3 className="h-3 w-3" aria-hidden />
+                  {session.scheduledTimeSlot}
                 </span>
               )}
-              {session.requesterPhoneNumber && (
+              {session.sportName && (
                 <span className="flex items-center gap-1">
-                  <Phone className="h-3 w-3" aria-hidden />
-                  {session.requesterPhoneNumber}
+                  <Dumbbell className="h-3 w-3" aria-hidden />
+                  {session.sportName}
                 </span>
               )}
             </div>
@@ -107,44 +112,11 @@ function CoachSessionCard({
             <StatusIcon className="h-3.5 w-3.5" aria-hidden />
             {meta.label}
           </Badge>
-        </div>
-
-        {session.sportName && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-[#FF8000]/30 bg-[rgba(255,128,0,0.12)] px-2.5 py-0.5 text-xs font-medium text-[#FF8000]">
-            <Dumbbell className="h-3 w-3" aria-hidden />
-            {session.sportName}
-          </span>
-        )}
-
-        <div className="grid gap-2 text-sm text-slate-400 sm:grid-cols-2">
-          {scheduledDate && (
-            <span className="flex items-center gap-1.5">
-              <CalendarClock className="h-3.5 w-3.5 shrink-0 text-slate-600" aria-hidden />
-              {scheduledDate}
-            </span>
-          )}
-          {(session.scheduledTimeSlot || session.durationMinutes) && (
-            <span className="flex items-center gap-1.5">
-              <Clock3 className="h-3.5 w-3.5 shrink-0 text-slate-600" aria-hidden />
-              {[session.scheduledTimeSlot, session.durationMinutes ? `${session.durationMinutes} phút` : null]
-                .filter(Boolean)
-                .join(" · ")}
-            </span>
-          )}
-          {session.locationNote && (
-            <span className="flex items-center gap-1.5 sm:col-span-2">
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-600" aria-hidden />
-              {session.locationNote}
-            </span>
-          )}
-        </div>
+        </button>
 
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-slate-950/40 p-3">
-          <span className="flex items-center gap-1.5 text-sm font-semibold text-white">
-            <Wallet className="h-3.5 w-3.5 shrink-0 text-[#86D232]" aria-hidden />
-            {formatPrice(session.priceAmount, session.currency)}
-          </span>
-          {session.status === "PAID" && (
+          <span className="text-sm font-semibold text-white">{formatPrice(session.priceAmount, session.currency)}</span>
+          {canComplete && (
             <Button
               type="button"
               size="sm"
@@ -162,16 +134,27 @@ function CoachSessionCard({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type PageMode = "loading" | "ready" | "no-profile" | "error";
-
 export default function CoachManageSessionsPage() {
   const router = useRouter();
 
   const [mode, setMode] = useState<PageMode>("loading");
   const [pageError, setPageError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<CoachSessionResponse[]>([]);
+
+  const [viewMode, setViewMode] = useState<ViewMode>("calendar");
+  const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
+  const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
+  const weekStats = useMemo(() => computeWeekStats(sessions, weekDays), [sessions, weekDays]);
+
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [selectedSession, setSelectedSession] = useState<CoachSessionResponse | null>(null);
   const [completeTarget, setCompleteTarget] = useState<CoachSessionResponse | null>(null);
   const [completing, setCompleting] = useState(false);
+
+  const selectedDaySessions = useMemo(
+    () => (selectedDay ? getSessionsForDay(sessions, selectedDay) : []),
+    [sessions, selectedDay]
+  );
 
   const fetchSessions = useCallback(async () => {
     const token = getStoredToken();
@@ -207,6 +190,11 @@ export default function CoachManageSessionsPage() {
     fetchSessions();
   }, [router, fetchSessions]);
 
+  function requestComplete(session: CoachSessionResponse) {
+    setSelectedSession(null);
+    setCompleteTarget(session);
+  }
+
   async function handleConfirmComplete() {
     if (!completeTarget) return;
     const token = getStoredToken();
@@ -231,6 +219,8 @@ export default function CoachManageSessionsPage() {
     }
   }
 
+  // ── Loading ──────────────────────────────────────────────────────────────
+
   if (mode === "loading") {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -238,6 +228,8 @@ export default function CoachManageSessionsPage() {
       </div>
     );
   }
+
+  // ── No coach profile ─────────────────────────────────────────────────────
 
   if (mode === "no-profile") {
     return (
@@ -255,6 +247,8 @@ export default function CoachManageSessionsPage() {
       </div>
     );
   }
+
+  // ── Error ────────────────────────────────────────────────────────────────
 
   if (mode === "error") {
     return (
@@ -275,11 +269,14 @@ export default function CoachManageSessionsPage() {
     );
   }
 
+  // ── Ready ────────────────────────────────────────────────────────────────
+
   const upcoming = sessions.filter((s) => s.status === "AWAITING_PAYMENT" || s.status === "PAID");
-  const past = sessions.filter((s) => s.status === "CANCELLED" || s.status === "COMPLETED");
+  const completed = sessions.filter((s) => s.status === "COMPLETED");
+  const cancelled = sessions.filter((s) => s.status === "CANCELLED");
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
       <Link
         href="/coach/manage"
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]/50 rounded"
@@ -288,13 +285,98 @@ export default function CoachManageSessionsPage() {
         Quay lại trang quản lý huấn luyện viên
       </Link>
 
-      <div className="mb-8 max-w-2xl">
+      <div className="mb-6 max-w-2xl">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+          <CalendarClock className="h-3.5 w-3.5 text-[#FF8000]" aria-hidden />
+          Lịch buổi huấn luyện
+        </div>
         <h1 className="text-2xl font-black text-white sm:text-3xl">Lịch buổi huấn luyện</h1>
         <p className="mt-2 text-sm leading-relaxed text-slate-400 sm:text-base">
-          Các buổi huấn luyện đã được xác nhận từ yêu cầu, cùng trạng thái thanh toán.
+          Theo dõi lịch huấn luyện theo tuần, trạng thái thanh toán và tiến độ từng buổi.
         </p>
       </div>
 
+      {/* ── Week controls ── */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Tuần trước"
+            onClick={() => setWeekStart((prev) => addDays(prev, -7))}
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Tuần sau"
+            onClick={() => setWeekStart((prev) => addDays(prev, 7))}
+          >
+            <ChevronRight className="h-4 w-4" aria-hidden />
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => setWeekStart(getWeekStart(new Date()))}>
+            Hôm nay
+          </Button>
+          <span className="ml-1 text-sm font-semibold tabular-nums text-slate-300">
+            {formatWeekRangeLabel(weekStart)}
+          </span>
+        </div>
+
+        <div role="group" aria-label="Chế độ xem" className="flex items-center gap-1 rounded-lg border border-white/10 bg-slate-900/50 p-1">
+          <button
+            type="button"
+            onClick={() => setViewMode("calendar")}
+            aria-pressed={viewMode === "calendar"}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]",
+              viewMode === "calendar" ? "bg-[#FF8000] text-white" : "text-slate-400 hover:text-white"
+            )}
+          >
+            <CalendarRange className="h-3.5 w-3.5" aria-hidden />
+            Lịch
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("list")}
+            aria-pressed={viewMode === "list"}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]",
+              viewMode === "list" ? "bg-[#FF8000] text-white" : "text-slate-400 hover:text-white"
+            )}
+          >
+            <List className="h-3.5 w-3.5" aria-hidden />
+            Danh sách
+          </button>
+        </div>
+      </div>
+
+      {/* ── Current-week stats ── */}
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <WeekStatTile icon={CalendarClock} label="Tổng buổi" value={weekStats.total} accentClassName="text-[#FF8000]" />
+        <WeekStatTile
+          icon={STATUS_META.AWAITING_PAYMENT.icon}
+          label="Chờ thanh toán"
+          value={weekStats.awaitingPayment}
+          accentClassName="text-amber-400"
+        />
+        <WeekStatTile
+          icon={STATUS_META.PAID.icon}
+          label="Đã thanh toán"
+          value={weekStats.paid}
+          accentClassName="text-[#86D232]"
+        />
+        <WeekStatTile
+          icon={STATUS_META.COMPLETED.icon}
+          label="Đã hoàn thành"
+          value={weekStats.completed}
+          accentClassName="text-blue-400"
+        />
+      </div>
+
+      {/* ── Calendar / list view ── */}
       {sessions.length === 0 ? (
         <Card className="border-white/10 bg-slate-900/50">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
@@ -310,59 +392,89 @@ export default function CoachManageSessionsPage() {
             </Button>
           </CardContent>
         </Card>
+      ) : viewMode === "calendar" ? (
+        <CoachSessionCalendar
+          weekDays={weekDays}
+          sessions={sessions}
+          onSelectDay={setSelectedDay}
+          onSelectSession={setSelectedSession}
+        />
       ) : (
         <div className="space-y-8">
           {upcoming.length > 0 && (
             <section className="space-y-4">
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Sắp tới</h2>
               {upcoming.map((session) => (
-                <CoachSessionCard key={session.id} session={session} onComplete={setCompleteTarget} />
+                <SessionListCard
+                  key={session.id}
+                  session={session}
+                  onOpenDetail={setSelectedSession}
+                  onComplete={requestComplete}
+                />
               ))}
             </section>
           )}
-          {past.length > 0 && (
+          {completed.length > 0 && (
             <section className="space-y-4">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Đã qua</h2>
-              {past.map((session) => (
-                <CoachSessionCard key={session.id} session={session} onComplete={setCompleteTarget} />
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Đã qua / hoàn thành</h2>
+              {completed.map((session) => (
+                <SessionListCard
+                  key={session.id}
+                  session={session}
+                  onOpenDetail={setSelectedSession}
+                  onComplete={requestComplete}
+                />
+              ))}
+            </section>
+          )}
+          {cancelled.length > 0 && (
+            <section className="space-y-4">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Đã huỷ</h2>
+              {cancelled.map((session) => (
+                <SessionListCard
+                  key={session.id}
+                  session={session}
+                  onOpenDetail={setSelectedSession}
+                  onComplete={requestComplete}
+                />
               ))}
             </section>
           )}
         </div>
       )}
 
+      {/* ── Day detail (desktop calendar) ── */}
+      <CoachSessionDayDialog
+        date={selectedDay}
+        sessions={selectedDaySessions}
+        onOpenChange={(open) => !open && setSelectedDay(null)}
+        onSelectSession={(session) => {
+          setSelectedDay(null);
+          setSelectedSession(session);
+        }}
+      />
+
+      {/* ── Session detail ── */}
+      <CoachSessionDetailDialog
+        session={selectedSession}
+        onOpenChange={(open) => !open && setSelectedSession(null)}
+        onRequestComplete={requestComplete}
+      />
+
       {/* ── Complete confirmation ── */}
-      <Dialog open={completeTarget !== null} onOpenChange={(open) => !open && setCompleteTarget(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Đánh dấu buổi huấn luyện hoàn thành?</DialogTitle>
-            <DialogDescription>
-              Xác nhận buổi huấn luyện với {completeTarget?.requesterName} đã diễn ra và hoàn
-              thành.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setCompleteTarget(null)} disabled={completing}>
-              Đóng
-            </Button>
-            <Button
-              type="button"
-              className="bg-[#86D232] text-[#0A0A0A] hover:bg-[#86D232]/90"
-              onClick={handleConfirmComplete}
-              disabled={completing}
-            >
-              {completing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                  Đang lưu...
-                </>
-              ) : (
-                "Xác nhận hoàn thành"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={completeTarget !== null}
+        onOpenChange={(open) => !open && setCompleteTarget(null)}
+        title="Đánh dấu buổi huấn luyện hoàn thành?"
+        description={
+          completeTarget
+            ? `Xác nhận buổi huấn luyện với ${completeTarget.requesterName} đã diễn ra và hoàn thành.`
+            : undefined
+        }
+        confirmLabel="Xác nhận hoàn thành"
+        onConfirm={handleConfirmComplete}
+        loading={completing}
+      />
     </div>
   );
 }
