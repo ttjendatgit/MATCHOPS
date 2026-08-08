@@ -31,7 +31,7 @@ namespace MATCHOP.API.Middlewares
             {
                 _logger.LogError(ex, "Unhandled exception occurred.");
 
-                await HandleUnknownExceptionAsync(context);
+                await HandleUnknownExceptionAsync(context, ex);
             }
         }
 
@@ -55,7 +55,7 @@ namespace MATCHOP.API.Middlewares
             await context.Response.WriteAsync(json);
         }
 
-        private static async Task HandleUnknownExceptionAsync(HttpContext context)
+        private static async Task HandleUnknownExceptionAsync(HttpContext context, Exception ex)
         {
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
@@ -64,7 +64,11 @@ namespace MATCHOP.API.Middlewares
             {
                 Success = false,
                 Code = ErrorCodes.InternalServerError,
-                Message = "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau."
+                Message = $"Lỗi: {ex.Message}",
+                Errors = new Dictionary<string, string[]>
+                {
+                    { "stack", new[] { ex.StackTrace ?? "no stack" } }
+                }
             };
 
             var json = JsonSerializer.Serialize(response, new JsonSerializerOptions

@@ -70,16 +70,12 @@ builder.Services.AddControllers()
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestDtoValidator>();
 
-// ========== FIX: Thêm EnableRetryOnFailure + CommandTimeout ==========
+// ========== DB: command timeout only (retry disabled so user-initiated transactions work) ==========
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         npgsqlOptions =>
         {
-            npgsqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(10),
-                errorCodesToAdd: null);
             npgsqlOptions.CommandTimeout(60);
         }));
 

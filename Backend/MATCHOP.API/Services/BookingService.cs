@@ -16,6 +16,7 @@ public class BookingService : IBookingService
     private readonly ICourtRepository _courtRepository;
     private readonly IPriceRuleRepository _priceRuleRepository;
     private readonly ICurrentUserService _currentUserService;
+    private readonly ILogger<BookingService> _logger;
     private readonly int _slotMinutes;
     private readonly int _pendingExpireMinutes;
     private readonly int _minBookingMinutes;
@@ -28,6 +29,7 @@ public class BookingService : IBookingService
         ICourtRepository courtRepository,
         IPriceRuleRepository priceRuleRepository,
         ICurrentUserService currentUserService,
+        ILogger<BookingService> logger,
         IConfiguration configuration)
     {
         _context = context;
@@ -36,6 +38,7 @@ public class BookingService : IBookingService
         _courtRepository = courtRepository;
         _priceRuleRepository = priceRuleRepository;
         _currentUserService = currentUserService;
+        _logger = logger;
         _slotMinutes = configuration.GetValue("Booking:SlotMinutes", 30);
         _pendingExpireMinutes = configuration.GetValue("Booking:PendingExpireMinutes", 10);
         _minBookingMinutes = configuration.GetValue("Booking:MinBookingMinutes", 30);
@@ -47,6 +50,8 @@ public class BookingService : IBookingService
     public async Task<BookingResponseDto> CreateBookingAsync(CreateBookingDto dto, CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserIdOrThrow();
+        _logger.LogInformation("[BOOKING] UserId={UserId}, CourtId={CourtId}, Date={Date}, Start={Start}, End={End}",
+            userId, dto.CourtId, dto.BookingDate, dto.StartTime, dto.EndTime);
         var court = await GetActivePublicCourtOrThrowAsync(dto.CourtId, cancellationToken);
 
         return await CreateBookingCoreAsync(
@@ -625,6 +630,12 @@ public class BookingService : IBookingService
                 court.Id, bookingDate, slotStartTimes, cancellationToken);
 
             if (hasConflict)
+            {
+                _logger.LogWarning("[BOOKING] Slot conflict detected. CourtId={CourtId}, Date={Date}, Slots={Slots}",
+                    court.Id, bookingDate, string.Join(",", slotStartTimes));
+            }
+
+            if (hasConflict)
                 throw new AppException(
                     ErrorCodes.SlotAlreadyBooked,
                     "Khung giờ này đã được đặt hoặc bị khóa. Vui lòng chọn khung giờ khác.",
@@ -719,11 +730,28 @@ public class BookingService : IBookingService
         ValidateGuid(courtId, "CourtId");
 
         var court = await _courtRepository.GetPublicCourtByIdAsync(courtId, cancellationToken);
+
+        // Null means the court doesn't exist or isn't fully active (court/venue/sport all must be ACTIVE)
         if (court is null)
+        {
+            _logger.LogWarning("[BOOKING] Court not found or inactive. CourtId={CourtId}", courtId);
             throw new AppException(
                 ErrorCodes.CourtNotFound,
                 "Không tìm thấy sân đang hoạt động.",
                 StatusCodes.Status404NotFound);
+        }
+
+        // Defensive: if court.Venue or court.Sport are null (shouldn't happen with Include), throw 500
+        if (court.Venue is null)
+        {
+            _logger.LogError("[BOOKING] Court {CourtId} loaded but Venue is null!", courtId);
+            throw new AppException(ErrorCodes.CourtNotFound, "Lỗi dữ liệu: sân không có thông tin cơ sở.", 500);
+        }
+        if (court.Sport is null)
+        {
+            _logger.LogError("[BOOKING] Court {CourtId} loaded but Sport is null!", courtId);
+            throw new AppException(ErrorCodes.CourtNotFound, "Lỗi dữ liệu: sân không có thông tin môn thể thao.", 500);
+        }
 
         return court;
     }
