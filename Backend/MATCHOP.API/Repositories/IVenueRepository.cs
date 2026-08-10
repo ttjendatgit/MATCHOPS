@@ -9,7 +9,8 @@ public interface IVenueRepository
         string? city,
         string? district,
         Guid? sportId,
-        string? keyword);
+        string? keyword,
+        CancellationToken cancellationToken = default);
 
     Task<Venue?> GetActiveByIdAsync(Guid id);
     Task<Venue?> GetByIdAsync(Guid id);

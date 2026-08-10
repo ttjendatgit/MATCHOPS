@@ -22,15 +22,40 @@ import {
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { getStoredUser, getStoredToken, clearAuthData, verifySession } from "@/lib/auth";
+import { getStoredUser, getStoredToken, clearAuthData, verifySession } from "@/lib/auth";
 import { apiFetch, ApiError } from "@/lib/api";
 import { BrandMark } from "@/components/branding";
 import type { User } from "@/types/auth";
 import type { ApiResponse } from "@/types/api";
 import type { CoachProfileMeResponse } from "@/types/coach";
 
+/**
+ * Decode the role claim from a JWT without cryptographic verification.
+ * We only decode for display-matching; server-side is authoritative.
+ * Returns null if token is missing or cannot be decoded.
+ */
+function decodeTokenRole(token: string | null): string | null {
+  if (!token) return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Nav data ─────────────────────────────────────────────────────────────────
 
 const navLinks = [
+  { href: "/",        label: "Trang chủ",      exact: true  },
+  { href: "/venues",  label: "Sân thể thao",    exact: false },
+  { href: "/coach",   label: "Huấn luyện viên", exact: false },
+  { href: "/match",   label: "Ghép đối",        exact: false },
+  { href: "/match/rooms", label: "Phòng chờ", exact: false },
+  { href: "/ai-chat", label: "AI Trợ lý", exact: false },
+  { href: "/pricing", label: "Gói thành viên",  exact: false },
   { href: "/", label: "Trang chủ", exact: true },
   { href: "/venues", label: "Sân thể thao", exact: false },
   { href: "/coach", label: "Huấn luyện viên", exact: false },
@@ -240,8 +265,20 @@ export function PublicNavbar() {
 
   // On first mount, validate the stored token against /api/auth/me so stale
   // or expired tokens are cleared and the navbar reflects the real auth state.
+  // Also detect role mismatches: if the role stored in localStorage doesn't match
+  // the role encoded in the JWT (e.g. DB was updated but token wasn't refreshed),
+  // force a server-side session verification to pick up the authoritative role.
   useEffect(() => {
-    verifySession().then(setUser);
+    const stored = getStoredUser();
+    const tokenRole = decodeTokenRole(getStoredToken());
+    if (stored && tokenRole && stored.role !== tokenRole) {
+      // Token claims a different role than localStorage — verify with server.
+      verifySession().then((fresh) => {
+        if (fresh) setUser(fresh);
+      });
+    } else {
+      verifySession().then(setUser);
+    }
   }, []);
 
   // Check coach-profile ownership once per logged-in identity (not on every
@@ -361,7 +398,16 @@ export function PublicNavbar() {
                     className="flex items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-xs font-medium text-slate-300 transition-all duration-200 hover:border-white/30 hover:bg-white/5 hover:text-white"
                   >
                     <LayoutDashboard className="h-3.5 w-3.5" aria-hidden />
-                    Dashboard
+                    Dashboard Chủ sân
+                  </Link>
+                )}
+                {user.role === "ADMIN" && (
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-1.5 rounded-full border border-[#FF8000]/22 bg-[#FF8000]/[0.05] px-3.5 py-2 text-xs font-medium text-[#FF8000] transition-all duration-200 hover:border-[#FF8000]/35 hover:bg-[#FF8000]/10"
+                  >
+                    <LayoutDashboard className="h-3.5 w-3.5" aria-hidden />
+                    Dashboard Admin
                   </Link>
                 )}
 
@@ -529,7 +575,17 @@ export function PublicNavbar() {
                   onClick={() => setMobileOpen(false)}
                 >
                   <LayoutDashboard className="h-4 w-4" aria-hidden />
-                  Dashboard
+                  Dashboard Chủ sân
+                </Link>
+              )}
+              {user.role === "ADMIN" && (
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-2 rounded-xl border border-[#FF8000]/20 bg-[#FF8000]/[0.04] px-3.5 py-2.5 text-sm font-medium text-[#FF8000] transition-all duration-200 hover:bg-[#FF8000]/[0.07]"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <LayoutDashboard className="h-4 w-4" aria-hidden />
+                  Dashboard Admin
                 </Link>
               )}
 

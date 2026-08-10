@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿using MATCHOP.API;
+﻿﻿using MATCHOP.API;
 using MATCHOP.API.Middlewares;
 using MATCHOP.API.Services;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +17,6 @@ using Microsoft.AspNetCore.RateLimiting;
 using MATCHOP.API.Repositories.Interfaces;
 using MATCHOP.API.Services.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
-
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,8 +33,13 @@ if (configuredOrigins.Length == 0)
         : [frontendBaseUrl];
 }
 
-
 builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    })
     .ConfigureApiBehaviorOptions(options =>
     {
         options.InvalidModelStateResponseFactory = context =>
@@ -66,8 +70,14 @@ builder.Services.AddControllers()
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestDtoValidator>();
 
+// ========== DB: command timeout only (retry disabled so user-initiated transactions work) ==========
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        npgsqlOptions =>
+        {
+            npgsqlOptions.CommandTimeout(60);
+        }));
 
 builder.Services.AddCors(options =>
 {
@@ -198,13 +208,14 @@ builder.Services.AddScoped<IMatchRequestService, MatchRequestService>();
 builder.Services.AddHttpClient<IGroqService, GroqService>();
 builder.Services.AddScoped<IAIChatRepository, AIChatRepository>();
 builder.Services.AddScoped<IAIService, AIService>();
+builder.Services.AddScoped<IDashboardStatisticsService, DashboardStatisticsService>();
+builder.Services.AddScoped<IGroqAnalyticsService, GroqAnalyticsService>();
+builder.Services.AddScoped<IAIAnalyticsService, AIAnalyticsService>();
 
 // Real-time Chat & Notifications
 builder.Services.AddScoped<IChatRepository, ChatRepository>();
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddSignalR();
-
-
 
 builder.Services.AddScoped<ICourtBlockService, CourtBlockService>();
 builder.Services.AddHostedService<BookingExpirationHostedService>();
@@ -256,20 +267,41 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
+// ========== FIX: Migrate an toàn, không crash app ==========
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    dbContext.Database.Migrate();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        if (dbContext.Database.CanConnect())
+        {
+            dbContext.Database.Migrate();
+            logger.LogInformation("Database migration completed successfully.");
+        }
+        else
+        {
+            logger.LogWarning("Cannot connect to database. Skipping migration.");
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Database migration failed. App will continue starting.");
+        // Nếu muốn app dừng khi migrate lỗi → bỏ comment dòng dưới:
+        // throw;
+    }
 }
 
 app.UseMiddleware<ExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
-app.UseSwagger();
-app.UseSwaggerUI();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 else
 {
@@ -283,8 +315,6 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseRouting();
 app.UseStaticFiles();
-
-
 
 app.UseCors("Frontend");
 app.UseRateLimiter();

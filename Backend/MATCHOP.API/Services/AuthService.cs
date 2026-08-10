@@ -27,11 +27,11 @@ namespace MATCHOP.API.Services
             _configuration = configuration;
         }
 
-        public async Task RegisterAsync(RegisterRequestDto dto)
+        public async Task RegisterAsync(RegisterRequestDto dto, CancellationToken cancellationToken = default)
         {
             var email = dto.Email.Trim().ToLower();
 
-            var emailExists = await _context.Users.AnyAsync(x => x.Email == email);
+            var emailExists = await _context.Users.AnyAsync(x => x.Email == email, cancellationToken);
             if (emailExists)
             {
                 throw new AppException("EMAIL_ALREADY_EXISTS", "Email đã được sử dụng.");
@@ -39,7 +39,7 @@ namespace MATCHOP.API.Services
 
             if (!string.IsNullOrWhiteSpace(dto.Phone))
             {
-                var phoneExists = await _context.Users.AnyAsync(x => x.PhoneNumber == dto.Phone);
+                var phoneExists = await _context.Users.AnyAsync(x => x.PhoneNumber == dto.Phone, cancellationToken);
                 if (phoneExists)
                 {
                     throw new AppException("PHONE_ALREADY_EXISTS", "Số điện thoại đã được sử dụng.");
@@ -67,7 +67,7 @@ namespace MATCHOP.API.Services
             };
 
             _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
 
             var frontendBaseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:3000";
             var verificationUrl =
@@ -76,11 +76,11 @@ namespace MATCHOP.API.Services
             await _emailService.SendEmailVerificationAsync(user.Email, user.FullName, verificationUrl);
         }
 
-        public async Task VerifyEmailAsync(VerifyEmailRequestDto dto)
+        public async Task VerifyEmailAsync(VerifyEmailRequestDto dto, CancellationToken cancellationToken = default)
         {
             var email = dto.Email.Trim().ToLower();
 
-            var user = await _context.Users.FirstOrDefaultAsync(x => x.Email == email);
+            var user = await _context.Users.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
             if (user == null)
             {
                 throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);
@@ -113,14 +113,14 @@ namespace MATCHOP.API.Services
             user.EmailVerificationTokenExpiresAt = null;
             user.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task ResendVerificationEmailAsync(ResendVerificationEmailRequestDto dto)
+        public async Task ResendVerificationEmailAsync(ResendVerificationEmailRequestDto dto, CancellationToken cancellationToken = default)
         {
             var email = dto.Email.Trim().ToLower();
 
-            var user = await _context.Users.FirstOrDefaultAsync(x => x.Email == email);
+            var user = await _context.Users.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
             if (user == null)
             {
                 throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);
@@ -137,7 +137,7 @@ namespace MATCHOP.API.Services
             user.EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
             user.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
 
             var frontendBaseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:3000";
             var verificationUrl =
@@ -146,11 +146,11 @@ namespace MATCHOP.API.Services
             await _emailService.SendEmailVerificationAsync(user.Email, user.FullName, verificationUrl);
         }
 
-        public async Task<AuthResponseDto> LoginAsync(LoginRequestDto dto)
+        public async Task<AuthResponseDto> LoginAsync(LoginRequestDto dto, CancellationToken cancellationToken = default)
         {
             var email = dto.Email.Trim().ToLower();
 
-            var user = await _context.Users.FirstOrDefaultAsync(x => x.Email == email);
+            var user = await _context.Users.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
             if (user == null)
             {
                 throw new AppException("INVALID_LOGIN", "Email hoặc mật khẩu không đúng.", StatusCodes.Status401Unauthorized);
@@ -179,7 +179,7 @@ namespace MATCHOP.API.Services
 
             user.LastLoginAt = DateTime.UtcNow;
             user.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
 
             var token = _jwtService.GenerateToken(user);
 
@@ -195,7 +195,7 @@ namespace MATCHOP.API.Services
             };
         }
 
-        public async Task<AuthResponseDto> GoogleLoginAsync(GoogleLoginRequestDto dto)
+        public async Task<AuthResponseDto> GoogleLoginAsync(GoogleLoginRequestDto dto, CancellationToken cancellationToken = default)
         {
             var clientId = _configuration["GoogleAuth:ClientId"];
 
@@ -222,7 +222,7 @@ namespace MATCHOP.API.Services
 
             var email = payload.Email.Trim().ToLower();
 
-            var user = await _context.Users.FirstOrDefaultAsync(x => x.Email == email);
+            var user = await _context.Users.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
 
             if (user == null)
             {
@@ -259,7 +259,7 @@ namespace MATCHOP.API.Services
                 user.UpdatedAt = DateTime.UtcNow;
             }
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
 
             var token = _jwtService.GenerateToken(user);
 
@@ -275,9 +275,9 @@ namespace MATCHOP.API.Services
             };
         }
 
-        public async Task<AuthResponseDto> GetMeAsync(Guid userId)
+        public async Task<AuthResponseDto> GetMeAsync(Guid userId, CancellationToken cancellationToken = default)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(x => x.Id == userId);
+            var user = await _context.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
             if (user == null)
             {
                 throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);

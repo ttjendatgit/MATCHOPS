@@ -14,33 +14,33 @@ namespace MATCHOP.API.Repositories
             _context = context;
         }
 
-        public async Task<User?> GetByIdAsync(Guid id)
+        public async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            return await _context.Users.FirstOrDefaultAsync(x => x.Id == id);
+            return await _context.Users.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         }
 
-        public async Task<List<User>> GetAllAsync()
+        public async Task<List<User>> GetAllAsync(CancellationToken cancellationToken = default)
         {
-            return await _context.Users.OrderByDescending(u => u.CreatedAt).ToListAsync();
+            return await _context.Users.OrderByDescending(u => u.CreatedAt).ToListAsync(cancellationToken);
         }
 
-        public async Task<User?> GetProfileAsync(Guid userId)
+        public async Task<User?> GetProfileAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             return await _context.Users
                 .Include(x => x.FavoriteSports)
-                .FirstOrDefaultAsync(x => x.Id == userId);
+                .FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
         }
 
-        public async Task<User> UpdateAsync(User user)
+        public async Task<User> UpdateAsync(User user, CancellationToken cancellationToken = default)
         {
             _context.Users.Update(user);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
             return user;
         }
 
-        public async Task<User?> UploadAvatarAsync(Guid userId, string avatarUrl)
+        public async Task<User?> UploadAvatarAsync(Guid userId, string avatarUrl, CancellationToken cancellationToken = default)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(x => x.Id == userId);
+            var user = await _context.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
             if (user == null)
             {
                 return null;
@@ -48,35 +48,35 @@ namespace MATCHOP.API.Repositories
 
             user.AvatarUrl = avatarUrl;
             user.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
             return user;
         }
 
-        public async Task<bool> EmailExistsAsync(string email, Guid excludeUserId)
+        public async Task<bool> EmailExistsAsync(string email, Guid excludeUserId, CancellationToken cancellationToken = default)
         {
             var normalized = email.Trim().ToLower();
-            return await _context.Users.AnyAsync(x => x.Email == normalized && x.Id != excludeUserId);
+            return await _context.Users.AnyAsync(x => x.Email == normalized && x.Id != excludeUserId, cancellationToken);
         }
 
-        public async Task<bool> PhoneExistsAsync(string phoneNumber, Guid excludeUserId)
+        public async Task<bool> PhoneExistsAsync(string phoneNumber, Guid excludeUserId, CancellationToken cancellationToken = default)
         {
             var normalized = phoneNumber.Trim();
-            return await _context.Users.AnyAsync(x => x.PhoneNumber == normalized && x.Id != excludeUserId);
+            return await _context.Users.AnyAsync(x => x.PhoneNumber == normalized && x.Id != excludeUserId, cancellationToken);
         }
 
-        public async Task<List<FavoriteSport>> GetFavoriteSportsAsync(Guid userId)
+        public async Task<List<FavoriteSport>> GetFavoriteSportsAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             return await _context.FavoriteSports
                 .Where(x => x.UserId == userId)
                 .OrderBy(x => x.SportType)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
         }
 
-        public async Task ReplaceFavoriteSportsAsync(Guid userId, List<SportType> sportTypes)
+        public async Task ReplaceFavoriteSportsAsync(Guid userId, List<SportType> sportTypes, CancellationToken cancellationToken = default)
         {
             var existing = await _context.FavoriteSports
                 .Where(x => x.UserId == userId)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             if (existing.Count > 0)
             {
@@ -94,10 +94,10 @@ namespace MATCHOP.API.Repositories
                     })
                     .ToList();
 
-                await _context.FavoriteSports.AddRangeAsync(items);
+                await _context.FavoriteSports.AddRangeAsync(items, cancellationToken);
             }
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
     }
 }

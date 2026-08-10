@@ -17,21 +17,21 @@ namespace MATCHOP.API.Services
             _context = context;
         }
 
-        public async Task<List<UserSkillResponseDto>> GetUserSkillsAsync(Guid userId)
+        public async Task<List<UserSkillResponseDto>> GetUserSkillsAsync(Guid userId, CancellationToken cancellationToken = default)
         {
-            var skills = await _userSkillRepository.GetByUserIdAsync(userId);
+            var skills = await _userSkillRepository.GetByUserIdAsync(userId, cancellationToken);
             return skills.Select(MapToResponse).ToList();
         }
 
-        public async Task<UserSkillResponseDto> UpdateUserSkillAsync(Guid userId, UpdateUserSkillDto dto)
+        public async Task<UserSkillResponseDto> UpdateUserSkillAsync(Guid userId, UpdateUserSkillDto dto, CancellationToken cancellationToken = default)
         {
-            var sport = await _context.Sports.FindAsync(dto.SportId);
+            var sport = await _context.Sports.FindAsync(new object[] { dto.SportId }, cancellationToken);
             if (sport == null)
             {
                 throw new AppException(ErrorCodes.SportNotFound, "Môn thể thao không tồn tại.");
             }
 
-            var skill = await _userSkillRepository.GetAsync(userId, dto.SportId);
+            var skill = await _userSkillRepository.GetAsync(userId, dto.SportId, cancellationToken);
 
             if (skill == null)
             {
@@ -43,17 +43,17 @@ namespace MATCHOP.API.Services
                     Level = dto.Level,
                     UpdatedAt = DateTime.UtcNow
                 };
-                await _userSkillRepository.AddAsync(skill);
+                await _userSkillRepository.AddAsync(skill, cancellationToken);
             }
             else
             {
                 skill.Level = dto.Level;
-                await _userSkillRepository.UpdateAsync(skill);
+                await _userSkillRepository.UpdateAsync(skill, cancellationToken);
             }
 
             // Need to reload to get Sport name
-            skill = await _userSkillRepository.GetAsync(userId, dto.SportId);
-            _context.Entry(skill!).Reference(s => s.Sport).Load();
+            skill = await _userSkillRepository.GetAsync(userId, dto.SportId, cancellationToken);
+            await _context.Entry(skill!).Reference(s => s.Sport).LoadAsync(cancellationToken);
 
             return MapToResponse(skill!);
         }

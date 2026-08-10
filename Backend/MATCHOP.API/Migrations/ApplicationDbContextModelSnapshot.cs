@@ -33,6 +33,9 @@ namespace MATCHOP.API.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("ConversationId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -48,10 +51,46 @@ namespace MATCHOP.API.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ConversationId")
+                        .HasDatabaseName("ix_ai_chat_messages_conversation");
+
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_ai_chat_messages_user");
 
                     b.ToTable("AIChatMessages");
+                });
+
+            modelBuilder.Entity("MATCHOP.API.Entities.AIConversation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_ai_conversations_user");
+
+                    b.ToTable("AIConversations");
                 });
 
             modelBuilder.Entity("MATCHOP.API.Entities.Booking", b =>
@@ -1843,8 +1882,26 @@ namespace MATCHOP.API.Migrations
 
             modelBuilder.Entity("MATCHOP.API.Entities.AIChatMessage", b =>
                 {
+                    b.HasOne("MATCHOP.API.Entities.AIConversation", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("MATCHOP.API.Entities.User", "User")
                         .WithMany("AIChatMessages")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MATCHOP.API.Entities.AIConversation", b =>
+                {
+                    b.HasOne("MATCHOP.API.Entities.User", "User")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -2405,6 +2462,11 @@ namespace MATCHOP.API.Migrations
                         .IsRequired();
 
                     b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("MATCHOP.API.Entities.AIConversation", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("MATCHOP.API.Entities.Booking", b =>

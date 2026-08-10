@@ -1,11 +1,11 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 
 namespace MATCHOP.API.Helpers
 {
     public static class ValidationHelper
     {
         private static readonly Regex SafeNameRegex = new(
-            @"^[\p{L}\p{N}\s\.,\-_\&\(\)\/]+$",
+            @"^[\p{L}\p{M}\p{N}\s\.\-_\&\(\)\/,':;]+$",
             RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         private static readonly Regex DangerousContentRegex = new(
@@ -45,7 +45,7 @@ namespace MATCHOP.API.Helpers
             {
                 throw new AppException(
                     ErrorCodes.ValidationError,
-                    $"{fieldName} chỉ được chứa chữ, số, khoảng trắng và các ký tự . , - _ & ( ) /.");
+                    $"{fieldName} chỉ được chứa chữ, số, khoảng trắng, chữ có dấu và các ký tự . - _ & ( ) /.");
             }
 
             if (ContainsDangerousContent(normalized))

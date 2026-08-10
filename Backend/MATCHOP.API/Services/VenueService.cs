@@ -12,6 +12,7 @@ public class VenueService : IVenueService
     private readonly IVenueRepository _venueRepo;
     private readonly ICurrentUserService _currentUser;
     private readonly ICloudinaryService _cloudinary;
+    private readonly IMembershipService _membershipService;
     private readonly ILogger<VenueService> _logger;
     private readonly IMembershipService _membershipService;
 
@@ -25,6 +26,7 @@ public class VenueService : IVenueService
         _venueRepo = venueRepo;
         _currentUser = currentUser;
         _cloudinary = cloudinary;
+        _membershipService = membershipService;
         _logger = logger;
         _membershipService = membershipService;
     }
@@ -74,9 +76,9 @@ public class VenueService : IVenueService
                 400);
     }
 
-    private async Task<Venue> GetVenueOrThrowAsync(Guid id)
+    private async Task<Venue> GetVenueOrThrowAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var venue = await _venueRepo.GetByIdAsync(id);
+        var venue = await _venueRepo.GetByIdAsync(id, cancellationToken);
 
         if (venue is null)
             throw new AppException(
@@ -87,7 +89,7 @@ public class VenueService : IVenueService
         return venue;
     }
 
-    private async Task SafeDeleteImageAsync(string? imageUrl)
+    private async Task SafeDeleteImageAsync(string? imageUrl, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(imageUrl))
         {
@@ -96,7 +98,7 @@ public class VenueService : IVenueService
 
         try
         {
-            await _cloudinary.DeleteImageAsync(imageUrl);
+            await _cloudinary.DeleteImageAsync(imageUrl, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -104,9 +106,9 @@ public class VenueService : IVenueService
         }
     }
 
-    private async Task<Venue> GetOwnedVenueOrThrowAsync(Guid id)
+    private async Task<Venue> GetOwnedVenueOrThrowAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var venue = await GetVenueOrThrowAsync(id);
+        var venue = await GetVenueOrThrowAsync(id, cancellationToken);
         var ownerId = GetCurrentUserId();
 
         if (venue.OwnerId != ownerId)
@@ -124,15 +126,16 @@ public class VenueService : IVenueService
         string? city,
         string? district,
         Guid? sportId,
-        string? keyword)
+        string? keyword,
+        CancellationToken cancellationToken = default)
     {
-        var venues = await _venueRepo.GetActiveVenuesAsync(city, district, sportId, keyword);
+        var venues = await _venueRepo.GetActiveVenuesAsync(city, district, sportId, keyword, cancellationToken);
         return venues.Select(ToDto).ToList();
     }
 
-    public async Task<VenueResponseDto> GetActiveVenueByIdAsync(Guid id)
+    public async Task<VenueResponseDto> GetActiveVenueByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var venue = await _venueRepo.GetActiveByIdAsync(id);
+        var venue = await _venueRepo.GetActiveByIdAsync(id, cancellationToken);
 
         if (venue is null)
             throw new AppException(
@@ -145,11 +148,27 @@ public class VenueService : IVenueService
 
     // ── Owner ─────────────────────────────────────────────────────────────────
 
-    public async Task<VenueResponseDto> CreateVenueAsync(CreateVenueDto dto)
+    public async Task<VenueResponseDto> CreateVenueAsync(CreateVenueDto dto, CancellationToken cancellationToken = default)
     {
         ValidateOpeningClosingTime(dto.OpeningTime, dto.ClosingTime);
 
+        // Check membership limits before creating venue
         var ownerId = GetCurrentUserId();
+        await _membershipService.CheckVenueLimitAsync(ownerId, cancellationToken);
+
+        ValidationHelper.ValidateRequiredText(dto.Name, "Tên venue", minLength: 2, maxLength: 200);
+        ValidationHelper.ValidateRequiredAddress(dto.Address, "Địa chỉ", minLength: 5, maxLength: 500);
+        ValidationHelper.ValidateRequiredText(dto.City, "Tỉnh/Thành phố", minLength: 1, maxLength: 100);
+        ValidationHelper.ValidateRequiredText(dto.District, "Quận/Huyện", minLength: 1, maxLength: 100);
+        if (dto.Ward != null)
+        {
+            ValidationHelper.ValidateOptionalDescription(dto.Ward, "Phường/Xã", maxLength: 100);
+        }
+        if (dto.Description != null)
+        {
+            ValidationHelper.ValidateOptionalDescription(dto.Description, "Mô tả", maxLength: 2000);
+        }
+
 
         // Membership quota: check how many venues this owner already has
         var plan = await _membershipService.GetEffectivePlanAsync(ownerId, UserRole.OWNER);
@@ -169,7 +188,7 @@ public class VenueService : IVenueService
         {
             if (dto.CoverImage is not null)
             {
-                coverImageUrl = await _cloudinary.UploadImageAsync(dto.CoverImage, "venues");
+                coverImageUrl = await _cloudinary.UploadImageAsync(dto.CoverImage, "venues", cancellationToken);
             }
 
             var venue = new Venue
@@ -192,32 +211,57 @@ public class VenueService : IVenueService
                 UpdatedAt = DateTime.UtcNow
             };
 
-            var created = await _venueRepo.CreateAsync(venue);
+            var created = await _venueRepo.CreateAsync(venue, cancellationToken);
             return ToDto(created);
         }
         catch
         {
-            await SafeDeleteImageAsync(coverImageUrl);
+            await SafeDeleteImageAsync(coverImageUrl, cancellationToken);
             throw;
         }
     }
 
-    public async Task<List<VenueResponseDto>> GetOwnerVenuesAsync()
+    public async Task<List<VenueResponseDto>> GetOwnerVenuesAsync(CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserId();
-        var venues = await _venueRepo.GetByOwnerIdAsync(ownerId);
+        var venues = await _venueRepo.GetByOwnerIdAsync(ownerId, cancellationToken);
         return venues.Select(ToDto).ToList();
     }
 
-    public async Task<VenueResponseDto> GetOwnerVenueByIdAsync(Guid id)
+    public async Task<VenueResponseDto> GetOwnerVenueByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var venue = await GetOwnedVenueOrThrowAsync(id);
+        var venue = await GetOwnedVenueOrThrowAsync(id, cancellationToken);
         return ToDto(venue);
     }
 
-    public async Task<VenueResponseDto> UpdateVenueAsync(Guid id, UpdateVenueDto dto)
+    public async Task<VenueResponseDto> UpdateVenueAsync(Guid id, UpdateVenueDto dto, CancellationToken cancellationToken = default)
     {
-        var venue = await GetOwnedVenueOrThrowAsync(id);
+        var venue = await GetOwnedVenueOrThrowAsync(id, cancellationToken);
+        
+        if (dto.Name != null)
+        {
+            ValidationHelper.ValidateRequiredText(dto.Name, "Tên venue", minLength: 2, maxLength: 200);
+        }
+        if (dto.Address != null)
+        {
+            ValidationHelper.ValidateRequiredAddress(dto.Address, "Địa chỉ", minLength: 5, maxLength: 500);
+        }
+        if (dto.City != null)
+        {
+            ValidationHelper.ValidateRequiredText(dto.City, "Tỉnh/Thành phố", minLength: 1, maxLength: 100);
+        }
+        if (dto.District != null)
+        {
+            ValidationHelper.ValidateRequiredText(dto.District, "Quận/Huyện", minLength: 1, maxLength: 100);
+        }
+        if (dto.Ward != null)
+        {
+            ValidationHelper.ValidateOptionalDescription(dto.Ward, "Phường/Xã", maxLength: 100);
+        }
+        if (dto.Description != null)
+        {
+            ValidationHelper.ValidateOptionalDescription(dto.Description, "Mô tả", maxLength: 2000);
+        }
 
         // Validate thời gian với giá trị hiện tại nếu chỉ update 1 trong 2
         var opening = dto.OpeningTime ?? venue.OpeningTime;
@@ -231,7 +275,7 @@ public class VenueService : IVenueService
         {
             if (dto.CoverImage is not null)
             {
-                newCoverImageUrl = await _cloudinary.UploadImageAsync(dto.CoverImage, "venues");
+                newCoverImageUrl = await _cloudinary.UploadImageAsync(dto.CoverImage, "venues", cancellationToken);
             }
 
             // Chỉ update field nào được truyền vào (partial update)
@@ -247,52 +291,60 @@ public class VenueService : IVenueService
             if (dto.ClosingTime.HasValue) venue.ClosingTime = dto.ClosingTime.Value;
             if (newCoverImageUrl is not null) venue.CoverImageUrl = newCoverImageUrl;
 
-            var updated = await _venueRepo.UpdateAsync(venue);
+            var updated = await _venueRepo.UpdateAsync(venue, cancellationToken);
 
             if (newCoverImageUrl is not null &&
                 !string.Equals(oldCoverImageUrl, newCoverImageUrl, StringComparison.OrdinalIgnoreCase))
             {
-                await SafeDeleteImageAsync(oldCoverImageUrl);
+                await SafeDeleteImageAsync(oldCoverImageUrl, cancellationToken);
             }
 
             return ToDto(updated);
         }
         catch
         {
-            await SafeDeleteImageAsync(newCoverImageUrl);
+            await SafeDeleteImageAsync(newCoverImageUrl, cancellationToken);
             throw;
         }
     }
 
     // ── Admin ─────────────────────────────────────────────────────────────────
 
-    public async Task<List<VenueResponseDto>> GetAllVenuesForAdminAsync()
+    public async Task<List<VenueResponseDto>> GetAllVenuesForAdminAsync(CancellationToken cancellationToken = default)
     {
-        var venues = await _venueRepo.GetAllAsync();
+        var venues = await _venueRepo.GetAllAsync(cancellationToken);
         return venues.Select(ToDto).ToList();
     }
 
-    public async Task<VenueResponseDto> ApproveVenueAsync(Guid id)
+    public async Task<VenueResponseDto> ApproveVenueAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var venue = await GetVenueOrThrowAsync(id);
+        var venue = await GetVenueOrThrowAsync(id, cancellationToken);
         venue.Status = VenueStatus.ACTIVE;
-        var updated = await _venueRepo.UpdateAsync(venue);
+        var updated = await _venueRepo.UpdateAsync(venue, cancellationToken);
         return ToDto(updated);
     }
 
-    public async Task<VenueResponseDto> RejectVenueAsync(Guid id)
+    public async Task<VenueResponseDto> RejectVenueAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var venue = await GetVenueOrThrowAsync(id);
+        var venue = await GetVenueOrThrowAsync(id, cancellationToken);
         venue.Status = VenueStatus.REJECTED;
-        var updated = await _venueRepo.UpdateAsync(venue);
+        var updated = await _venueRepo.UpdateAsync(venue, cancellationToken);
         return ToDto(updated);
     }
 
-    public async Task<VenueResponseDto> SuspendVenueAsync(Guid id)
+    public async Task<VenueResponseDto> SuspendVenueAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var venue = await GetVenueOrThrowAsync(id);
+        var venue = await GetVenueOrThrowAsync(id, cancellationToken);
         venue.Status = VenueStatus.SUSPENDED;
-        var updated = await _venueRepo.UpdateAsync(venue);
+        var updated = await _venueRepo.UpdateAsync(venue, cancellationToken);
+        return ToDto(updated);
+    }
+    
+    public async Task<VenueResponseDto> ActivateVenueAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var venue = await GetVenueOrThrowAsync(id, cancellationToken);
+        venue.Status = VenueStatus.ACTIVE;
+        var updated = await _venueRepo.UpdateAsync(venue, cancellationToken);
         return ToDto(updated);
     }
 }

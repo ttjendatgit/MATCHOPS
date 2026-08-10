@@ -16,6 +16,7 @@ public class BookingService : IBookingService
     private readonly ICourtRepository _courtRepository;
     private readonly IPriceRuleRepository _priceRuleRepository;
     private readonly ICurrentUserService _currentUserService;
+    private readonly ILogger<BookingService> _logger;
     private readonly int _slotMinutes;
     private readonly int _pendingExpireMinutes;
     private readonly int _minBookingMinutes;
@@ -28,6 +29,7 @@ public class BookingService : IBookingService
         ICourtRepository courtRepository,
         IPriceRuleRepository priceRuleRepository,
         ICurrentUserService currentUserService,
+        ILogger<BookingService> logger,
         IConfiguration configuration)
     {
         _context = context;
@@ -36,6 +38,7 @@ public class BookingService : IBookingService
         _courtRepository = courtRepository;
         _priceRuleRepository = priceRuleRepository;
         _currentUserService = currentUserService;
+        _logger = logger;
         _slotMinutes = configuration.GetValue("Booking:SlotMinutes", 30);
         _pendingExpireMinutes = configuration.GetValue("Booking:PendingExpireMinutes", 10);
         _minBookingMinutes = configuration.GetValue("Booking:MinBookingMinutes", 30);
@@ -44,10 +47,12 @@ public class BookingService : IBookingService
 
     // ── Public: User ──────────────────────────────────────────────────────────
 
-    public async Task<BookingResponseDto> CreateBookingAsync(CreateBookingDto dto)
+    public async Task<BookingResponseDto> CreateBookingAsync(CreateBookingDto dto, CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserIdOrThrow();
-        var court = await GetActivePublicCourtOrThrowAsync(dto.CourtId);
+        _logger.LogInformation("[BOOKING] UserId={UserId}, CourtId={CourtId}, Date={Date}, Start={Start}, End={End}",
+            userId, dto.CourtId, dto.BookingDate, dto.StartTime, dto.EndTime);
+        var court = await GetActivePublicCourtOrThrowAsync(dto.CourtId, cancellationToken);
 
         return await CreateBookingCoreAsync(
             court: court,
@@ -64,51 +69,52 @@ public class BookingService : IBookingService
             initialPaymentStatus: BookingPaymentStatus.UNPAID,
             initialSlotStatus: BookingSlotStatus.HOLDING,
             expireAt: DateTime.UtcNow.AddMinutes(_pendingExpireMinutes),
-            createSuccessPayment: false);
+            createSuccessPayment: false,
+            cancellationToken: cancellationToken);
     }
 
-    public async Task<List<BookingResponseDto>> GetMyBookingsAsync()
+    public async Task<List<BookingResponseDto>> GetMyBookingsAsync(CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserIdOrThrow();
 
         // Chỉ expire booking của user này, không phải toàn hệ thống
         var pendingExpired = await _bookingRepository
-            .GetPendingExpiredByUserIdAsync(userId, DateTime.UtcNow);
+            .GetPendingExpiredByUserIdAsync(userId, DateTime.UtcNow, cancellationToken);
 
         if (pendingExpired.Count > 0)
         {
             foreach (var b in pendingExpired)
                 MarkBookingExpired(b);
-            await _bookingRepository.SaveChangesAsync();
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
         }
 
-        var bookings = await _bookingRepository.GetByUserIdAsync(userId);
+        var bookings = await _bookingRepository.GetByUserIdAsync(userId, cancellationToken);
         return bookings.Select(MapToResponse).ToList();
     }
 
-    public async Task<BookingResponseDto> GetMyBookingByIdAsync(Guid id)
+    public async Task<BookingResponseDto> GetMyBookingByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserIdOrThrow();
         ValidateGuid(id, "BookingId");
 
-        var booking = await _bookingRepository.GetByIdAndUserIdAsync(id, userId);
+        var booking = await _bookingRepository.GetByIdAndUserIdAsync(id, userId, cancellationToken);
         if (booking is null)
             throw new AppException(
                 ErrorCodes.BookingNotFound,
                 "Không tìm thấy booking của bạn.",
                 StatusCodes.Status404NotFound);
 
-        await ExpireBookingIfNeededAsync(booking);
+        await ExpireBookingIfNeededAsync(booking, cancellationToken);
         return MapToResponse(booking);
     }
 
-    public async Task<BookingResponseDto> PayMyBookingMockAsync(Guid id, MockPaymentRequestDto dto)
+    public async Task<BookingResponseDto> PayMyBookingMockAsync(Guid id, MockPaymentRequestDto dto, CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserIdOrThrow();
         ValidateGuid(id, "BookingId");
 
         // Load trước khi mở transaction
-        var booking = await _bookingRepository.GetByIdAndUserIdAsync(id, userId);
+        var booking = await _bookingRepository.GetByIdAndUserIdAsync(id, userId, cancellationToken);
         if (booking is null)
             throw new AppException(
                 ErrorCodes.BookingNotFound,
@@ -121,7 +127,7 @@ public class BookingService : IBookingService
             booking.ExpireAt <= DateTime.UtcNow)
         {
             MarkBookingExpired(booking);
-            await _bookingRepository.SaveChangesAsync();
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
             throw new AppException(
                 ErrorCodes.BookingExpired,
                 "Booking đã hết hạn thanh toán. Vui lòng đặt lại khung giờ.",
@@ -136,7 +142,7 @@ public class BookingService : IBookingService
                 StatusCodes.Status400BadRequest);
 
         // Chỉ mở transaction khi chắc chắn sẽ write
-        await using var transaction = await _context.Database.BeginTransactionAsync();
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
         try
         {
             booking.Status = BookingStatus.CONFIRMED;
@@ -167,44 +173,119 @@ public class BookingService : IBookingService
                 UpdatedAt = DateTime.UtcNow
             });
 
-            await _bookingRepository.SaveChangesAsync();
-            await transaction.CommitAsync();
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
 
-            var updated = await _bookingRepository.GetByIdAsync(booking.Id);
+            var updated = await _bookingRepository.GetByIdAsync(booking.Id, cancellationToken);
             return MapToResponse(updated!);
         }
         catch
         {
-            await transaction.RollbackAsync();
+            await transaction.RollbackAsync(cancellationToken);
             throw;
         }
     }
 
-    public async Task<BookingResponseDto> CancelMyBookingAsync(Guid id, CancelBookingDto dto)
+    public async Task<BookingResponseDto> PayMyBookingCashAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserIdOrThrow();
         ValidateGuid(id, "BookingId");
 
-        var booking = await _bookingRepository.GetByIdAndUserIdAsync(id, userId);
+        var booking = await _bookingRepository.GetByIdAndUserIdAsync(id, userId, cancellationToken);
         if (booking is null)
             throw new AppException(
                 ErrorCodes.BookingNotFound,
                 "Không tìm thấy booking của bạn.",
                 StatusCodes.Status404NotFound);
 
-        await using var transaction = await _context.Database.BeginTransactionAsync();
+        // Cash payment vẫn cho phép thanh toán trước khi booking hết hạn —
+        // không expire booking ở đây, chỉ chặn khi đã hết hạn hoàn toàn.
+        if (booking.Status != BookingStatus.PENDING_PAYMENT ||
+            booking.PaymentStatus != BookingPaymentStatus.UNPAID)
+            throw new AppException(
+                ErrorCodes.BookingAlreadyPaid,
+                "Booking này không còn ở trạng thái chờ thanh toán.",
+                StatusCodes.Status400BadRequest);
+
+        if (booking.Status == BookingStatus.PENDING_PAYMENT &&
+            booking.ExpireAt is not null &&
+            booking.ExpireAt <= DateTime.UtcNow)
+        {
+            MarkBookingExpired(booking);
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
+            throw new AppException(
+                ErrorCodes.BookingExpired,
+                "Booking đã hết hạn thanh toán. Vui lòng đặt lại khung giờ.",
+                StatusCodes.Status400BadRequest);
+        }
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
         try
         {
-            CancelBooking(booking, BookingStatus.CANCELLED_BY_USER, dto.Reason);
-            await _bookingRepository.SaveChangesAsync();
-            await transaction.CommitAsync();
+            booking.Status = BookingStatus.CONFIRMED;
+            booking.PaymentStatus = BookingPaymentStatus.PAID;
+            booking.ExpireAt = null;
+            booking.UpdatedAt = DateTime.UtcNow;
 
-            var updated = await _bookingRepository.GetByIdAsync(booking.Id);
+            foreach (var slot in booking.BookingSlots
+                .Where(s => s.Status == BookingSlotStatus.HOLDING))
+            {
+                slot.Status = BookingSlotStatus.BOOKED;
+                slot.UpdatedAt = DateTime.UtcNow;
+            }
+
+            _context.Payments.Add(new Payment
+            {
+                Id = Guid.NewGuid(),
+                BookingId = booking.Id,
+                UserId = userId,
+                Amount = booking.TotalPrice,
+                Method = PaymentMethod.CASH,
+                Status = PaymentTransactionStatus.SUCCESS,
+                TransactionCode = $"CASH-{DateTime.UtcNow:yyyyMMddHHmmss}-{booking.Id:N}"[..36],
+                PaidAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            var updated = await _bookingRepository.GetByIdAsync(booking.Id, cancellationToken);
             return MapToResponse(updated!);
         }
         catch
         {
-            await transaction.RollbackAsync();
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task<BookingResponseDto> CancelMyBookingAsync(Guid id, CancelBookingDto dto, CancellationToken cancellationToken = default)
+    {
+        var userId = GetCurrentUserIdOrThrow();
+        ValidateGuid(id, "BookingId");
+
+        var booking = await _bookingRepository.GetByIdAndUserIdAsync(id, userId, cancellationToken);
+        if (booking is null)
+            throw new AppException(
+                ErrorCodes.BookingNotFound,
+                "Không tìm thấy booking của bạn.",
+                StatusCodes.Status404NotFound);
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            CancelBooking(booking, BookingStatus.CANCELLED_BY_USER, dto.Reason);
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            var updated = await _bookingRepository.GetByIdAsync(booking.Id, cancellationToken);
+            return MapToResponse(updated!);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
             throw;
         }
     }
@@ -214,46 +295,47 @@ public class BookingService : IBookingService
     public async Task<List<BookingResponseDto>> GetOwnerBookingsAsync(
         DateOnly? date,
         Guid? venueId,
-        Guid? courtId)
+        Guid? courtId,
+        CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
 
         // Expire booking pending toàn venue của owner này
         var pendingExpired = await _bookingRepository
-            .GetPendingExpiredByOwnerIdAsync(ownerId, DateTime.UtcNow);
+            .GetPendingExpiredByOwnerIdAsync(ownerId, DateTime.UtcNow, cancellationToken);
 
         if (pendingExpired.Count > 0)
         {
             foreach (var b in pendingExpired)
                 MarkBookingExpired(b);
-            await _bookingRepository.SaveChangesAsync();
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
         }
 
-        var bookings = await _bookingRepository.GetByOwnerIdAsync(ownerId, date, venueId, courtId);
+        var bookings = await _bookingRepository.GetByOwnerIdAsync(ownerId, date, venueId, courtId, cancellationToken);
         return bookings.Select(MapToResponse).ToList();
     }
 
-    public async Task<BookingResponseDto> GetOwnerBookingByIdAsync(Guid id)
+    public async Task<BookingResponseDto> GetOwnerBookingByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
         ValidateGuid(id, "BookingId");
 
-        var booking = await _bookingRepository.GetByIdAndOwnerIdAsync(id, ownerId);
+        var booking = await _bookingRepository.GetByIdAndOwnerIdAsync(id, ownerId, cancellationToken);
         if (booking is null)
             throw new AppException(
                 ErrorCodes.BookingNotFound,
                 "Không tìm thấy booking thuộc sân của bạn.",
                 StatusCodes.Status404NotFound);
 
-        await ExpireBookingIfNeededAsync(booking);
+        await ExpireBookingIfNeededAsync(booking, cancellationToken);
         return MapToResponse(booking);
     }
 
-    public async Task<BookingResponseDto> CreateOfflineBookingAsync(CreateOfflineBookingDto dto)
+    public async Task<BookingResponseDto> CreateOfflineBookingAsync(CreateOfflineBookingDto dto, CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
 
-        var court = await _courtRepository.GetOwnerCourtByIdAsync(dto.CourtId, ownerId);
+        var court = await _courtRepository.GetOwnerCourtByIdAsync(dto.CourtId, ownerId, cancellationToken);
         if (court is null)
             throw new AppException(
                 ErrorCodes.CourtNotFound,
@@ -277,44 +359,90 @@ public class BookingService : IBookingService
             initialPaymentStatus: BookingPaymentStatus.PAID,
             initialSlotStatus: BookingSlotStatus.BOOKED,
             expireAt: null,
-            createSuccessPayment: true);
+            createSuccessPayment: true,
+            cancellationToken: cancellationToken);
     }
 
-    public async Task<BookingResponseDto> CancelOwnerBookingAsync(Guid id, CancelBookingDto dto)
+    public async Task<BookingResponseDto> CancelOwnerBookingAsync(Guid id, CancelBookingDto dto, CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
         ValidateGuid(id, "BookingId");
 
-        var booking = await _bookingRepository.GetByIdAndOwnerIdAsync(id, ownerId);
+        var booking = await _bookingRepository.GetByIdAndOwnerIdAsync(id, ownerId, cancellationToken);
         if (booking is null)
             throw new AppException(
                 ErrorCodes.BookingNotFound,
                 "Không tìm thấy booking thuộc sân của bạn.",
                 StatusCodes.Status404NotFound);
 
-        await using var transaction = await _context.Database.BeginTransactionAsync();
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
         try
         {
             CancelBooking(booking, BookingStatus.CANCELLED_BY_OWNER, dto.Reason);
-            await _bookingRepository.SaveChangesAsync();
-            await transaction.CommitAsync();
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
 
-            var updated = await _bookingRepository.GetByIdAsync(booking.Id);
+            var updated = await _bookingRepository.GetByIdAsync(booking.Id, cancellationToken);
             return MapToResponse(updated!);
         }
         catch
         {
-            await transaction.RollbackAsync();
+            await transaction.RollbackAsync(cancellationToken);
             throw;
         }
     }
 
-    public async Task<BookingResponseDto> CompleteOwnerBookingAsync(Guid id)
+    public async Task<BookingResponseDto> ConfirmOwnerBookingAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
         ValidateGuid(id, "BookingId");
 
-        var booking = await _bookingRepository.GetByIdAndOwnerIdAsync(id, ownerId);
+        var booking = await _bookingRepository.GetByIdAndOwnerIdAsync(id, ownerId, cancellationToken);
+        if (booking is null)
+            throw new AppException(
+                ErrorCodes.BookingNotFound,
+                "Không tìm thấy booking thuộc sân của bạn.",
+                StatusCodes.Status404NotFound);
+
+        if (booking.Status != BookingStatus.PENDING_PAYMENT)
+            throw new AppException(
+                ErrorCodes.ValidationError,
+                "Chỉ có thể xác nhận booking đang chờ thanh toán.",
+                StatusCodes.Status400BadRequest);
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            booking.Status = BookingStatus.CONFIRMED;
+            booking.PaymentStatus = BookingPaymentStatus.PAID;
+            booking.ExpireAt = null;
+            booking.UpdatedAt = DateTime.UtcNow;
+
+            foreach (var slot in booking.BookingSlots.Where(s => s.Status == BookingSlotStatus.HOLDING))
+            {
+                slot.Status = BookingSlotStatus.BOOKED;
+                slot.UpdatedAt = DateTime.UtcNow;
+            }
+
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            var updated = await _bookingRepository.GetByIdAsync(booking.Id, cancellationToken);
+            return MapToResponse(updated!);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task<BookingResponseDto> CompleteOwnerBookingAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var ownerId = GetCurrentUserIdOrThrow();
+        ValidateGuid(id, "BookingId");
+
+        var booking = await _bookingRepository.GetByIdAndOwnerIdAsync(id, ownerId, cancellationToken);
         if (booking is null)
             throw new AppException(
                 ErrorCodes.BookingNotFound,
@@ -339,26 +467,125 @@ public class BookingService : IBookingService
 
         booking.Status = BookingStatus.COMPLETED;
         booking.UpdatedAt = DateTime.UtcNow;
-        await _bookingRepository.SaveChangesAsync();
+        await _bookingRepository.SaveChangesAsync(cancellationToken);
 
-        var updated = await _bookingRepository.GetByIdAsync(booking.Id);
+        var updated = await _bookingRepository.GetByIdAsync(booking.Id, cancellationToken);
         return MapToResponse(updated!);
     }
 
     // ── Public: System ────────────────────────────────────────────────────────
 
-    public async Task<int> ExpirePendingBookingsAsync(DateTime utcNow)
+    public async Task<int> ExpirePendingBookingsAsync(DateTime utcNow, CancellationToken cancellationToken = default)
     {
         var expiredBookings = await _bookingRepository
-            .GetExpiredPendingBookingsAsync(utcNow, batchSize: 100);
+            .GetExpiredPendingBookingsAsync(utcNow, batchSize: 100, cancellationToken);
 
         if (expiredBookings.Count == 0) return 0;
 
         foreach (var booking in expiredBookings)
             MarkBookingExpired(booking);
 
-        await _bookingRepository.SaveChangesAsync();
+        await _bookingRepository.SaveChangesAsync(cancellationToken);
         return expiredBookings.Count;
+    }
+
+    // ── Public: Admin ─────────────────────────────────────────────────────────
+    public async Task<List<BookingResponseDto>> GetAllBookingsAsync(CancellationToken cancellationToken = default)
+    {
+        // Expire pending bookings first
+        var pendingExpired = await _bookingRepository
+            .GetExpiredPendingBookingsAsync(DateTime.UtcNow, batchSize: 100, cancellationToken);
+        if (pendingExpired.Count > 0)
+        {
+            foreach (var b in pendingExpired)
+                MarkBookingExpired(b);
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
+        }
+
+        var bookings = await _bookingRepository.GetAllAsync(cancellationToken);
+        return bookings.Select(MapToResponse).ToList();
+    }
+
+    public async Task<BookingResponseDto> GetBookingByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        ValidateGuid(id, "BookingId");
+        var booking = await _bookingRepository.GetByIdAsync(id, cancellationToken);
+        if (booking is null)
+            throw new AppException(ErrorCodes.BookingNotFound, "Không tìm thấy booking.", StatusCodes.Status404NotFound);
+        await ExpireBookingIfNeededAsync(booking, cancellationToken);
+        return MapToResponse(booking);
+    }
+
+    public async Task<BookingResponseDto> CancelBookingAsync(Guid id, CancelBookingDto dto, CancellationToken cancellationToken = default)
+    {
+        ValidateGuid(id, "BookingId");
+        var booking = await _bookingRepository.GetByIdAsync(id, cancellationToken);
+        if (booking is null)
+            throw new AppException(ErrorCodes.BookingNotFound, "Không tìm thấy booking.", StatusCodes.Status404NotFound);
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            CancelBooking(booking, BookingStatus.CANCELLED_BY_ADMIN, dto.Reason);
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            var updated = await _bookingRepository.GetByIdAsync(booking.Id, cancellationToken);
+            return MapToResponse(updated!);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task<BookingResponseDto> ConfirmBookingAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        ValidateGuid(id, "BookingId");
+        var booking = await _bookingRepository.GetByIdAsync(id, cancellationToken);
+        if (booking is null)
+            throw new AppException(ErrorCodes.BookingNotFound, "Không tìm thấy booking.", StatusCodes.Status404NotFound);
+        if (booking.Status != BookingStatus.PENDING_PAYMENT)
+            throw new AppException(ErrorCodes.ValidationError, "Chỉ có thể xác nhận booking đang chờ thanh toán.", StatusCodes.Status400BadRequest);
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            booking.Status = BookingStatus.CONFIRMED;
+            booking.PaymentStatus = BookingPaymentStatus.PAID;
+            booking.ExpireAt = null;
+            booking.UpdatedAt = DateTime.UtcNow;
+            foreach (var slot in booking.BookingSlots.Where(s => s.Status == BookingSlotStatus.HOLDING))
+            {
+                slot.Status = BookingSlotStatus.BOOKED;
+                slot.UpdatedAt = DateTime.UtcNow;
+            }
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            var updated = await _bookingRepository.GetByIdAsync(booking.Id, cancellationToken);
+            return MapToResponse(updated!);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task<BookingResponseDto> CompleteBookingAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        ValidateGuid(id, "BookingId");
+        var booking = await _bookingRepository.GetByIdAsync(id, cancellationToken);
+        if (booking is null)
+            throw new AppException(ErrorCodes.BookingNotFound, "Không tìm thấy booking.", StatusCodes.Status404NotFound);
+        if (booking.Status != BookingStatus.CONFIRMED)
+            throw new AppException(ErrorCodes.ValidationError, "Chỉ có thể hoàn tất booking đã được xác nhận.", StatusCodes.Status400BadRequest);
+
+        booking.Status = BookingStatus.COMPLETED;
+        booking.UpdatedAt = DateTime.UtcNow;
+        await _bookingRepository.SaveChangesAsync(cancellationToken);
+        var updated = await _bookingRepository.GetByIdAsync(booking.Id, cancellationToken);
+        return MapToResponse(updated!);
     }
 
     // ── Core booking logic ────────────────────────────────────────────────────
@@ -378,7 +605,8 @@ public class BookingService : IBookingService
         BookingPaymentStatus initialPaymentStatus,
         BookingSlotStatus initialSlotStatus,
         DateTime? expireAt,
-        bool createSuccessPayment)
+        bool createSuccessPayment,
+        CancellationToken cancellationToken = default)
     {
         ValidateBookingTime(bookingDate, startTime, endTime);
         EnsureCourtCanBeBooked(court);
@@ -389,17 +617,23 @@ public class BookingService : IBookingService
                 $"Thời gian đặt phải trong giờ mở cửa " +
                 $"({court.Venue.OpeningTime:HH:mm} - {court.Venue.ClosingTime:HH:mm}).");
 
-        var priceRules = await _priceRuleRepository.GetPublicCourtPriceRulesAsync(court.Id);
+        var priceRules = await _priceRuleRepository.GetPublicCourtPriceRulesAsync(court.Id, cancellationToken);
         var isWeekend = bookingDate.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
         var totalPrice = CalculateTotalPrice(priceRules, startTime, endTime, isWeekend);
         var slotStartTimes = GenerateSlotStartTimes(startTime, endTime);
 
-        await using var transaction = await _context.Database.BeginTransactionAsync();
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
         try
         {
             // Kiểm tra conflict trong transaction
             var hasConflict = await _bookingSlotRepository.HasConflictAsync(
-                court.Id, bookingDate, slotStartTimes);
+                court.Id, bookingDate, slotStartTimes, cancellationToken);
+
+            if (hasConflict)
+            {
+                _logger.LogWarning("[BOOKING] Slot conflict detected. CourtId={CourtId}, Date={Date}, Slots={Slots}",
+                    court.Id, bookingDate, string.Join(",", slotStartTimes));
+            }
 
             if (hasConflict)
                 throw new AppException(
@@ -432,7 +666,7 @@ public class BookingService : IBookingService
                 UpdatedAt     = now
             };
 
-            await _bookingRepository.AddAsync(booking);
+            await _bookingRepository.AddAsync(booking, cancellationToken);
 
             var slots = slotStartTimes.Select(start => new BookingSlot
             {
@@ -447,7 +681,7 @@ public class BookingService : IBookingService
                 UpdatedAt     = now
             }).ToList();
 
-            await _bookingRepository.AddSlotsAsync(slots);
+            await _bookingRepository.AddSlotsAsync(slots, cancellationToken);
 
             if (createSuccessPayment)
             {
@@ -466,17 +700,17 @@ public class BookingService : IBookingService
                 });
             }
 
-            await _bookingRepository.SaveChangesAsync();
-            await transaction.CommitAsync();
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
 
-            var created = await _bookingRepository.GetByIdAsync(booking.Id);
+            var created = await _bookingRepository.GetByIdAsync(booking.Id, cancellationToken);
             return MapToResponse(created!);
         }
         catch (DbUpdateException ex)
             when (ex.InnerException?.Message
                 .Contains("ux_booking_slots_active", StringComparison.OrdinalIgnoreCase) == true)
         {
-            await transaction.RollbackAsync();
+            await transaction.RollbackAsync(cancellationToken);
             throw new AppException(
                 ErrorCodes.SlotAlreadyBooked,
                 "Khung giờ này vừa được đặt bởi người khác. Vui lòng chọn khung giờ khác.",
@@ -484,23 +718,40 @@ public class BookingService : IBookingService
         }
         catch
         {
-            await transaction.RollbackAsync();
+            await transaction.RollbackAsync(cancellationToken);
             throw;
         }
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
-    private async Task<Court> GetActivePublicCourtOrThrowAsync(Guid courtId)
+    private async Task<Court> GetActivePublicCourtOrThrowAsync(Guid courtId, CancellationToken cancellationToken = default)
     {
         ValidateGuid(courtId, "CourtId");
 
-        var court = await _courtRepository.GetPublicCourtByIdAsync(courtId);
+        var court = await _courtRepository.GetPublicCourtByIdAsync(courtId, cancellationToken);
+
+        // Null means the court doesn't exist or isn't fully active (court/venue/sport all must be ACTIVE)
         if (court is null)
+        {
+            _logger.LogWarning("[BOOKING] Court not found or inactive. CourtId={CourtId}", courtId);
             throw new AppException(
                 ErrorCodes.CourtNotFound,
                 "Không tìm thấy sân đang hoạt động.",
                 StatusCodes.Status404NotFound);
+        }
+
+        // Defensive: if court.Venue or court.Sport are null (shouldn't happen with Include), throw 500
+        if (court.Venue is null)
+        {
+            _logger.LogError("[BOOKING] Court {CourtId} loaded but Venue is null!", courtId);
+            throw new AppException(ErrorCodes.CourtNotFound, "Lỗi dữ liệu: sân không có thông tin cơ sở.", 500);
+        }
+        if (court.Sport is null)
+        {
+            _logger.LogError("[BOOKING] Court {CourtId} loaded but Sport is null!", courtId);
+            throw new AppException(ErrorCodes.CourtNotFound, "Lỗi dữ liệu: sân không có thông tin môn thể thao.", 500);
+        }
 
         return court;
     }
@@ -605,7 +856,7 @@ public class BookingService : IBookingService
         return total;
     }
 
-    private async Task<bool> ExpireBookingIfNeededAsync(Booking booking)
+    private async Task<bool> ExpireBookingIfNeededAsync(Booking booking, CancellationToken cancellationToken = default)
     {
         if (booking.Status != BookingStatus.PENDING_PAYMENT ||
             booking.PaymentStatus != BookingPaymentStatus.UNPAID ||
@@ -614,7 +865,7 @@ public class BookingService : IBookingService
             return false;
 
         MarkBookingExpired(booking);
-        await _bookingRepository.SaveChangesAsync();
+        await _bookingRepository.SaveChangesAsync(cancellationToken);
         return true;
     }
 
@@ -640,6 +891,7 @@ public class BookingService : IBookingService
         if (booking.Status is
             BookingStatus.CANCELLED_BY_USER or
             BookingStatus.CANCELLED_BY_OWNER or
+            BookingStatus.CANCELLED_BY_ADMIN or
             BookingStatus.EXPIRED or
             BookingStatus.COMPLETED)
             throw new AppException(
@@ -759,4 +1011,53 @@ public class BookingService : IBookingService
                 Status        = s.Status.ToString()
             }).ToList()
     };
+
+    public async Task<BookingReportDto> GetBookingsReportAsync(DateTime? fromDate, DateTime? toDate, CancellationToken cancellationToken = default)
+    {
+        // Expire pending bookings first
+        var pendingExpired = await _bookingRepository
+            .GetExpiredPendingBookingsAsync(DateTime.UtcNow, batchSize: 100, cancellationToken);
+        if (pendingExpired.Count > 0)
+        {
+            foreach (var b in pendingExpired)
+                MarkBookingExpired(b);
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
+        }
+
+        var query = _context.Bookings
+            .Include(b => b.Court).ThenInclude(c => c!.Venue)
+            .Include(b => b.Court).ThenInclude(c => c!.Sport)
+            .Include(b => b.User)
+            .AsQueryable();
+
+        if (fromDate.HasValue)
+            query = query.Where(b => b.BookingDate >= DateOnly.FromDateTime(fromDate.Value));
+        if (toDate.HasValue)
+            query = query.Where(b => b.BookingDate <= DateOnly.FromDateTime(toDate.Value));
+
+        var bookings = await query.ToListAsync(cancellationToken);
+
+        var completedRevenue = bookings
+            .Where(b => b.Status == BookingStatus.COMPLETED)
+            .Sum(b => b.TotalPrice);
+
+        var totalRevenue = bookings
+            .Where(b => b.Status is BookingStatus.COMPLETED or BookingStatus.CONFIRMED)
+            .Sum(b => b.TotalPrice);
+
+        return new BookingReportDto
+        {
+            GeneratedAt = DateTime.UtcNow.AddHours(7),
+            FromDate = fromDate,
+            ToDate = toDate,
+            TotalBookings = bookings.Count,
+            CompletedBookings = bookings.Count(b => b.Status == BookingStatus.COMPLETED),
+            ConfirmedBookings = bookings.Count(b => b.Status == BookingStatus.CONFIRMED),
+            CancelledBookings = bookings.Count(b => b.Status is BookingStatus.CANCELLED_BY_USER or BookingStatus.CANCELLED_BY_OWNER or BookingStatus.CANCELLED_BY_ADMIN),
+            PendingBookings = bookings.Count(b => b.Status == BookingStatus.PENDING_PAYMENT),
+            TotalRevenue = totalRevenue,
+            CompletedRevenue = completedRevenue,
+            Bookings = bookings.Select(MapToResponse).ToList()
+        };
+    }
 }

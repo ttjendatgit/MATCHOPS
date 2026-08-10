@@ -1,4 +1,4 @@
-﻿using MATCHOP.API.DTOs.Courts;
+using MATCHOP.API.DTOs.Courts;
 using MATCHOP.API.Entities;
 using MATCHOP.API.Enums;
 using MATCHOP.API.Helpers;
@@ -30,7 +30,7 @@ public class CourtService : ICourtService
         _membershipService = membershipService;
     }
 
-    public async Task<List<CourtResponseDto>> GetPublicCourtsByVenueIdAsync(Guid venueId)
+    public async Task<List<CourtResponseDto>> GetPublicCourtsByVenueIdAsync(Guid venueId, CancellationToken cancellationToken = default)
     {
         if (venueId == Guid.Empty)
         {
@@ -39,7 +39,7 @@ public class CourtService : ICourtService
 
         var venue = await _context.Venues
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == venueId && x.Status == VenueStatus.ACTIVE);
+            .FirstOrDefaultAsync(x => x.Id == venueId && x.Status == VenueStatus.ACTIVE, cancellationToken);
 
         if (venue == null)
         {
@@ -49,19 +49,19 @@ public class CourtService : ICourtService
                 StatusCodes.Status404NotFound);
         }
 
-        var courts = await _courtRepository.GetPublicCourtsByVenueIdAsync(venueId);
+        var courts = await _courtRepository.GetPublicCourtsByVenueIdAsync(venueId, cancellationToken);
 
         return courts.Select(MapToResponse).ToList();
     }
 
-    public async Task<CourtResponseDto> GetPublicCourtByIdAsync(Guid id)
+    public async Task<CourtResponseDto> GetPublicCourtByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         if (id == Guid.Empty)
         {
             throw new AppException(ErrorCodes.ValidationError, "CourtId không hợp lệ.");
         }
 
-        var court = await _courtRepository.GetPublicCourtByIdAsync(id);
+        var court = await _courtRepository.GetPublicCourtByIdAsync(id, cancellationToken);
 
         if (court == null)
         {
@@ -74,16 +74,16 @@ public class CourtService : ICourtService
         return MapToResponse(court);
     }
 
-    public async Task<List<CourtResponseDto>> GetMyCourtsAsync()
+    public async Task<List<CourtResponseDto>> GetMyCourtsAsync(CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
 
-        var courts = await _courtRepository.GetOwnerCourtsAsync(ownerId);
+        var courts = await _courtRepository.GetOwnerCourtsAsync(ownerId, cancellationToken);
 
         return courts.Select(MapToResponse).ToList();
     }
 
-    public async Task<CourtResponseDto> GetMyCourtByIdAsync(Guid id)
+    public async Task<CourtResponseDto> GetMyCourtByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
 
@@ -92,7 +92,7 @@ public class CourtService : ICourtService
             throw new AppException(ErrorCodes.ValidationError, "CourtId không hợp lệ.");
         }
 
-        var court = await _courtRepository.GetOwnerCourtByIdAsync(id, ownerId);
+        var court = await _courtRepository.GetOwnerCourtByIdAsync(id, ownerId, cancellationToken);
 
         if (court == null)
         {
@@ -105,14 +105,17 @@ public class CourtService : ICourtService
         return MapToResponse(court);
     }
 
-    public async Task<CourtResponseDto> CreateMyCourtAsync(CreateCourtDto dto)
+    public async Task<CourtResponseDto> CreateMyCourtAsync(CreateCourtDto dto, CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
+
+        // Check membership limits before creating court
+        await _membershipService.CheckCourtLimitAsync(ownerId, cancellationToken);
 
         ValidateCreateCourtDto(dto);
 
         var venue = await _context.Venues
-            .FirstOrDefaultAsync(x => x.Id == dto.VenueId);
+            .FirstOrDefaultAsync(x => x.Id == dto.VenueId, cancellationToken);
 
         if (venue == null)
         {
@@ -151,7 +154,7 @@ public class CourtService : ICourtService
         }
 
         var sport = await _context.Sports
-            .FirstOrDefaultAsync(x => x.Id == dto.SportId);
+            .FirstOrDefaultAsync(x => x.Id == dto.SportId, cancellationToken);
 
         if (sport == null)
         {
@@ -170,7 +173,7 @@ public class CourtService : ICourtService
 
         var name = dto.Name.Trim();
 
-        var duplicate = await _courtRepository.ExistsByNameInVenueAsync(dto.VenueId, name);
+        var duplicate = await _courtRepository.ExistsByNameInVenueAsync(dto.VenueId, name, cancellationToken);
 
         if (duplicate)
         {
@@ -182,7 +185,8 @@ public class CourtService : ICourtService
         var uploadedImages = await _cloudinaryService.UploadImagesAsync(
             dto.Images,
             "courts",
-            maxCount: 5);
+            maxCount: 5,
+            cancellationToken);
 
         try
         {
@@ -225,23 +229,24 @@ public class CourtService : ICourtService
                 });
             }
 
-            await _courtRepository.AddAsync(court);
-            await _courtRepository.SaveChangesAsync();
+            await _courtRepository.AddAsync(court, cancellationToken);
+            await _courtRepository.SaveChangesAsync(cancellationToken);
 
-            var created = await _courtRepository.GetByIdAsync(court.Id);
+            var created = await _courtRepository.GetByIdAsync(court.Id, cancellationToken);
 
             return MapToResponse(created!);
         }
         catch
         {
             await _cloudinaryService.DeleteImagesByPublicIdsAsync(
-                uploadedImages.Select(x => x.PublicId));
+                uploadedImages.Select(x => x.PublicId),
+                cancellationToken);
 
             throw;
         }
     }
 
-    public async Task<CourtResponseDto> UpdateMyCourtAsync(Guid id, UpdateCourtDto dto)
+    public async Task<CourtResponseDto> UpdateMyCourtAsync(Guid id, UpdateCourtDto dto, CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
 
@@ -250,7 +255,7 @@ public class CourtService : ICourtService
             throw new AppException(ErrorCodes.ValidationError, "CourtId không hợp lệ.");
         }
 
-        var court = await _courtRepository.GetOwnerCourtByIdAsync(id, ownerId);
+        var court = await _courtRepository.GetOwnerCourtByIdAsync(id, ownerId, cancellationToken);
 
         if (court == null)
         {
@@ -268,7 +273,7 @@ public class CourtService : ICourtService
             }
 
             var sport = await _context.Sports
-                .FirstOrDefaultAsync(x => x.Id == dto.SportId.Value);
+                .FirstOrDefaultAsync(x => x.Id == dto.SportId.Value, cancellationToken);
 
             if (sport == null)
             {
@@ -301,7 +306,8 @@ public class CourtService : ICourtService
             var duplicate = await _courtRepository.ExistsByNameInVenueExceptAsync(
                 court.VenueId,
                 court.Id,
-                newName);
+                newName,
+                cancellationToken);
 
             if (duplicate)
             {
@@ -315,10 +321,9 @@ public class CourtService : ICourtService
 
         if (dto.Type != null)
         {
-            ValidationHelper.ValidateOptionalName(
+            ValidationHelper.ValidateOptionalDescription(
                 dto.Type,
                 "Loại sân",
-                minLength: 2,
                 maxLength: 100);
 
             court.Type = ValidationHelper.NormalizeOptionalText(dto.Type);
@@ -353,14 +358,14 @@ public class CourtService : ICourtService
         court.UpdatedAt = DateTime.UtcNow;
 
         _courtRepository.Update(court);
-        await _courtRepository.SaveChangesAsync();
+        await _courtRepository.SaveChangesAsync(cancellationToken);
 
-        var updated = await _courtRepository.GetByIdAsync(court.Id);
+        var updated = await _courtRepository.GetByIdAsync(court.Id, cancellationToken);
 
         return MapToResponse(updated!);
     }
 
-    public async Task<CourtResponseDto> UpdateMyCourtStatusAsync(Guid id, UpdateCourtStatusDto dto)
+    public async Task<CourtResponseDto> UpdateMyCourtStatusAsync(Guid id, UpdateCourtStatusDto dto, CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
 
@@ -374,7 +379,7 @@ public class CourtService : ICourtService
             throw new AppException(ErrorCodes.InvalidCourtStatus, "Trạng thái sân không hợp lệ.");
         }
 
-        var court = await _courtRepository.GetOwnerCourtByIdAsync(id, ownerId);
+        var court = await _courtRepository.GetOwnerCourtByIdAsync(id, ownerId, cancellationToken);
 
         if (court == null)
         {
@@ -388,9 +393,9 @@ public class CourtService : ICourtService
         court.UpdatedAt = DateTime.UtcNow;
 
         _courtRepository.Update(court);
-        await _courtRepository.SaveChangesAsync();
+        await _courtRepository.SaveChangesAsync(cancellationToken);
 
-        var updated = await _courtRepository.GetByIdAsync(court.Id);
+        var updated = await _courtRepository.GetByIdAsync(court.Id, cancellationToken);
 
         return MapToResponse(updated!);
     }
@@ -428,10 +433,9 @@ public class CourtService : ICourtService
             minLength: 2,
             maxLength: 200);
 
-        ValidationHelper.ValidateOptionalName(
+        ValidationHelper.ValidateOptionalDescription(
             dto.Type,
             "Loại sân",
-            minLength: 2,
             maxLength: 100);
 
         ValidationHelper.ValidatePositiveNumber(
@@ -479,6 +483,45 @@ public class CourtService : ICourtService
                 ErrorCodes.ValidationError,
                 "Ảnh đại diện được chọn không hợp lệ.");
         }
+    }
+
+    public async Task<List<CourtResponseDto>> GetAllCourtsForAdminAsync(CancellationToken cancellationToken = default)
+    {
+        var courts = await _courtRepository.GetAllAsync(cancellationToken);
+        return courts.Select(MapToResponse).ToList();
+    }
+
+    public async Task<CourtResponseDto> GetCourtByIdForAdminAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        if (id == Guid.Empty)
+            throw new AppException(ErrorCodes.ValidationError, "CourtId không hợp lệ.");
+
+        var court = await _courtRepository.GetByIdAsync(id, cancellationToken);
+        if (court == null)
+            throw new AppException(ErrorCodes.CourtNotFound, "Không tìm thấy sân.", StatusCodes.Status404NotFound);
+
+        return MapToResponse(court);
+    }
+
+    public async Task<CourtResponseDto> UpdateCourtStatusForAdminAsync(Guid id, UpdateCourtStatusDto dto, CancellationToken cancellationToken = default)
+    {
+        if (id == Guid.Empty)
+            throw new AppException(ErrorCodes.ValidationError, "CourtId không hợp lệ.");
+
+        if (!Enum.IsDefined(typeof(CourtStatus), dto.Status))
+            throw new AppException(ErrorCodes.InvalidCourtStatus, "Trạng thái sân không hợp lệ.");
+
+        var court = await _courtRepository.GetByIdAsync(id, cancellationToken);
+        if (court == null)
+            throw new AppException(ErrorCodes.CourtNotFound, "Không tìm thấy sân.", StatusCodes.Status404NotFound);
+
+        court.Status = dto.Status;
+        court.UpdatedAt = DateTime.UtcNow;
+        _courtRepository.Update(court);
+        await _courtRepository.SaveChangesAsync(cancellationToken);
+
+        var updated = await _courtRepository.GetByIdAsync(court.Id, cancellationToken);
+        return MapToResponse(updated!);
     }
 
     private static CourtResponseDto MapToResponse(Court court)

@@ -1,4 +1,4 @@
-﻿using MATCHOP.API.Entities;
+using MATCHOP.API.Entities;
 using MATCHOP.API.Enums;
 using MATCHOP.API.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -14,25 +14,25 @@ public class PriceRuleRepository : IPriceRuleRepository
         _context = context;
     }
 
-    public async Task<PriceRule?> GetByIdAsync(Guid id)
+    public async Task<PriceRule?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.PriceRules
             .Include(x => x.Court)
             .ThenInclude(x => x.Venue)
-            .FirstOrDefaultAsync(x => x.Id == id);
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     }
 
-    public async Task<PriceRule?> GetOwnerPriceRuleByIdAsync(Guid id, Guid ownerId)
+    public async Task<PriceRule?> GetOwnerPriceRuleByIdAsync(Guid id, Guid ownerId, CancellationToken cancellationToken = default)
     {
         return await _context.PriceRules
             .Include(x => x.Court)
             .ThenInclude(x => x.Venue)
             .FirstOrDefaultAsync(x =>
                 x.Id == id &&
-                x.Court.Venue.OwnerId == ownerId);
+                x.Court.Venue.OwnerId == ownerId, cancellationToken);
     }
 
-    public async Task<List<PriceRule>> GetOwnerCourtPriceRulesAsync(Guid courtId, Guid ownerId)
+    public async Task<List<PriceRule>> GetOwnerCourtPriceRulesAsync(Guid courtId, Guid ownerId, CancellationToken cancellationToken = default)
     {
         return await _context.PriceRules
             .AsNoTracking()
@@ -43,10 +43,10 @@ public class PriceRuleRepository : IPriceRuleRepository
                 x.Court.Venue.OwnerId == ownerId)
             .OrderBy(x => x.DayType)
             .ThenBy(x => x.StartTime)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<List<PriceRule>> GetPublicCourtPriceRulesAsync(Guid courtId)
+    public async Task<List<PriceRule>> GetPublicCourtPriceRulesAsync(Guid courtId, CancellationToken cancellationToken = default)
     {
         return await _context.PriceRules
             .AsNoTracking()
@@ -59,7 +59,7 @@ public class PriceRuleRepository : IPriceRuleRepository
                 x.Court.Venue.Status == VenueStatus.ACTIVE)
             .OrderBy(x => x.DayType)
             .ThenBy(x => x.StartTime)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<bool> HasOverlapAsync(
@@ -67,7 +67,8 @@ public class PriceRuleRepository : IPriceRuleRepository
         DayType dayType,
         TimeOnly startTime,
         TimeOnly endTime,
-        Guid? excludeId = null)
+        Guid? excludeId = null,
+        CancellationToken cancellationToken = default)
     {
         return await _context.PriceRules.AnyAsync(x =>
             x.CourtId == courtId &&
@@ -87,12 +88,12 @@ public class PriceRuleRepository : IPriceRuleRepository
             // Time overlap logic:
             // newStart < existingEnd && newEnd > existingStart
             startTime < x.EndTime &&
-            endTime > x.StartTime);
+            endTime > x.StartTime, cancellationToken);
     }
 
-    public async Task AddAsync(PriceRule priceRule)
+    public async Task AddAsync(PriceRule priceRule, CancellationToken cancellationToken = default)
     {
-        await _context.PriceRules.AddAsync(priceRule);
+        await _context.PriceRules.AddAsync(priceRule, cancellationToken);
     }
 
     public void Update(PriceRule priceRule)
@@ -100,8 +101,8 @@ public class PriceRuleRepository : IPriceRuleRepository
         _context.PriceRules.Update(priceRule);
     }
 
-    public async Task SaveChangesAsync()
+    public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
     }
 }

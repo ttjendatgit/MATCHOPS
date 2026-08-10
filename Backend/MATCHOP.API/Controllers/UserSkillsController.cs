@@ -21,18 +21,18 @@ namespace MATCHOP.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetMySkills()
+        public async Task<IActionResult> GetMySkills(CancellationToken cancellationToken = default)
         {
             var userId = _currentUserService.UserId ?? throw new AppException(ErrorCodes.UNAUTHORIZED, "Unauthorized");
-            var result = await _userSkillService.GetUserSkillsAsync(userId);
+            var result = await _userSkillService.GetUserSkillsAsync(userId, cancellationToken);
             return Ok(ApiResponse<List<UserSkillResponseDto>>.Ok(result));
         }
 
         [HttpPost]
-        public async Task<IActionResult> UpdateSkill(UpdateUserSkillDto dto)
+        public async Task<IActionResult> UpdateSkill(UpdateUserSkillDto dto, CancellationToken cancellationToken = default)
         {
             var userId = _currentUserService.UserId ?? throw new AppException(ErrorCodes.UNAUTHORIZED, "Unauthorized");
-            var result = await _userSkillService.UpdateUserSkillAsync(userId, dto);
+            var result = await _userSkillService.UpdateUserSkillAsync(userId, dto, cancellationToken);
             return Ok(ApiResponse<UserSkillResponseDto>.Ok(result, "Cập nhật trình độ thành công."));
         }
     }

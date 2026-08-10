@@ -131,9 +131,9 @@ namespace MATCHOP.API.Services
             }
         }
 
-        private async Task<User> GetUserOrThrowAsync(Guid userId)
+        private async Task<User> GetUserOrThrowAsync(Guid userId, CancellationToken cancellationToken = default)
         {
-            var user = await _userRepository.GetProfileAsync(userId);
+            var user = await _userRepository.GetProfileAsync(userId, cancellationToken);
             if (user == null)
             {
                 throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);
@@ -142,16 +142,16 @@ namespace MATCHOP.API.Services
             return user;
         }
 
-        public async Task<GetProfileResponseDto> GetProfileAsync(Guid userId)
+        public async Task<GetProfileResponseDto> GetProfileAsync(Guid userId, CancellationToken cancellationToken = default)
         {
-            var user = await GetUserOrThrowAsync(userId);
+            var user = await GetUserOrThrowAsync(userId, cancellationToken);
             return ToDto(user);
         }
 
-        public async Task ValidateUserProfileAsync(Guid userId, UpdateProfileRequestDto dto)
+        public async Task ValidateUserProfileAsync(Guid userId, UpdateProfileRequestDto dto, CancellationToken cancellationToken = default)
         {
             var email = dto.Email.Trim().ToLower();
-            var emailExists = await _userRepository.EmailExistsAsync(email, userId);
+            var emailExists = await _userRepository.EmailExistsAsync(email, userId, cancellationToken);
             if (emailExists)
             {
                 throw new AppException("EMAIL_ALREADY_EXISTS", "Email đã được sử dụng.");
@@ -159,7 +159,7 @@ namespace MATCHOP.API.Services
 
             if (!string.IsNullOrWhiteSpace(dto.PhoneNumber))
             {
-                var phoneExists = await _userRepository.PhoneExistsAsync(dto.PhoneNumber, userId);
+                var phoneExists = await _userRepository.PhoneExistsAsync(dto.PhoneNumber, userId, cancellationToken);
                 if (phoneExists)
                 {
                     throw new AppException("PHONE_ALREADY_EXISTS", "Số điện thoại đã được sử dụng.");
@@ -167,11 +167,11 @@ namespace MATCHOP.API.Services
             }
         }
 
-        public async Task<GetProfileResponseDto> UpdateProfileAsync(Guid userId, UpdateProfileRequestDto dto)
+        public async Task<GetProfileResponseDto> UpdateProfileAsync(Guid userId, UpdateProfileRequestDto dto, CancellationToken cancellationToken = default)
         {
-            await ValidateUserProfileAsync(userId, dto);
+            await ValidateUserProfileAsync(userId, dto, cancellationToken);
 
-            var user = await GetUserOrThrowAsync(userId);
+            var user = await GetUserOrThrowAsync(userId, cancellationToken);
 
             user.FullName = dto.FullName.Trim();
             user.Email = dto.Email.Trim().ToLower();
@@ -180,15 +180,15 @@ namespace MATCHOP.API.Services
             user.PreferredPlayingArea = string.IsNullOrWhiteSpace(dto.PreferredPlayingArea) ? null : dto.PreferredPlayingArea.Trim();
             user.UpdatedAt = DateTime.UtcNow;
 
-            var updated = await _userRepository.UpdateAsync(user);
+            var updated = await _userRepository.UpdateAsync(user, cancellationToken);
             return ToDto(updated);
         }
 
-        public async Task<string> UploadAvatarAsync(Guid userId, UploadAvatarRequestDto dto)
+        public async Task<string> UploadAvatarAsync(Guid userId, UploadAvatarRequestDto dto, CancellationToken cancellationToken = default)
         {
             ValidateAvatarFile(dto.Avatar);
 
-            var user = await _userRepository.GetByIdAsync(userId);
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
             if (user == null)
             {
                 throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);
@@ -204,7 +204,7 @@ namespace MATCHOP.API.Services
             try
             {
                 await using var stream = new FileStream(fullPath, FileMode.CreateNew);
-                await dto.Avatar.CopyToAsync(stream);
+                await dto.Avatar.CopyToAsync(stream, cancellationToken);
             }
             catch
             {
@@ -212,7 +212,7 @@ namespace MATCHOP.API.Services
             }
 
             var avatarUrl = $"/uploads/avatar/{fileName}";
-            var updated = await _userRepository.UploadAvatarAsync(userId, avatarUrl);
+            var updated = await _userRepository.UploadAvatarAsync(userId, avatarUrl, cancellationToken);
             if (updated == null)
             {
                 SafeDeleteLocalAvatar(avatarUrl);
@@ -223,9 +223,9 @@ namespace MATCHOP.API.Services
             return avatarUrl;
         }
 
-        public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequestDto dto)
+        public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequestDto dto, CancellationToken cancellationToken = default)
         {
-            var user = await _userRepository.GetByIdAsync(userId);
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
             if (user == null)
             {
                 throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);
@@ -244,27 +244,27 @@ namespace MATCHOP.API.Services
 
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
             user.UpdatedAt = DateTime.UtcNow;
-            await _userRepository.UpdateAsync(user);
+            await _userRepository.UpdateAsync(user, cancellationToken);
         }
 
-        public async Task<List<FavoriteSportDto>> GetFavoriteSportsAsync(Guid userId)
+        public async Task<List<FavoriteSportDto>> GetFavoriteSportsAsync(Guid userId, CancellationToken cancellationToken = default)
         {
-            _ = await GetUserOrThrowAsync(userId);
-            var items = await _userRepository.GetFavoriteSportsAsync(userId);
+            _ = await GetUserOrThrowAsync(userId, cancellationToken);
+            var items = await _userRepository.GetFavoriteSportsAsync(userId, cancellationToken);
             return items.Select(ToDto).ToList();
         }
 
-        public async Task<List<FavoriteSportDto>> UpdateFavoriteSportsAsync(Guid userId, UpdateFavoriteSportsRequestDto dto)
+        public async Task<List<FavoriteSportDto>> UpdateFavoriteSportsAsync(Guid userId, UpdateFavoriteSportsRequestDto dto, CancellationToken cancellationToken = default)
         {
-            _ = await GetUserOrThrowAsync(userId);
-            await _userRepository.ReplaceFavoriteSportsAsync(userId, dto.SportTypes);
-            var items = await _userRepository.GetFavoriteSportsAsync(userId);
+            _ = await GetUserOrThrowAsync(userId, cancellationToken);
+            await _userRepository.ReplaceFavoriteSportsAsync(userId, dto.SportTypes, cancellationToken);
+            var items = await _userRepository.GetFavoriteSportsAsync(userId, cancellationToken);
             return items.Select(ToDto).ToList();
         }
 
-        public async Task<List<UserAdminResponseDto>> GetAllUsersForAdminAsync()
+        public async Task<List<UserAdminResponseDto>> GetAllUsersForAdminAsync(CancellationToken cancellationToken = default)
         {
-            var users = await _userRepository.GetAllAsync();
+            var users = await _userRepository.GetAllAsync(cancellationToken);
             return users.Select(u => new UserAdminResponseDto
             {
                 Id = u.Id,
@@ -276,6 +276,52 @@ namespace MATCHOP.API.Services
                 EmailConfirmed = u.EmailConfirmed,
                 CreatedAt = u.CreatedAt
             }).ToList();
+        }
+
+        public async Task<UserAdminResponseDto> SuspendUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+                throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);
+
+            user.Status = UserStatus.SUSPENDED;
+            user.UpdatedAt = DateTime.UtcNow;
+            var updated = await _userRepository.UpdateAsync(user, cancellationToken);
+
+            return new UserAdminResponseDto
+            {
+                Id = updated.Id,
+                FullName = updated.FullName,
+                Email = updated.Email,
+                PhoneNumber = updated.PhoneNumber,
+                Role = updated.Role.ToString(),
+                Status = updated.Status.ToString(),
+                EmailConfirmed = updated.EmailConfirmed,
+                CreatedAt = updated.CreatedAt
+            };
+        }
+
+        public async Task<UserAdminResponseDto> ActivateUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+                throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);
+
+            user.Status = UserStatus.ACTIVE;
+            user.UpdatedAt = DateTime.UtcNow;
+            var updated = await _userRepository.UpdateAsync(user, cancellationToken);
+
+            return new UserAdminResponseDto
+            {
+                Id = updated.Id,
+                FullName = updated.FullName,
+                Email = updated.Email,
+                PhoneNumber = updated.PhoneNumber,
+                Role = updated.Role.ToString(),
+                Status = updated.Status.ToString(),
+                EmailConfirmed = updated.EmailConfirmed,
+                CreatedAt = updated.CreatedAt
+            };
         }
     }
 }

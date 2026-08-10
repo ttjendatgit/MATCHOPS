@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Plus,
   DollarSign,
@@ -69,6 +70,7 @@ function toApiTime(t: string): string {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function OwnerPricingPage() {
+  const searchParams = useSearchParams();
   const [courts,     setCourts]     = useState<CourtDto[]>([]);
   const [rulesMap,   setRulesMap]   = useState<Map<string, PriceRuleDto[]>>(new Map());
   const [loading,    setLoading]    = useState(true);
@@ -136,6 +138,18 @@ export default function OwnerPricingPage() {
   useEffect(() => {
     if (courts.length > 0 && !fCourtId) setFCourtId(courts[0].id);
   }, [courts, fCourtId]);
+
+  useEffect(() => {
+    const requestedCourtId = searchParams.get("courtId");
+    if (!requestedCourtId || courts.length === 0) return;
+
+    const matchedCourt = courts.find((court) => court.id === requestedCourtId);
+    if (!matchedCourt) return;
+
+    setFCourtId(matchedCourt.id);
+    setShowForm(true);
+    setFormError(null);
+  }, [courts, searchParams]);
 
   // ── Create handler ──────────────────────────────────────────────────────────
 
@@ -411,6 +425,7 @@ export default function OwnerPricingPage() {
       {/* ── Price rules grouped by court ── */}
       {courts.map((court) => {
         const rules = rulesMap.get(court.id) ?? [];
+        const isSelectedForCreate = fCourtId === court.id;
         return (
           <div
             key={court.id}
@@ -429,6 +444,21 @@ export default function OwnerPricingPage() {
                   </p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setFCourtId(court.id);
+                  setShowForm(true);
+                  setFormError(null);
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
+                  isSelectedForCreate
+                    ? "bg-[rgba(255,128,0,0.14)] text-[#FF8000]"
+                    : "border border-[rgba(134,210,50,0.18)] text-[#C4C7C9] hover:bg-[#141414]"
+                }`}
+              >
+                {isSelectedForCreate ? "Đang chọn tạo giá" : "Thêm giá"}
+              </button>
             </div>
 
             {/* Empty per-court */}

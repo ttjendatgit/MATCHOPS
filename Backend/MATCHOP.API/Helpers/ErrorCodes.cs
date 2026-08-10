@@ -1,4 +1,4 @@
-﻿namespace MATCHOP.API.Helpers
+namespace MATCHOP.API.Helpers
 {
     public static class ErrorCodes
     {
@@ -49,6 +49,13 @@
         public const string InvalidCourtStatus = "INVALID_COURT_STATUS";
         public const string InvalidCapacity = "INVALID_CAPACITY";
         public const string InvalidImageUrl = "INVALID_IMAGE_URL";
+        public const string ConversationNotFound = "CONVERSATION_NOT_FOUND";
+
+        // Membership
+        public const string MembershipLimitExceeded = "MEMBERSHIP_LIMIT_EXCEEDED";
+        public const string SubscriptionNotFound = "SUBSCRIPTION_NOT_FOUND";
+        public const string SubscriptionInactive = "SUBSCRIPTION_INACTIVE";
+
 
         public const string CoachProfileNotFound = "COACH_PROFILE_NOT_FOUND";
         public const string CoachProfileAlreadyExists = "COACH_PROFILE_ALREADY_EXISTS";

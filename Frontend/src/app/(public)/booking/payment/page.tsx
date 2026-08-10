@@ -234,29 +234,43 @@ export default function PaymentPage() {
 
       // 2. Tích hợp thanh toán VNPay thực tế nếu chọn VNPay
       if (selectedMethod === "VNPAY") {
-        const payRes = await apiFetch<ApiResponse<{ paymentUrl: string }>>(`/my/bookings/${bookingId}/pay/vnpay`, {
+        const payRes = await apiFetch<ApiResponse<any>>(`/my/bookings/${bookingId}/pay/vnpay`, {
           method: "POST",
           token,
         });
 
-        if (payRes.success && payRes.data?.paymentUrl) {
+        if (payRes.success && payRes.data?.data?.paymentUrl) {
           // Redirect user sang cổng thanh toán VNPay
-          window.location.href = payRes.data.paymentUrl;
+          // Store booking ID for callback page to fetch status
+          sessionStorage.setItem("MATCHOP_LAST_BOOKING_ID", bookingId);
+          window.location.href = payRes.data.data.paymentUrl;
           return;
         } else {
           throw new Error(payRes.message || "Không thể khởi tạo thanh toán VNPay.");
         }
       }
 
-      // 3. Fallback cho các phương thức khác (Mock payment)
-      const payRes = await apiFetch<ApiResponse<any>>(`/my/bookings/${bookingId}/pay/mock`, {
-        method: "POST",
-        token,
-        body: JSON.stringify({ transactionCode: `MOCK-${Date.now()}` }),
-      });
+      // 3. Tiền mặt tại sân – xác nhận ngay, không qua cổng thanh toán
+      if (selectedMethod === "CASH") {
+        const payRes = await apiFetch<ApiResponse<any>>(`/my/bookings/${bookingId}/pay/cash`, {
+          method: "POST",
+          token,
+        });
 
-      if (!payRes.success) {
-        throw new Error(payRes.message || "Thanh toán không thành công.");
+        if (!payRes.success) {
+          throw new Error(payRes.message || "Không thể xác nhận thanh toán tiền mặt.");
+        }
+      } else if (selectedMethod === "MOCK") {
+        // 4. Mock payment cho testing
+        const payRes = await apiFetch<ApiResponse<any>>(`/my/bookings/${bookingId}/pay/mock`, {
+          method: "POST",
+          token,
+          body: JSON.stringify({ transactionCode: `MOCK-${Date.now()}` }),
+        });
+
+        if (!payRes.success) {
+          throw new Error(payRes.message || "Thanh toán không thành công.");
+        }
       }
 
       const confirmation: BookingConfirmation = {

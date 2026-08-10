@@ -4,13 +4,14 @@ namespace MATCHOP.API.Repositories
 {
     public interface IMatchRoomRepository
     {
-        Task<MatchRoom?> GetByIdAsync(Guid id);
-        Task<MatchRoom?> GetByMatchPostIdAsync(Guid matchPostId);
-        Task<List<MatchRoom>> GetUserRoomsAsync(Guid userId);
-        Task AddAsync(MatchRoom room);
-        Task UpdateAsync(MatchRoom room);
-        Task AddPlayerAsync(MatchRoomPlayer player);
-        Task UpdatePlayerAsync(MatchRoomPlayer player);
-        Task<MatchRoomPlayer?> GetPlayerAsync(Guid roomId, Guid userId);
+        Task<MatchRoom?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+        Task<MatchRoom?> GetByMatchPostIdAsync(Guid matchPostId, CancellationToken cancellationToken = default);
+        Task<List<MatchRoom>> GetUserRoomsAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task<(List<MatchRoom> Rooms, int TotalCount)> GetAllForAdminAsync(string? status, int page, int pageSize, CancellationToken cancellationToken = default);
+        Task AddAsync(MatchRoom room, CancellationToken cancellationToken = default);
+        Task UpdateAsync(MatchRoom room, CancellationToken cancellationToken = default);
+        Task AddPlayerAsync(MatchRoomPlayer player, CancellationToken cancellationToken = default);
+        Task UpdatePlayerAsync(MatchRoomPlayer player, CancellationToken cancellationToken = default);
+        Task<MatchRoomPlayer?> GetPlayerAsync(Guid roomId, Guid userId, CancellationToken cancellationToken = default);
     }
 }

@@ -1,4 +1,4 @@
-﻿using MATCHOP.API.DTOs.Sports;
+using MATCHOP.API.DTOs.Sports;
 using MATCHOP.API.Entities;
 using MATCHOP.API.Enums;
 using MATCHOP.API.Helpers;
@@ -15,22 +15,32 @@ namespace MATCHOP.API.Services
             _context = context;
         }
 
-        public async Task<List<SportResponseDto>> GetActiveSportsAsync()
+        public async Task<List<SportResponseDto>> GetActiveSportsAsync(CancellationToken cancellationToken = default)
         {
             var sports = await _context.Sports
                 .AsNoTracking()
                 .Where(x => x.Status == SportStatus.ACTIVE)
                 .OrderBy(x => x.Name)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             return sports.Select(MapToResponse).ToList();
         }
 
-        public async Task<SportResponseDto> GetActiveSportByIdAsync(Guid id)
+        public async Task<List<SportResponseDto>> GetAllSportsAsync(CancellationToken cancellationToken = default)
+        {
+            var sports = await _context.Sports
+                .AsNoTracking()
+                .OrderBy(x => x.Name)
+                .ToListAsync(cancellationToken);
+
+            return sports.Select(MapToResponse).ToList();
+        }
+
+        public async Task<SportResponseDto> GetActiveSportByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             var sport = await _context.Sports
                 .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == id && x.Status == SportStatus.ACTIVE);
+                .FirstOrDefaultAsync(x => x.Id == id && x.Status == SportStatus.ACTIVE, cancellationToken);
 
             if (sport == null)
             {
@@ -43,7 +53,7 @@ namespace MATCHOP.API.Services
             return MapToResponse(sport);
         }
 
-        public async Task<SportResponseDto> CreateSportAsync(CreateSportDto dto)
+        public async Task<SportResponseDto> CreateSportAsync(CreateSportDto dto, CancellationToken cancellationToken = default)
         {
             var name = dto.Name.Trim();
 
@@ -55,7 +65,7 @@ namespace MATCHOP.API.Services
             }
 
             var nameExists = await _context.Sports.AnyAsync(x =>
-                x.Name.ToLower() == name.ToLower());
+                x.Name.ToLower() == name.ToLower(), cancellationToken);
 
             if (nameExists)
             {
@@ -76,14 +86,14 @@ namespace MATCHOP.API.Services
             };
 
             _context.Sports.Add(sport);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
 
             return MapToResponse(sport);
         }
 
-        public async Task<SportResponseDto> UpdateSportAsync(Guid id, UpdateSportDto dto)
+        public async Task<SportResponseDto> UpdateSportAsync(Guid id, UpdateSportDto dto, CancellationToken cancellationToken = default)
         {
-            var sport = await _context.Sports.FirstOrDefaultAsync(x => x.Id == id);
+            var sport = await _context.Sports.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
             if (sport == null)
             {
@@ -99,7 +109,7 @@ namespace MATCHOP.API.Services
 
                 var nameExists = await _context.Sports.AnyAsync(x =>
                     x.Id != id &&
-                    x.Name.ToLower() == newName.ToLower());
+                    x.Name.ToLower() == newName.ToLower(), cancellationToken);
 
                 if (nameExists)
                 {
@@ -132,14 +142,14 @@ namespace MATCHOP.API.Services
 
             sport.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
 
             return MapToResponse(sport);
         }
 
-        public async Task DeleteSportAsync(Guid id)
+        public async Task DeleteSportAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            var sport = await _context.Sports.FirstOrDefaultAsync(x => x.Id == id);
+            var sport = await _context.Sports.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
             if (sport == null)
             {
@@ -152,7 +162,7 @@ namespace MATCHOP.API.Services
             sport.Status = SportStatus.INACTIVE;
             sport.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
         private static SportResponseDto MapToResponse(Sport sport)

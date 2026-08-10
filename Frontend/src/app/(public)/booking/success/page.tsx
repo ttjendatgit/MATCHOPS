@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   Building2,
@@ -18,6 +19,9 @@ import {
   User,
 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
+import { apiFetch } from "@/lib/api";
+import { getStoredToken } from "@/lib/auth";
+import type { ApiResponse } from "@/types/api";
 import {
   BOOKING_CONFIRMATION_KEY,
   type BookingConfirmation,
@@ -169,25 +173,44 @@ function LoadingState() {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function BookingSuccessPage() {
+  const searchParams = useSearchParams();
   const [confirmation, setConfirmation] = useState<BookingConfirmation | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [bookingFromApi, setBookingFromApi] = useState<any>(null);
 
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(BOOKING_CONFIRMATION_KEY);
-      if (raw) {
-        const parsed: unknown = JSON.parse(raw);
-        if (isValidConfirmation(parsed)) {
-          setConfirmation(parsed);
+    const fetchConfirmation = async () => {
+      try {
+        // First try to get booking ID from URL (for VNPay callback flow)
+        const bookingId = searchParams.get("bookingId");
+        const token = getStoredToken();
+
+        if (bookingId && token) {
+          // Fetch from backend
+          const res = await apiFetch<ApiResponse<any>>(`/api/my/bookings/${bookingId}`);
+          if (res.success && res.data?.data) {
+            setBookingFromApi(res.data.data);
+          }
         }
+
+        // Also check sessionStorage for backup
+        const raw = sessionStorage.getItem(BOOKING_CONFIRMATION_KEY);
+        if (raw) {
+          const parsed: unknown = JSON.parse(raw);
+          if (isValidConfirmation(parsed)) {
+            setConfirmation(parsed);
+          }
+        }
+      } catch {
+        // Malformed JSON — leave as null
+      } finally {
+        setIsLoaded(true);
       }
-    } catch {
-      // Malformed JSON — leave as null
-    } finally {
-      setIsLoaded(true);
-    }
-  }, []);
+    };
+
+    fetchConfirmation();
+  }, [searchParams]);
 
   // Stagger entrance animations after confirmation is ready
   useEffect(() => {
@@ -197,9 +220,10 @@ export default function BookingSuccessPage() {
   }, [confirmation]);
 
   if (!isLoaded) return <LoadingState />;
-  if (!confirmation) return <ConfirmationMissingState />;
+  if (!confirmation && !bookingFromApi) return <ConfirmationMissingState />;
 
-  const c = confirmation;
+  // Use API booking if available, fallback to sessionStorage confirmation
+  const c = bookingFromApi ?? confirmation!;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 lg:px-8">

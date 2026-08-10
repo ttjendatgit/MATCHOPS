@@ -4,9 +4,21 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Menu, Zap, Home, ShieldOff } from "lucide-react";
 import Link from "next/link";
-import { getStoredUser, getStoredToken } from "@/lib/auth";
+import { getStoredUser, getStoredToken, verifySession } from "@/lib/auth";
 import type { User } from "@/types/auth";
 import { OwnerSidebar } from "@/components/layout/OwnerSidebar";
+
+function decodeTokenRole(token: string | null): string | null {
+  if (!token) return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export default function OwnerShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -16,16 +28,29 @@ export default function OwnerShell({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     const token = getStoredToken();
-    const u = getStoredUser();
+    const stored = getStoredUser();
 
     setMounted(true);
 
-    if (!token || !u) {
+    if (!token || !stored) {
       router.replace("/login?redirect=/owner");
       return;
     }
 
-    setUser(u);
+    const tokenRole = decodeTokenRole(token);
+    if (tokenRole && tokenRole !== stored.role) {
+      // Token role differs from localStorage — verify with server for authoritative role.
+      verifySession().then((fresh) => {
+        if (fresh && fresh.role === "OWNER") {
+          setUser(fresh);
+        } else {
+          // Role is not OWNER even after refresh — redirect to home.
+          router.replace("/");
+        }
+      });
+    } else {
+      setUser(stored);
+    }
   }, [router]);
 
   if (!mounted) {

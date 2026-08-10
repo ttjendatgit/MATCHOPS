@@ -1,4 +1,4 @@
-﻿using MATCHOP.API.DTOs.PriceRules;
+using MATCHOP.API.DTOs.PriceRules;
 using MATCHOP.API.Entities;
 using MATCHOP.API.Enums;
 using MATCHOP.API.Helpers;
@@ -26,7 +26,7 @@ public class PriceRuleService : IPriceRuleService
         _currentUserService = currentUserService;
     }
 
-    public async Task<PriceRuleResponseDto> CreateAsync(CreatePriceRuleDto dto)
+    public async Task<PriceRuleResponseDto> CreateAsync(CreatePriceRuleDto dto, CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
 
@@ -34,7 +34,7 @@ public class PriceRuleService : IPriceRuleService
 
         var court = await _context.Courts
             .Include(x => x.Venue)
-            .FirstOrDefaultAsync(x => x.Id == dto.CourtId);
+            .FirstOrDefaultAsync(x => x.Id == dto.CourtId, cancellationToken);
 
         if (court == null)
         {
@@ -63,7 +63,8 @@ public class PriceRuleService : IPriceRuleService
             dto.CourtId,
             dto.DayType,
             dto.StartTime,
-            dto.EndTime);
+            dto.EndTime,
+            cancellationToken: cancellationToken);
 
         if (hasOverlap)
         {
@@ -85,15 +86,15 @@ public class PriceRuleService : IPriceRuleService
             UpdatedAt = DateTime.UtcNow
         };
 
-        await _priceRuleRepository.AddAsync(priceRule);
-        await _priceRuleRepository.SaveChangesAsync();
+        await _priceRuleRepository.AddAsync(priceRule, cancellationToken);
+        await _priceRuleRepository.SaveChangesAsync(cancellationToken);
 
-        var created = await _priceRuleRepository.GetByIdAsync(priceRule.Id);
+        var created = await _priceRuleRepository.GetByIdAsync(priceRule.Id, cancellationToken);
 
         return MapToResponse(created!);
     }
 
-    public async Task<List<PriceRuleResponseDto>> GetOwnerCourtPriceRulesAsync(Guid courtId)
+    public async Task<List<PriceRuleResponseDto>> GetOwnerCourtPriceRulesAsync(Guid courtId, CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
 
@@ -104,7 +105,7 @@ public class PriceRuleService : IPriceRuleService
 
         var court = await _context.Courts
             .Include(x => x.Venue)
-            .FirstOrDefaultAsync(x => x.Id == courtId);
+            .FirstOrDefaultAsync(x => x.Id == courtId, cancellationToken);
 
         if (court == null)
         {
@@ -122,12 +123,12 @@ public class PriceRuleService : IPriceRuleService
                 StatusCodes.Status403Forbidden);
         }
 
-        var priceRules = await _priceRuleRepository.GetOwnerCourtPriceRulesAsync(courtId, ownerId);
+        var priceRules = await _priceRuleRepository.GetOwnerCourtPriceRulesAsync(courtId, ownerId, cancellationToken);
 
         return priceRules.Select(MapToResponse).ToList();
     }
 
-    public async Task<List<PriceRuleResponseDto>> GetPublicCourtPriceRulesAsync(Guid courtId)
+    public async Task<List<PriceRuleResponseDto>> GetPublicCourtPriceRulesAsync(Guid courtId, CancellationToken cancellationToken = default)
     {
         if (courtId == Guid.Empty)
         {
@@ -139,7 +140,7 @@ public class PriceRuleService : IPriceRuleService
             .FirstOrDefaultAsync(x =>
                 x.Id == courtId &&
                 x.Status == CourtStatus.ACTIVE &&
-                x.Venue.Status == VenueStatus.ACTIVE);
+                x.Venue.Status == VenueStatus.ACTIVE, cancellationToken);
 
         if (court == null)
         {
@@ -149,12 +150,12 @@ public class PriceRuleService : IPriceRuleService
                 StatusCodes.Status404NotFound);
         }
 
-        var priceRules = await _priceRuleRepository.GetPublicCourtPriceRulesAsync(courtId);
+        var priceRules = await _priceRuleRepository.GetPublicCourtPriceRulesAsync(courtId, cancellationToken);
 
         return priceRules.Select(MapToResponse).ToList();
     }
 
-    public async Task<PriceRuleResponseDto> UpdateAsync(Guid id, UpdatePriceRuleDto dto)
+    public async Task<PriceRuleResponseDto> UpdateAsync(Guid id, UpdatePriceRuleDto dto, CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
 
@@ -163,7 +164,7 @@ public class PriceRuleService : IPriceRuleService
             throw new AppException(ErrorCodes.ValidationError, "PriceRuleId không hợp lệ.");
         }
 
-        var priceRule = await _priceRuleRepository.GetOwnerPriceRuleByIdAsync(id, ownerId);
+        var priceRule = await _priceRuleRepository.GetOwnerPriceRuleByIdAsync(id, ownerId, cancellationToken);
 
         if (priceRule == null)
         {
@@ -185,7 +186,8 @@ public class PriceRuleService : IPriceRuleService
             newDayType,
             newStartTime,
             newEndTime,
-            excludeId: priceRule.Id);
+            excludeId: priceRule.Id,
+            cancellationToken: cancellationToken);
 
         if (hasOverlap)
         {
@@ -201,14 +203,14 @@ public class PriceRuleService : IPriceRuleService
         priceRule.UpdatedAt = DateTime.UtcNow;
 
         _priceRuleRepository.Update(priceRule);
-        await _priceRuleRepository.SaveChangesAsync();
+        await _priceRuleRepository.SaveChangesAsync(cancellationToken);
 
-        var updated = await _priceRuleRepository.GetByIdAsync(priceRule.Id);
+        var updated = await _priceRuleRepository.GetByIdAsync(priceRule.Id, cancellationToken);
 
         return MapToResponse(updated!);
     }
 
-    public async Task<PriceRuleResponseDto> UpdateStatusAsync(Guid id, UpdatePriceRuleStatusDto dto)
+    public async Task<PriceRuleResponseDto> UpdateStatusAsync(Guid id, UpdatePriceRuleStatusDto dto, CancellationToken cancellationToken = default)
     {
         var ownerId = GetCurrentUserIdOrThrow();
 
@@ -222,7 +224,7 @@ public class PriceRuleService : IPriceRuleService
             throw new AppException(ErrorCodes.ValidationError, "Trạng thái bảng giá không hợp lệ.");
         }
 
-        var priceRule = await _priceRuleRepository.GetOwnerPriceRuleByIdAsync(id, ownerId);
+        var priceRule = await _priceRuleRepository.GetOwnerPriceRuleByIdAsync(id, ownerId, cancellationToken);
 
         if (priceRule == null)
         {
@@ -236,9 +238,9 @@ public class PriceRuleService : IPriceRuleService
         priceRule.UpdatedAt = DateTime.UtcNow;
 
         _priceRuleRepository.Update(priceRule);
-        await _priceRuleRepository.SaveChangesAsync();
+        await _priceRuleRepository.SaveChangesAsync(cancellationToken);
 
-        var updated = await _priceRuleRepository.GetByIdAsync(priceRule.Id);
+        var updated = await _priceRuleRepository.GetByIdAsync(priceRule.Id, cancellationToken);
 
         return MapToResponse(updated!);
     }

@@ -15,6 +15,10 @@ public class MembershipPlanResponseDto
     public int?    MaxMatchPostsPerMonth   { get; set; }
     public int?    MaxJoinRequestsPerMonth { get; set; }
     public int     SortOrder    { get; set; }
+    public bool    IsActive    { get; set; }
+
+    /// <summary>Feature flags as JSON array, e.g. ["analytics","priority_support"].</summary>
+    public List<string> Features { get; set; } = new();
 }
 
 public class MySubscriptionResponseDto
@@ -33,4 +37,41 @@ public class MySubscriptionResponseDto
     public bool IsFallbackFreePlan { get; set; }
 
     public MembershipPlanResponseDto Plan { get; set; } = null!;
+
+    /// <summary>Current usage statistics for this billing period.</summary>
+    public MembershipUsageDto? Usage { get; set; }
+}
+
+// ── Admin DTOs ────────────────────────────────────────────────────────────────
+
+public class AdminSubscriptionDto
+{
+    public Guid     SubscriptionId   { get; set; }
+    public Guid     UserId           { get; set; }
+    public string   UserEmail        { get; set; } = null!;
+    public string   UserFullName     { get; set; } = null!;
+    public string   UserRole         { get; set; } = null!;
+    public Guid     PlanId           { get; set; }
+    public string   PlanName         { get; set; } = null!;
+    public string   PlanTier         { get; set; } = null!;
+    public string   Status           { get; set; } = null!;
+    public decimal  PlanPrice        { get; set; }
+    public DateTime StartedAt        { get; set; }
+    public DateTime? ExpiresAt       { get; set; }
+    public DateTime? CancelledAt     { get; set; }
+    public DateTime CreatedAt        { get; set; }
+}
+
+public class MembershipStatisticsDto
+{
+    public int TotalSubscriptions    { get; set; }
+    public int ActiveSubscriptions    { get; set; }
+    public int ExpiredSubscriptions   { get; set; }
+    public int CancelledSubscriptions  { get; set; }
+    public int PendingSubscriptions   { get; set; }
+    public decimal TotalRevenue       { get; set; }
+    public int FreePlanUsers         { get; set; }
+    public int PaidPlanUsers         { get; set; }
+    public Dictionary<string, int> SubscriptionsByPlan { get; set; } = new();
+    public Dictionary<string, int> SubscriptionsByTier  { get; set; } = new();
 }

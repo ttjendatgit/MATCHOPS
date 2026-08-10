@@ -55,6 +55,7 @@ namespace MATCHOP.API.DTOs.Matching
         public string? City { get; set; }
         public string? District { get; set; }
         public DateTime? Date { get; set; }
+        public string? StatusFilter { get; set; }
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 10;
     }

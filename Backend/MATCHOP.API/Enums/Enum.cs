@@ -58,7 +58,8 @@ public enum BookingStatus
     CANCELLED_BY_USER = 4,
     CANCELLED_BY_OWNER = 5,
     EXPIRED = 6,
-    NO_SHOW = 7
+    NO_SHOW = 7,
+    CANCELLED_BY_ADMIN = 8
 }
 
 public enum BookingPaymentStatus

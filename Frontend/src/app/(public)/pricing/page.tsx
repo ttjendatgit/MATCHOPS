@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
   AlertCircle,
@@ -13,6 +14,7 @@ import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
+import { getStoredToken } from "@/lib/auth";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -183,9 +185,13 @@ function SkeletonCard() {
 function PlanCard({
   plan,
   isYearly,
+  onSubscribe,
+  isProcessing,
 }: {
   plan: MembershipPlanDto;
   isYearly: boolean;
+  onSubscribe: (plan: MembershipPlanDto, isYearly: boolean) => void;
+  isProcessing: boolean;
 }) {
   const content = PLAN_CONTENT[plan.code];
   const popular  = content?.popular ?? false;
@@ -196,10 +202,7 @@ function PlanCard({
 
   function handleCta() {
     if (isFree) { window.location.href = "/register"; return; }
-    toast.info("Tính năng nâng cấp gói sẽ được mở ở phase thanh toán.", {
-      description: "Hiện tại tất cả tài khoản mới đều dùng gói Miễn phí.",
-      duration: 4500,
-    });
+    onSubscribe(plan, isYearly);
   }
 
   return (
@@ -295,11 +298,14 @@ function PlanCard({
       <button
         type="button"
         onClick={handleCta}
+        disabled={isProcessing}
         className={cn(
           "flex h-12 w-full cursor-pointer items-center justify-center rounded-xl text-sm font-bold",
           "transition-all duration-200",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#030303]",
-          popular
+          isProcessing
+            ? "cursor-wait opacity-70"
+            : popular
             ? [
                 "bg-[#FF8000] text-white",
                 "shadow-[0_0_20px_rgba(255,128,0,0.4)]",
@@ -314,7 +320,14 @@ function PlanCard({
               ],
         )}
       >
-        {ctaLabel(plan)}
+        {isProcessing ? (
+          <>
+            <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            Đang xử lý...
+          </>
+        ) : (
+          ctaLabel(plan)
+        )}
       </button>
     </div>
   );
@@ -328,11 +341,13 @@ const ROLE_TABS: { role: RoleTab; label: string; icon: React.ElementType }[] = [
 ];
 
 export default function PricingPage() {
+  const router = useRouter();
   const [plans,     setPlans]     = useState<MembershipPlanDto[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<RoleTab>("USER");
   const [isYearly,  setIsYearly]  = useState(false);
+  const [processingPlan, setProcessingPlan] = useState<string | null>(null);
 
   const fetchPlans = useCallback(async () => {
     setLoading(true);
@@ -350,6 +365,51 @@ export default function PricingPage() {
   }, []);
 
   useEffect(() => { fetchPlans(); }, [fetchPlans]);
+
+  const handleSubscribe = useCallback(async (plan: MembershipPlanDto, isYearly: boolean) => {
+    const token = getStoredToken();
+    if (!token) {
+      toast.error("Vui lòng đăng nhập để nâng cấp gói.");
+      router.push("/login");
+      return;
+    }
+
+    if (plan.pricePerMonth === 0) {
+      // FREE plan - redirect to register
+      router.push("/register");
+      return;
+    }
+
+    setProcessingPlan(plan.id);
+
+    try {
+      const billingCycle = isYearly ? "YEARLY" : "MONTHLY";
+      const res = await apiFetch<ApiResponse<{ paymentUrl: string; pendingSubscriptionId: string }>>(
+        "/membership/subscribe",
+        {
+          method: "POST",
+          token,
+          body: JSON.stringify({
+            planId: plan.id,
+            billingCycle,
+          }),
+        }
+      );
+
+      if (res.success && res.data?.data?.paymentUrl) {
+        // Store pending subscription ID for verification
+        sessionStorage.setItem("MATCHOP_PENDING_SUBSCRIPTION", res.data.data.pendingSubscriptionId);
+        // Redirect to VNPay
+        window.location.href = res.data.data.paymentUrl;
+      } else {
+        throw new Error(res.message || "Không thể khởi tạo thanh toán.");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Đã xảy ra lỗi khi xử lý yêu cầu.");
+    } finally {
+      setProcessingPlan(null);
+    }
+  }, [router]);
 
   const userPlans  = useMemo(() => plans.filter((p) => p.targetRole === "USER"),  [plans]);
   const ownerPlans = useMemo(() => plans.filter((p) => p.targetRole === "OWNER"), [plans]);
@@ -501,7 +561,13 @@ export default function PricingPage() {
               )}
             >
               {activePlans.map((plan) => (
-                <PlanCard key={plan.id} plan={plan} isYearly={isYearly} />
+                <PlanCard
+                  key={plan.id}
+                  plan={plan}
+                  isYearly={isYearly}
+                  onSubscribe={handleSubscribe}
+                  isProcessing={processingPlan === plan.id}
+                />
               ))}
             </div>
 
