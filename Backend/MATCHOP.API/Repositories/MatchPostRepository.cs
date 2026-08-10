@@ -54,7 +54,7 @@ namespace MATCHOP.API.Repositories
                     p.CreatedAt < nextMonthStart);
         }
 
-        public async Task AddAsync(MatchPost post)
+        public async Task AddAsync(MatchPost post, CancellationToken cancellationToken = default)
         {
             await _context.MatchPosts.AddAsync(post, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);

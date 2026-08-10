@@ -75,7 +75,7 @@ public class VenueRepository : IVenueRepository
     public async Task<int> CountByOwnerIdAsync(Guid ownerId) =>
         await _db.Venues.CountAsync(v => v.OwnerId == ownerId);
 
-    public async Task<Venue> CreateAsync(Venue venue)
+    public async Task<Venue> CreateAsync(Venue venue, CancellationToken cancellationToken = default)
     {
         _db.Venues.Add(venue);
         await _db.SaveChangesAsync(cancellationToken);

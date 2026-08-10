@@ -5,13 +5,13 @@ namespace MATCHOP.API.Repositories
 {
     public interface IMatchRequestRepository
     {
-        Task AddAsync(MatchRequest request);
-        Task<MatchRequest?> GetByIdAsync(Guid id);
-        Task<List<MatchRequest>> GetPendingRequestsForUserAsync(Guid userId);
-        Task<List<MatchRequest>> GetSentRequestsAsync(Guid senderUserId);
-        Task UpdateAsync(MatchRequest request);
-        Task AcceptWithPostUpdateAsync(MatchRequest request, MatchPost post);
-        Task<bool> ExistsAsync(Guid postId, Guid senderUserId);
+        Task AddAsync(MatchRequest request, CancellationToken cancellationToken = default);
+        Task<MatchRequest?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+        Task<List<MatchRequest>> GetPendingRequestsForUserAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task<List<MatchRequest>> GetSentRequestsAsync(Guid senderUserId, CancellationToken cancellationToken = default);
+        Task UpdateAsync(MatchRequest request, CancellationToken cancellationToken = default);
+        Task AcceptWithPostUpdateAsync(MatchRequest request, MatchPost post, CancellationToken cancellationToken = default);
+        Task<bool> ExistsAsync(Guid postId, Guid senderUserId, CancellationToken cancellationToken = default);
         Task<int> CountBySenderInMonthAsync(Guid senderUserId, DateTime monthStart, DateTime nextMonthStart);
         Task<(List<MatchRequest> Requests, int TotalCount)> GetAllForAdminAsync(Guid? postId, string? status, int page, int pageSize, CancellationToken cancellationToken = default);
     }

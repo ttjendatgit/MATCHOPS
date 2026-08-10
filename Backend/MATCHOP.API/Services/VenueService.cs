@@ -14,7 +14,6 @@ public class VenueService : IVenueService
     private readonly ICloudinaryService _cloudinary;
     private readonly IMembershipService _membershipService;
     private readonly ILogger<VenueService> _logger;
-    private readonly IMembershipService _membershipService;
 
     public VenueService(
         IVenueRepository venueRepo,
@@ -28,7 +27,6 @@ public class VenueService : IVenueService
         _cloudinary = cloudinary;
         _membershipService = membershipService;
         _logger = logger;
-        _membershipService = membershipService;
     }
 
     // ── Mapping ───────────────────────────────────────────────────────────────

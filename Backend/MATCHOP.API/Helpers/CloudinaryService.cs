@@ -22,7 +22,7 @@ public interface ICloudinaryService
 
     Task DeleteImageByPublicIdAsync(string? publicId, CancellationToken cancellationToken = default);
 
-    Task DeleteImagesByPublicIdsAsync(IEnumerable<string?> publicIds);
+    Task DeleteImagesByPublicIdsAsync(IEnumerable<string?> publicIds, CancellationToken cancellationToken = default);
 
     // ── Verification documents (PDF + image) ────────────────────────────
     // Kept separate from the image-only proof methods above: verification

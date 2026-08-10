@@ -14,5 +14,6 @@ namespace MATCHOP.API.Repositories
         Task<(List<MatchPost> Posts, int TotalCount)> GetAllForAdminAsync(MatchPostFilterDto filter, CancellationToken cancellationToken = default);
         Task<int> GetTotalCountAsync(CancellationToken cancellationToken = default);
         Task<int> GetCountByStatusAsync(string status, CancellationToken cancellationToken = default);
+        Task<int> CountByCreatorInMonthAsync(Guid creatorId, DateTime monthStart, DateTime nextMonthStart);
     }
 }
