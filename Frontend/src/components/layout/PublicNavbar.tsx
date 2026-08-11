@@ -21,8 +21,12 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { getStoredUser, getStoredToken, clearAuthData, verifySession } from "@/lib/auth";
-import { getStoredUser, getStoredToken, clearAuthData, verifySession } from "@/lib/auth";
+import {
+  getStoredUser,
+  getStoredToken,
+  clearAuthData,
+  verifySession,
+} from "@/lib/auth";
 import { apiFetch, ApiError } from "@/lib/api";
 import { BrandMark } from "@/components/branding";
 import type { User } from "@/types/auth";
@@ -36,30 +40,38 @@ import type { CoachProfileMeResponse } from "@/types/coach";
  */
 function decodeTokenRole(token: string | null): string | null {
   if (!token) return null;
+
   try {
     const parts = token.split(".");
     if (parts.length < 2) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-    return payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] ?? null;
+
+    const payload = JSON.parse(
+      atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
+    );
+
+    return (
+      payload[
+        "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+      ] ?? null
+    );
   } catch {
     return null;
   }
 }
 
 // ─── Nav data ─────────────────────────────────────────────────────────────────
+//
+// FIX:
+// Removed duplicated navigation items.
+// Every href is now unique, so key={link.href} will also be unique.
 
 const navLinks = [
-  { href: "/",        label: "Trang chủ",      exact: true  },
-  { href: "/venues",  label: "Sân thể thao",    exact: false },
-  { href: "/coach",   label: "Huấn luyện viên", exact: false },
-  { href: "/match",   label: "Ghép đối",        exact: false },
-  { href: "/match/rooms", label: "Phòng chờ", exact: false },
-  { href: "/ai-chat", label: "AI Trợ lý", exact: false },
-  { href: "/pricing", label: "Gói thành viên",  exact: false },
   { href: "/", label: "Trang chủ", exact: true },
   { href: "/venues", label: "Sân thể thao", exact: false },
   { href: "/coach", label: "Huấn luyện viên", exact: false },
   { href: "/match", label: "Ghép đối", exact: false },
+  { href: "/match/rooms", label: "Phòng chờ", exact: false },
+  { href: "/ai-chat", label: "AI Trợ lý", exact: false },
   { href: "/pricing", label: "Gói thành viên", exact: false },
 ] as const;
 
@@ -71,7 +83,11 @@ function checkActive(pathname: string, href: string, exact: boolean) {
 
 function LogoMark() {
   return (
-    <Link href="/" className="group flex shrink-0 items-center" aria-label="MatchOps — Trang chủ">
+    <Link
+      href="/"
+      className="group flex shrink-0 items-center"
+      aria-label="MatchOps — Trang chủ"
+    >
       <BrandMark
         size={36}
         title="MatchOps"
@@ -90,7 +106,12 @@ type NavLinkProps = {
   onClick?: () => void;
 };
 
-function NavLink({ href, label, active, onClick }: NavLinkProps) {
+function NavLink({
+  href,
+  label,
+  active,
+  onClick,
+}: NavLinkProps) {
   return (
     <Link
       href={href}
@@ -107,6 +128,7 @@ function NavLink({ href, label, active, onClick }: NavLinkProps) {
         <span className="block motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:-translate-y-full">
           {label}
         </span>
+
         <span className="absolute top-full left-0 block text-white motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:-translate-y-full">
           {label}
         </span>
@@ -124,21 +146,65 @@ type UserDropdownProps = {
 };
 
 const dropdownMenuItems = [
-  { href: "/profile", label: "Trang cá nhân", icon: UserIcon },
-  { href: "/account/subscription", label: "Gói của tôi", icon: Star },
-  { href: "/match/rooms", label: "Phòng chờ ghép đối", icon: Users },
-  { href: "/bookings", label: "Lịch đặt của tôi", icon: CalendarCheck2 },
-  { href: "/coach/requests", label: "Yêu cầu của tôi", icon: ClipboardList },
-  { href: "/coach/sessions", label: "Buổi huấn luyện của tôi", icon: CalendarClock },
-  { href: "/change-password", label: "Đổi mật khẩu", icon: KeyRound },
-  { href: "/account/settings", label: "Cài đặt tài khoản", icon: Settings },
+  {
+    href: "/profile",
+    label: "Trang cá nhân",
+    icon: UserIcon,
+  },
+  {
+    href: "/account/subscription",
+    label: "Gói của tôi",
+    icon: Star,
+  },
+  {
+    href: "/match/rooms",
+    label: "Phòng chờ ghép đối",
+    icon: Users,
+  },
+  {
+    href: "/bookings",
+    label: "Lịch đặt của tôi",
+    icon: CalendarCheck2,
+  },
+  {
+    href: "/coach/requests",
+    label: "Yêu cầu của tôi",
+    icon: ClipboardList,
+  },
+  {
+    href: "/coach/sessions",
+    label: "Buổi huấn luyện của tôi",
+    icon: CalendarClock,
+  },
+  {
+    href: "/change-password",
+    label: "Đổi mật khẩu",
+    icon: KeyRound,
+  },
+  {
+    href: "/account/settings",
+    label: "Cài đặt tài khoản",
+    icon: Settings,
+  },
 ];
 
-const coachManageMenuItem = { href: "/coach/manage", label: "Quản lý huấn luyện viên", icon: UserCog };
+const coachManageMenuItem = {
+  href: "/coach/manage",
+  label: "Quản lý huấn luyện viên",
+  icon: UserCog,
+};
 
-function UserDropdown({ user, hasCoachProfile, onLogout }: UserDropdownProps) {
+function UserDropdown({
+  user,
+  hasCoachProfile,
+  onLogout,
+}: UserDropdownProps) {
   const items = hasCoachProfile
-    ? [...dropdownMenuItems.slice(0, 6), coachManageMenuItem, ...dropdownMenuItems.slice(6)]
+    ? [
+        ...dropdownMenuItems.slice(0, 6),
+        coachManageMenuItem,
+        ...dropdownMenuItems.slice(6),
+      ]
     : dropdownMenuItems;
 
   const [open, setOpen] = useState(false);
@@ -146,13 +212,20 @@ function UserDropdown({ user, hasCoachProfile, onLogout }: UserDropdownProps) {
 
   useEffect(() => {
     if (!open) return;
+
     function onClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     }
+
     document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
+
+    return () =>
+      document.removeEventListener("mousedown", onClickOutside);
   }, [open]);
 
   const initials = user.fullName.slice(0, 2).toUpperCase();
@@ -175,8 +248,11 @@ function UserDropdown({ user, hasCoachProfile, onLogout }: UserDropdownProps) {
         )}
       >
         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FF8000]/12 border border-[#FF8000]/22">
-          <span className="text-[10px] font-bold text-[#FF8000]">{initials}</span>
+          <span className="text-[10px] font-bold text-[#FF8000]">
+            {initials}
+          </span>
         </div>
+
         <ChevronDown
           className={cn(
             "h-3 w-3 text-slate-400 transition-transform duration-200",
@@ -201,8 +277,13 @@ function UserDropdown({ user, hasCoachProfile, onLogout }: UserDropdownProps) {
         >
           {/* User info header */}
           <div className="px-4 py-3 border-b border-white/[0.06]">
-            <p className="text-sm font-semibold text-white truncate">{user.fullName}</p>
-            <p className="text-xs text-slate-500 truncate">{user.email}</p>
+            <p className="text-sm font-semibold text-white truncate">
+              {user.fullName}
+            </p>
+
+            <p className="text-xs text-slate-500 truncate">
+              {user.email}
+            </p>
           </div>
 
           {/* Menu items */}
@@ -219,6 +300,7 @@ function UserDropdown({ user, hasCoachProfile, onLogout }: UserDropdownProps) {
                   className="h-3.5 w-3.5 text-slate-500 group-hover:text-[#FF8000] transition-colors duration-150"
                   aria-hidden
                 />
+
                 {label}
               </Link>
             ))}
@@ -229,13 +311,17 @@ function UserDropdown({ user, hasCoachProfile, onLogout }: UserDropdownProps) {
             <button
               type="button"
               role="menuitem"
-              onClick={() => { setOpen(false); onLogout(); }}
+              onClick={() => {
+                setOpen(false);
+                onLogout();
+              }}
               className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-slate-400 transition-all duration-150 hover:bg-red-500/[0.08] hover:text-red-400 group"
             >
               <LogOut
                 className="h-3.5 w-3.5 text-slate-500 group-hover:text-red-400 transition-colors duration-150"
                 aria-hidden
               />
+
               Đăng xuất
             </button>
           </div>
@@ -254,8 +340,10 @@ export function PublicNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+
   // null while unchecked/checking — link stays hidden until the check resolves true.
-  const [hasCoachProfile, setHasCoachProfile] = useState<boolean | null>(null);
+  const [hasCoachProfile, setHasCoachProfile] =
+    useState<boolean | null>(null);
 
   // Close mobile menu on route change + re-sync auth state on every navigation.
   useEffect(() => {
@@ -263,14 +351,17 @@ export function PublicNavbar() {
     setUser(getStoredUser());
   }, [pathname]);
 
-  // On first mount, validate the stored token against /api/auth/me so stale
-  // or expired tokens are cleared and the navbar reflects the real auth state.
-  // Also detect role mismatches: if the role stored in localStorage doesn't match
-  // the role encoded in the JWT (e.g. DB was updated but token wasn't refreshed),
-  // force a server-side session verification to pick up the authoritative role.
+  // On first mount, validate the stored token against /api/auth/me
+  // so stale or expired tokens are cleared and the navbar reflects
+  // the real auth state.
+  //
+  // Also detect role mismatches: if the role stored in localStorage
+  // doesn't match the role encoded in the JWT, force a server-side
+  // session verification to pick up the authoritative role.
   useEffect(() => {
     const stored = getStoredUser();
     const tokenRole = decodeTokenRole(getStoredToken());
+
     if (stored && tokenRole && stored.role !== tokenRole) {
       // Token claims a different role than localStorage — verify with server.
       verifySession().then((fresh) => {
@@ -281,15 +372,19 @@ export function PublicNavbar() {
     }
   }, []);
 
-  // Check coach-profile ownership once per logged-in identity (not on every
-  // route change) so the "Quản lý huấn luyện viên" link only shows for users
-  // who actually have a CoachProfile. A 404 just means no profile — not an error.
+  // Check coach-profile ownership once per logged-in identity
+  // (not on every route change) so the "Quản lý huấn luyện viên"
+  // link only shows for users who actually have a CoachProfile.
+  //
+  // A 404 just means no profile — not an error.
   useEffect(() => {
     if (!user) {
       setHasCoachProfile(null);
       return;
     }
+
     const token = getStoredToken();
+
     if (!token) {
       setHasCoachProfile(null);
       return;
@@ -298,14 +393,26 @@ export function PublicNavbar() {
     setHasCoachProfile(null);
 
     let cancelled = false;
-    apiFetch<ApiResponse<CoachProfileMeResponse>>("/coaches/me", { token })
+
+    apiFetch<ApiResponse<CoachProfileMeResponse>>(
+      "/coaches/me",
+      { token }
+    )
       .then((res) => {
-        if (!cancelled) setHasCoachProfile(!!(res.success && res.data));
+        if (!cancelled) {
+          setHasCoachProfile(!!(res.success && res.data));
+        }
       })
       .catch((err) => {
         if (cancelled) return;
-        setHasCoachProfile(err instanceof ApiError && err.status === 404 ? false : null);
+
+        setHasCoachProfile(
+          err instanceof ApiError && err.status === 404
+            ? false
+            : null
+        );
       });
+
     return () => {
       cancelled = true;
     };
@@ -313,10 +420,17 @@ export function PublicNavbar() {
 
   // Scroll-aware — becomes opaque glass after 20 px.
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () =>
+      setScrolled(window.scrollY > 20);
+
     onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+
+    window.addEventListener("scroll", onScroll, {
+      passive: true,
+    });
+
+    return () =>
+      window.removeEventListener("scroll", onScroll);
   }, []);
 
   function handleLogout() {
@@ -333,53 +447,58 @@ export function PublicNavbar() {
         "motion-safe:transition-all motion-safe:duration-300",
         scrolled
           ? [
-            "bg-slate-950/88 backdrop-blur-xl",
-            "border-b border-white/[0.08]",
-            "shadow-[0_4px_32px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,128,0,0.06)]",
-          ]
+              "bg-slate-950/88 backdrop-blur-xl",
+              "border-b border-white/[0.08]",
+              "shadow-[0_4px_32px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,128,0,0.06)]",
+            ]
           : "bg-transparent border-b border-transparent"
       )}
     >
       {/* ── Main bar ── */}
       <div className="mx-auto h-16 max-w-7xl px-5 sm:px-6 flex items-center">
 
-        {/* ── Mobile row: logo-left + hamburger-right ── (hidden md+) */}
+        {/* ── Mobile row: logo-left + hamburger-right ── */}
         <div className="flex w-full items-center justify-between md:hidden">
           <LogoMark />
+
           <button
             type="button"
             className="flex h-9 w-9 items-center justify-center rounded-full text-slate-300 transition-colors duration-200 hover:bg-white/10 hover:text-white"
-            onClick={() => setMobileOpen((prev) => !prev)}
-            aria-label={mobileOpen ? "Đóng menu" : "Mở menu"}
+            onClick={() =>
+              setMobileOpen((prev) => !prev)
+            }
+            aria-label={
+              mobileOpen ? "Đóng menu" : "Mở menu"
+            }
             aria-expanded={mobileOpen}
             aria-controls="public-mobile-nav"
           >
-            {mobileOpen
-              ? <X className="h-4 w-4" aria-hidden />
-              : <Menu className="h-4 w-4" aria-hidden />
-            }
+            {mobileOpen ? (
+              <X className="h-4 w-4" aria-hidden />
+            ) : (
+              <Menu className="h-4 w-4" aria-hidden />
+            )}
           </button>
         </div>
 
-        {/* ── Desktop 3-col grid: [nav left] [logo center] [auth right] ── */}
-        {/*
-          grid-cols-[1fr_auto_1fr]:
-            Col 1 (1fr)  — nav links, left-aligned
-            Col 2 (auto) — logo, exact natural width → grid centers it between two equal 1fr cols
-            Col 3 (1fr)  — auth actions, right-aligned via justify-end
-          Equal 1fr columns guarantee the logo center is always the geometric
-          center of the navbar, regardless of how many auth buttons appear.
-        */}
+        {/* ── Desktop 3-col grid ── */}
         <div className="hidden md:grid md:grid-cols-[1fr_auto_1fr] items-center w-full gap-x-8">
 
           {/* Col 1 — primary nav links */}
-          <nav className="flex items-center gap-1" aria-label="Primary navigation">
+          <nav
+            className="flex items-center gap-1"
+            aria-label="Primary navigation"
+          >
             {navLinks.map((link) => (
               <NavLink
                 key={link.href}
                 href={link.href}
                 label={link.label}
-                active={checkActive(pathname, link.href, link.exact)}
+                active={checkActive(
+                  pathname,
+                  link.href,
+                  link.exact
+                )}
               />
             ))}
           </nav>
@@ -390,23 +509,31 @@ export function PublicNavbar() {
           {/* Col 3 — auth / user actions */}
           <div className="flex items-center justify-end gap-2.5">
             {user ? (
-              /* ── Logged-in: booking pill + avatar dropdown ── */
+              /* ── Logged-in ── */
               <div className="flex items-center gap-2">
+
                 {user.role === "OWNER" && (
                   <Link
                     href="/owner"
                     className="flex items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-xs font-medium text-slate-300 transition-all duration-200 hover:border-white/30 hover:bg-white/5 hover:text-white"
                   >
-                    <LayoutDashboard className="h-3.5 w-3.5" aria-hidden />
+                    <LayoutDashboard
+                      className="h-3.5 w-3.5"
+                      aria-hidden
+                    />
                     Dashboard Chủ sân
                   </Link>
                 )}
+
                 {user.role === "ADMIN" && (
                   <Link
                     href="/admin"
                     className="flex items-center gap-1.5 rounded-full border border-[#FF8000]/22 bg-[#FF8000]/[0.05] px-3.5 py-2 text-xs font-medium text-[#FF8000] transition-all duration-200 hover:border-[#FF8000]/35 hover:bg-[#FF8000]/10"
                   >
-                    <LayoutDashboard className="h-3.5 w-3.5" aria-hidden />
+                    <LayoutDashboard
+                      className="h-3.5 w-3.5"
+                      aria-hidden
+                    />
                     Dashboard Admin
                   </Link>
                 )}
@@ -416,7 +543,10 @@ export function PublicNavbar() {
                     href="/admin"
                     className="flex items-center gap-1.5 rounded-full border border-[#86D232]/30 bg-[#86D232]/[0.08] px-3.5 py-2 text-xs font-semibold text-[#86D232] transition-all duration-200 hover:border-[#86D232]/50 hover:bg-[#86D232]/[0.14] hover:shadow-[0_0_14px_rgba(134,210,50,0.25)]"
                   >
-                    <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+                    <ShieldCheck
+                      className="h-3.5 w-3.5"
+                      aria-hidden
+                    />
                     Quản trị
                   </Link>
                 )}
@@ -425,14 +555,21 @@ export function PublicNavbar() {
                   href="/bookings"
                   className="flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-xs font-medium text-slate-300 transition-all duration-200 hover:border-[#FF8000]/22 hover:bg-[#FF8000]/[0.05] hover:text-white"
                 >
-                  <CalendarCheck2 className="h-3.5 w-3.5" aria-hidden />
+                  <CalendarCheck2
+                    className="h-3.5 w-3.5"
+                    aria-hidden
+                  />
                   Lịch đặt
                 </Link>
 
-                <UserDropdown user={user} hasCoachProfile={!!hasCoachProfile} onLogout={handleLogout} />
+                <UserDropdown
+                  user={user}
+                  hasCoachProfile={!!hasCoachProfile}
+                  onLogout={handleLogout}
+                />
               </div>
             ) : (
-              /* ── Guest: login / register ── */
+              /* ── Guest ── */
               <>
                 <Link
                   href="/login"
@@ -440,6 +577,7 @@ export function PublicNavbar() {
                 >
                   Đăng nhập
                 </Link>
+
                 <Link
                   href="/register"
                   className="rounded-full bg-[#FF8000] px-4 py-2 text-sm font-bold text-white shadow-[0_0_22px_rgba(255,128,0,0.45)] transition-all duration-200 hover:-translate-y-px hover:bg-[#FF8000]/90 hover:shadow-[0_0_32px_rgba(255,128,0,0.65)]"
@@ -465,9 +603,15 @@ export function PublicNavbar() {
         )}
       >
         <div className="px-4 pb-4 pt-2 space-y-1">
+
           {/* Nav links */}
           {navLinks.map((link) => {
-            const active = checkActive(pathname, link.href, link.exact);
+            const active = checkActive(
+              pathname,
+              link.href,
+              link.exact
+            );
+
             return (
               <Link
                 key={link.href}
@@ -478,7 +622,9 @@ export function PublicNavbar() {
                     ? "bg-[#FF8000]/8 text-[#FF8000] border border-[#FF8000]/15"
                     : "border border-transparent text-slate-400 hover:bg-white/[0.07] hover:text-white"
                 )}
-                onClick={() => setMobileOpen(false)}
+                onClick={() =>
+                  setMobileOpen(false)
+                }
               >
                 {link.label}
               </Link>
@@ -494,48 +640,76 @@ export function PublicNavbar() {
               <div className="flex items-center gap-2.5 rounded-xl border border-[#FF8000]/15 bg-[#FF8000]/[0.04] px-3.5 py-2.5">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#FF8000]/22 bg-[#FF8000]/8">
                   <span className="text-[11px] font-bold text-[#FF8000]">
-                    {user.fullName.slice(0, 2).toUpperCase()}
+                    {user.fullName
+                      .slice(0, 2)
+                      .toUpperCase()}
                   </span>
                 </div>
+
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-slate-300">{user.fullName}</p>
-                  <p className="truncate text-xs text-slate-500">{user.email}</p>
+                  <p className="truncate text-sm font-medium text-slate-300">
+                    {user.fullName}
+                  </p>
+
+                  <p className="truncate text-xs text-slate-500">
+                    {user.email}
+                  </p>
                 </div>
               </div>
 
               <Link
                 href="/profile"
                 className="flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2.5 text-sm font-medium text-slate-400 transition-all duration-200 hover:bg-white/[0.07] hover:text-white"
-                onClick={() => setMobileOpen(false)}
+                onClick={() =>
+                  setMobileOpen(false)
+                }
               >
-                <UserIcon className="h-4 w-4" aria-hidden />
+                <UserIcon
+                  className="h-4 w-4"
+                  aria-hidden
+                />
                 Trang cá nhân
               </Link>
 
               <Link
                 href="/bookings"
                 className="flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2.5 text-sm font-medium text-slate-400 transition-all duration-200 hover:bg-white/[0.07] hover:text-white"
-                onClick={() => setMobileOpen(false)}
+                onClick={() =>
+                  setMobileOpen(false)
+                }
               >
-                <CalendarCheck2 className="h-4 w-4" aria-hidden />
+                <CalendarCheck2
+                  className="h-4 w-4"
+                  aria-hidden
+                />
                 Lịch đặt của tôi
               </Link>
 
               <Link
                 href="/coach/requests"
                 className="flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2.5 text-sm font-medium text-slate-400 transition-all duration-200 hover:bg-white/[0.07] hover:text-white"
-                onClick={() => setMobileOpen(false)}
+                onClick={() =>
+                  setMobileOpen(false)
+                }
               >
-                <ClipboardList className="h-4 w-4" aria-hidden />
+                <ClipboardList
+                  className="h-4 w-4"
+                  aria-hidden
+                />
                 Yêu cầu của tôi
               </Link>
 
               <Link
                 href="/coach/sessions"
                 className="flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2.5 text-sm font-medium text-slate-400 transition-all duration-200 hover:bg-white/[0.07] hover:text-white"
-                onClick={() => setMobileOpen(false)}
+                onClick={() =>
+                  setMobileOpen(false)
+                }
               >
-                <CalendarClock className="h-4 w-4" aria-hidden />
+                <CalendarClock
+                  className="h-4 w-4"
+                  aria-hidden
+                />
                 Buổi huấn luyện của tôi
               </Link>
 
@@ -543,9 +717,14 @@ export function PublicNavbar() {
                 <Link
                   href="/coach/manage"
                   className="flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2.5 text-sm font-medium text-slate-400 transition-all duration-200 hover:bg-white/[0.07] hover:text-white"
-                  onClick={() => setMobileOpen(false)}
+                  onClick={() =>
+                    setMobileOpen(false)
+                  }
                 >
-                  <UserCog className="h-4 w-4" aria-hidden />
+                  <UserCog
+                    className="h-4 w-4"
+                    aria-hidden
+                  />
                   Quản lý huấn luyện viên
                 </Link>
               )}
@@ -553,18 +732,28 @@ export function PublicNavbar() {
               <Link
                 href="/change-password"
                 className="flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2.5 text-sm font-medium text-slate-400 transition-all duration-200 hover:bg-white/[0.07] hover:text-white"
-                onClick={() => setMobileOpen(false)}
+                onClick={() =>
+                  setMobileOpen(false)
+                }
               >
-                <KeyRound className="h-4 w-4" aria-hidden />
+                <KeyRound
+                  className="h-4 w-4"
+                  aria-hidden
+                />
                 Đổi mật khẩu
               </Link>
 
               <Link
                 href="/account/settings"
                 className="flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2.5 text-sm font-medium text-slate-400 transition-all duration-200 hover:bg-white/[0.07] hover:text-white"
-                onClick={() => setMobileOpen(false)}
+                onClick={() =>
+                  setMobileOpen(false)
+                }
               >
-                <Settings className="h-4 w-4" aria-hidden />
+                <Settings
+                  className="h-4 w-4"
+                  aria-hidden
+                />
                 Cài đặt tài khoản
               </Link>
 
@@ -572,19 +761,30 @@ export function PublicNavbar() {
                 <Link
                   href="/owner"
                   className="flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2.5 text-sm font-medium text-slate-400 transition-all duration-200 hover:bg-white/[0.07] hover:text-white"
-                  onClick={() => setMobileOpen(false)}
+                  onClick={() =>
+                    setMobileOpen(false)
+                  }
                 >
-                  <LayoutDashboard className="h-4 w-4" aria-hidden />
+                  <LayoutDashboard
+                    className="h-4 w-4"
+                    aria-hidden
+                  />
                   Dashboard Chủ sân
                 </Link>
               )}
+
               {user.role === "ADMIN" && (
                 <Link
                   href="/admin"
                   className="flex items-center gap-2 rounded-xl border border-[#FF8000]/20 bg-[#FF8000]/[0.04] px-3.5 py-2.5 text-sm font-medium text-[#FF8000] transition-all duration-200 hover:bg-[#FF8000]/[0.07]"
-                  onClick={() => setMobileOpen(false)}
+                  onClick={() =>
+                    setMobileOpen(false)
+                  }
                 >
-                  <LayoutDashboard className="h-4 w-4" aria-hidden />
+                  <LayoutDashboard
+                    className="h-4 w-4"
+                    aria-hidden
+                  />
                   Dashboard Admin
                 </Link>
               )}
@@ -593,9 +793,14 @@ export function PublicNavbar() {
                 <Link
                   href="/admin"
                   className="flex items-center gap-2 rounded-xl border border-[#86D232]/20 bg-[#86D232]/[0.06] px-3.5 py-2.5 text-sm font-semibold text-[#86D232] transition-all duration-200 hover:border-[#86D232]/35 hover:bg-[#86D232]/[0.12]"
-                  onClick={() => setMobileOpen(false)}
+                  onClick={() =>
+                    setMobileOpen(false)
+                  }
                 >
-                  <ShieldCheck className="h-4 w-4" aria-hidden />
+                  <ShieldCheck
+                    className="h-4 w-4"
+                    aria-hidden
+                  />
                   Quản trị hệ thống
                 </Link>
               )}
@@ -608,7 +813,10 @@ export function PublicNavbar() {
                 onClick={handleLogout}
                 className="flex w-full items-center gap-2 rounded-xl border border-transparent px-3.5 py-2.5 text-sm font-medium text-slate-400 transition-all duration-200 hover:bg-red-500/[0.07] hover:text-red-400"
               >
-                <LogOut className="h-4 w-4" aria-hidden />
+                <LogOut
+                  className="h-4 w-4"
+                  aria-hidden
+                />
                 Đăng xuất
               </button>
             </>
@@ -618,14 +826,19 @@ export function PublicNavbar() {
               <Link
                 href="/login"
                 className="flex items-center rounded-xl border border-white/10 px-3.5 py-2.5 text-sm font-medium text-slate-300 transition-all duration-200 hover:border-[#FF8000]/20 hover:bg-[#FF8000]/[0.05] hover:text-white"
-                onClick={() => setMobileOpen(false)}
+                onClick={() =>
+                  setMobileOpen(false)
+                }
               >
                 Đăng nhập
               </Link>
+
               <Link
                 href="/register"
                 className="mt-1 flex items-center justify-center rounded-xl bg-[#FF8000] px-3.5 py-2.5 text-sm font-bold text-white shadow-[0_0_22px_rgba(255,128,0,0.45)] transition-all duration-200 hover:bg-[#FF8000]/90 hover:shadow-[0_0_32px_rgba(255,128,0,0.65)]"
-                onClick={() => setMobileOpen(false)}
+                onClick={() =>
+                  setMobileOpen(false)
+                }
               >
                 Đăng ký
               </Link>
