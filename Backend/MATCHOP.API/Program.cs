@@ -19,8 +19,19 @@ using MATCHOP.API.Services.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using System.Threading.RateLimiting;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args
+});
 
+// Xóa các source cấu hình mặc định (vốn tự động bật reloadOnChange)
+builder.Configuration.Sources.Clear();
+
+// Nạp lại cấu hình và tắt reloadOnChange để tránh lỗi FileSystemWatcher trên Linux/Render
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false)
+    .AddEnvironmentVariables();
 var configuredOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
     .Get<string[]>() ?? [];
