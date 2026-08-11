@@ -309,19 +309,32 @@ using (var scope = app.Services.CreateScope())
 
 app.UseMiddleware<ExceptionMiddleware>();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-else
-{
-    app.UseHsts();
-}
+//if (app.Environment.IsDevelopment())
+//{
+//    app.UseSwagger();
+//    app.UseSwaggerUI();
+//}
+//else
+//{
+//    app.UseHsts();
+//}
 
-//app.UseHttpsRedirection();
+////app.UseHttpsRedirection();
+//if (!app.Environment.IsDevelopment())
+//{
+//    app.UseHttpsRedirection();
+//}
+// Bật Swagger cho cả Development lẫn Production trên Render
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "MATCHOP API v1");
+    c.RoutePrefix = "swagger"; // Mở qua đường dẫn /swagger
+});
+
 if (!app.Environment.IsDevelopment())
 {
+    app.UseHsts();
     app.UseHttpsRedirection();
 }
 app.UseRouting();
