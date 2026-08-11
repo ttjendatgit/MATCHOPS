@@ -13,29 +13,36 @@ public class CreateSubscriptionDto
 }
 
 /// <summary>
-/// Response after initiating subscription payment.
+/// Response after initiating subscription payment via SePay QR.
 /// </summary>
 public class SubscriptionPaymentResponseDto
 {
-    /// <summary>VNPay payment URL to redirect user to.</summary>
-    public string PaymentUrl { get; set; } = null!;
+    /// <summary>URL ảnh QR VietQR để hiển thị cho user quét.</summary>
+    public string QrImageUrl { get; set; } = null!;
 
-    /// <summary>Internal order reference.</summary>
-    public string OrderId { get; set; } = null!;
+    /// <summary>Nội dung chuyển khoản cần ghi chính xác (VD: MEM3F2A1B4C).</summary>
+    public string PaymentContent { get; set; } = null!;
 
-    /// <summary>Amount to be charged.</summary>
+    /// <summary>Số tài khoản nhận tiền.</summary>
+    public string AccountNumber { get; set; } = null!;
+
+    /// <summary>Tên chủ tài khoản.</summary>
+    public string AccountName { get; set; } = null!;
+
+    /// <summary>Tên ngân hàng.</summary>
+    public string BankName { get; set; } = null!;
+
+    /// <summary>Số tiền cần chuyển (VND).</summary>
     public decimal Amount { get; set; }
 
-    /// <summary>Payment expiration time.</summary>
+    /// <summary>Hết hạn thanh toán lúc.</summary>
     public DateTime ExpireAt { get; set; }
 
-    /// <summary>Temporary subscription ID pending payment confirmation.</summary>
+    /// <summary>Subscription ID đang chờ xác nhận thanh toán.</summary>
     public Guid PendingSubscriptionId { get; set; }
 }
 
-/// <summary>
-/// Result of processing membership payment return from VNPay.
-/// </summary>
+// MembershipPaymentResultDto giữ lại để không ảnh hưởng code khác (có thể xóa sau).
 public class MembershipPaymentResultDto
 {
     public bool Success { get; set; }

@@ -135,4 +135,12 @@ public class BookingRepository : IBookingRepository
             .OrderByDescending(b => b.CreatedAt)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<List<Booking>> GetPendingPaymentBookingsAsync(CancellationToken cancellationToken = default)
+    {
+        return await BaseQuery()
+            .Where(b => b.Status == BookingStatus.PENDING_PAYMENT
+                     && (b.ExpireAt == null || b.ExpireAt > DateTime.UtcNow))
+            .ToListAsync(cancellationToken);
+    }
 }

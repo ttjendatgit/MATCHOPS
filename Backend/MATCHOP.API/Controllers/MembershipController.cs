@@ -70,7 +70,7 @@ public class MembershipController : ControllerBase
 
     /// <summary>
     /// POST /api/membership/subscribe
-    /// Creates a pending subscription and initiates VNPay payment.
+    /// Creates a pending subscription and returns SePay QR payment info.
     /// </summary>
     [HttpPost("subscribe")]
     [Authorize]
@@ -79,82 +79,49 @@ public class MembershipController : ControllerBase
         var userId = _currentUser.UserId
             ?? throw new AppException(ErrorCodes.AuthRequired, "Bạn chưa đăng nhập.", StatusCodes.Status401Unauthorized);
 
-        // Create pending subscription
+        // Tạo pending subscription
         var subscription = await _membershipService.CreateSubscriptionAsync(
             userId, dto.PlanId, dto.BillingCycle, cancellationToken);
 
-        // Get plan details for payment
+        // Lấy thông tin gói
         var plans = await _membershipService.GetActivePlansAsync(cancellationToken);
         var plan = plans.FirstOrDefault(p => p.Id == dto.PlanId);
 
         if (plan is null)
             throw new AppException(ErrorCodes.ValidationError, "Không tìm thấy gói membership.", StatusCodes.Status404NotFound);
 
-        // Calculate amount
+        // Tính số tiền
         var price = dto.BillingCycle.ToUpperInvariant() == "YEARLY" && plan.PricePerYear.HasValue
             ? plan.PricePerYear.Value
             : plan.PricePerMonth;
 
-        // Generate VNPay payment URL for membership
-        var paymentUrl = CreateMembershipPaymentUrl(
-            subscription.Id,
-            plan.Name,
-            price);
+        // Tạo nội dung chuyển khoản SePay: MEM + 8 ký tự đầu subscriptionId
+        var paymentContent = $"MEM{subscription.Id:N}"[..11].ToUpper(); // MEM + 8 chars
+        var amount = (long)Math.Round(price);
+
+        // Tạo QR VietQR
+        var bankBin       = _config["SePay:BankBin"]!;
+        var accountNumber = _config["SePay:AccountNumber"]!;
+        var accountName   = _config["SePay:AccountName"]!;
+        var bankName      = _config["SePay:BankName"]!;
+
+        var qrImageUrl = SePayHelper.BuildVietQrUrl(bankBin, accountNumber, amount, paymentContent, accountName);
 
         return Ok(ApiResponse<SubscriptionPaymentResponseDto>.Ok(new SubscriptionPaymentResponseDto
         {
-            PaymentUrl = paymentUrl,
-            OrderId = $"MEM-{subscription.Id:N}"[..20],
-            Amount = price,
-            ExpireAt = subscription.ExpiresAt ?? DateTime.UtcNow.AddMinutes(30),
-            PendingSubscriptionId = subscription.Id
+            QrImageUrl             = qrImageUrl,
+            PaymentContent         = paymentContent,
+            AccountNumber          = accountNumber,
+            AccountName            = accountName,
+            BankName               = bankName,
+            Amount                 = price,
+            ExpireAt               = subscription.ExpiresAt ?? DateTime.UtcNow.AddMinutes(30),
+            PendingSubscriptionId  = subscription.Id
         }));
     }
 
-    /// <summary>
-    /// GET /api/membership/payment/return
-    /// Handles VNPay callback for membership payment.
-    /// </summary>
-    [HttpGet("payment/return")]
-    [AllowAnonymous]
-    public async Task<IActionResult> HandlePaymentReturn(CancellationToken cancellationToken = default)
-    {
-        var query = Request.Query;
-
-        // Validate signature
-        var hashSecret = _config["VNPay:HashSecret"];
-        if (!VNPayHelper.ValidateSignature(query, hashSecret!))
-        {
-            return Redirect($"{_config["App:FrontendUrl"]}/account/subscription?payment=failed&error=invalid_signature");
-        }
-
-        var responseCode = query["vnp_ResponseCode"].ToString();
-        var orderInfo = query["vnp_OrderInfo"].ToString();
-
-        // Parse subscription ID from order info
-        // Format: "MEM-{subscriptionId}"
-        var subIdStr = orderInfo.Replace("MEM-", "");
-        if (!Guid.TryParse(subIdStr, out var subscriptionId))
-        {
-            return Redirect($"{_config["App:FrontendUrl"]}/account/subscription?payment=failed&error=invalid_order");
-        }
-
-        if (responseCode == "00")
-        {
-            try
-            {
-                await _membershipService.ActivateSubscriptionAsync(subscriptionId, cancellationToken);
-                return Redirect($"{_config["App:FrontendUrl"]}/account/subscription?payment=success&subscriptionId={subscriptionId}");
-            }
-            catch
-            {
-                return Redirect($"{_config["App:FrontendUrl"]}/account/subscription?payment=failed&error=activation_failed");
-            }
-        }
-
-        var errorMessage = GetVNPayErrorMessage(responseCode);
-        return Redirect($"{_config["App:FrontendUrl"]}/account/subscription?payment=failed&error={Uri.EscapeDataString(errorMessage)}");
-    }
+    // VNPay return endpoint removed – membership payment now handled via SePay webhook.
+    // See: POST /api/payments/sepay/webhook → HandleSePayWebhookAsync (MEM prefix logic).
 
     /// <summary>
     /// GET /api/membership/usage
@@ -223,59 +190,4 @@ public class MembershipController : ControllerBase
         return Ok(ApiResponse<MembershipStatisticsDto>.Ok(stats));
     }
 
-    private string CreateMembershipPaymentUrl(
-        Guid subscriptionId,
-        string planName,
-        decimal amount)
-    {
-        var tmnCode = _config["VNPay:TmnCode"]!;
-        var hashSecret = _config["VNPay:HashSecret"]!;
-        var baseUrl = _config["VNPay:BaseUrl"]!;
-        var returnUrl = $"{_config["App:BackendUrl"]}/api/membership/payment/return";
-
-        var now = DateTime.UtcNow.AddHours(7);
-        var expireTime = now.AddMinutes(30);
-
-        var amountLong = (long)(amount * 100);
-        var orderId = $"MEM-{subscriptionId:N}"[..20];
-
-        var parameters = new SortedList<string, string>(StringComparer.Ordinal)
-        {
-            { "vnp_Version", "2.1.0" },
-            { "vnp_Command", "pay" },
-            { "vnp_TmnCode", tmnCode },
-            { "vnp_Amount", amountLong.ToString() },
-            { "vnp_CreateDate", now.ToString("yyyyMMddHHmmss") },
-            { "vnp_CurrCode", "VND" },
-            { "vnp_IpAddr", HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1" },
-            { "vnp_Locale", "vn" },
-            { "vnp_OrderInfo", $"MEM-{subscriptionId}" },
-            { "vnp_OrderType", "membership" },
-            { "vnp_ReturnUrl", returnUrl },
-            { "vnp_TxnRef", orderId },
-            { "vnp_ExpireDate", expireTime.ToString("yyyyMMddHHmmss") }
-        };
-
-        var rawData = VNPayHelper.BuildQueryString(parameters);
-        var secureHash = VNPayHelper.HmacSHA512(hashSecret, rawData);
-        parameters.Add("vnp_SecureHash", secureHash);
-
-        return $"{baseUrl}?{VNPayHelper.BuildQueryString(parameters)}";
-    }
-
-    private static string GetVNPayErrorMessage(string responseCode) => responseCode switch
-    {
-        "07" => "Trừ tiền thành công nhưng giao dịch bị nghi ngờ gian lận.",
-        "09" => "Thẻ/Tài khoản chưa đăng ký dịch vụ Internet Banking.",
-        "10" => "Xác thực thông tin thẻ/tài khoản quá 3 lần.",
-        "11" => "Đã hết hạn chờ thanh toán.",
-        "12" => "Thẻ/Tài khoản bị khóa.",
-        "13" => "Sai mật khẩu OTP.",
-        "24" => "Giao dịch bị hủy.",
-        "51" => "Tài khoản không đủ số dư.",
-        "65" => "Tài khoản vượt quá hạn mức giao dịch trong ngày.",
-        "75" => "Ngân hàng thanh toán đang bảo trì.",
-        "79" => "Sai mật khẩu quá số lần quy định.",
-        _    => $"Thanh toán thất bại (mã lỗi: {responseCode})."
-    };
 }

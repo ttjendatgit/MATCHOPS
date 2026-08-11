@@ -17,37 +17,37 @@ public class PaymentsController : ControllerBase
     }
 
     /// <summary>
-    /// USER gọi API này để lấy URL thanh toán VNPay
-    /// FE redirect user sang URL đó
+    /// USER gọi API này để lấy thông tin QR SePay (VietQR).
+    /// FE hiển thị QR + hướng dẫn nội dung chuyển khoản.
     /// </summary>
-    [HttpPost("api/my/bookings/{bookingId:guid}/pay/vnpay")]
-        [Authorize(Roles = "USER")]
-        public async Task<IActionResult> CreateVNPayPayment(Guid bookingId, CancellationToken cancellationToken = default)
-        {
-            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
-                ?? "127.0.0.1";
+    [HttpPost("api/my/bookings/{bookingId:guid}/pay/sepay")]
+    [Authorize(Roles = "USER")]
+    public async Task<IActionResult> CreateSePayQr(
+        Guid bookingId,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _paymentService.CreateSePayQrAsync(bookingId, cancellationToken);
+        return Ok(ApiResponse<CreateSePayQrResponseDto>.Ok(result, "Tạo QR thanh toán thành công."));
+    }
 
-            var result = await _paymentService.CreateVNPayPaymentAsync(bookingId, ipAddress, cancellationToken);
-            return Ok(ApiResponse<CreateVNPayPaymentResponseDto>.Ok(
-                result,
-                "Tạo link thanh toán thành công."));
-        }
+    /// <summary>
+    /// SePay gọi POST về đây khi có giao dịch ngân hàng.
+    /// Không cần auth JWT — SePay xác thực bằng API Key trong header Authorization.
+    /// Phải trả về HTTP 200 + { "success": true } trong vòng 30 giây.
+    /// </summary>
+    [HttpPost("api/payments/sepay/webhook")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SePayWebhook(
+        [FromBody] SePayWebhookPayload payload,
+        CancellationToken cancellationToken = default)
+    {
+        var authHeader = Request.Headers.Authorization.ToString();
 
-        /// <summary>
-        /// VNPay gọi callback về đây sau khi user thanh toán xong
-        /// Không cần auth — VNPay gọi trực tiếp
-        /// </summary>
-        [HttpGet("api/payments/vnpay/return")]
-        [AllowAnonymous]
-        public async Task<IActionResult> VNPayReturn(CancellationToken cancellationToken = default)
-        {
-            var result = await _paymentService.HandleVNPayReturnAsync(Request.Query, cancellationToken);
+        var result = await _paymentService.HandleSePayWebhookAsync(
+            payload, authHeader, cancellationToken);
 
-            if (result.Success)
-                return Ok(ApiResponse<VNPayReturnDto>.Ok(
-                    result,
-                    "Thanh toán thành công."));
-
-            return BadRequest(ApiResponse<VNPayReturnDto>.Fail(result.Message));
-        }
+        // SePay yêu cầu luôn trả HTTP 200 với { success: true/false }
+        // Nếu trả non-200, SePay sẽ retry nhiều lần (Fibonacci backoff)
+        return Ok(result);
+    }
 }

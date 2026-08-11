@@ -16,4 +16,7 @@ public interface IBookingRepository
     Task AddSlotsAsync(List<BookingSlot> slots, CancellationToken cancellationToken = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
     Task<List<Booking>> GetAllAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Lấy tất cả booking đang PENDING_PAYMENT (chưa hết hạn) – dùng cho SePay webhook matching.</summary>
+    Task<List<Booking>> GetPendingPaymentBookingsAsync(CancellationToken cancellationToken = default);
 }

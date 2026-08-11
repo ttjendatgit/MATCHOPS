@@ -1,9 +1,10 @@
 using MATCHOP.API.DTOs.Payments;
+using MATCHOP.API.Entities;
 using MATCHOP.API.Enums;
 using MATCHOP.API.Helpers;
 using MATCHOP.API.Repositories.Interfaces;
 using MATCHOP.API.Services.Interfaces;
-using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 
 namespace MATCHOP.API.Services;
 
@@ -13,22 +14,31 @@ public class PaymentService : IPaymentService
     private readonly ICurrentUserService _currentUserService;
     private readonly IConfiguration _config;
     private readonly ApplicationDbContext _context;
+    private readonly ILogger<PaymentService> _logger;
+    private readonly IMembershipService _membershipService;
 
     public PaymentService(
         IBookingRepository bookingRepository,
         ICurrentUserService currentUserService,
         IConfiguration config,
-        ApplicationDbContext context)
+        ApplicationDbContext context,
+        ILogger<PaymentService> logger,
+        IMembershipService membershipService)
     {
-        _bookingRepository = bookingRepository;
-        _currentUserService = currentUserService;
-        _config = config;
-        _context = context;
+        _bookingRepository    = bookingRepository;
+        _currentUserService   = currentUserService;
+        _config               = config;
+        _context              = context;
+        _logger               = logger;
+        _membershipService    = membershipService;
     }
 
-    public async Task<CreateVNPayPaymentResponseDto> CreateVNPayPaymentAsync(
+    // ─────────────────────────────────────────────────────────────────────────
+    // Tạo QR SePay
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public async Task<CreateSePayQrResponseDto> CreateSePayQrAsync(
         Guid bookingId,
-        string ipAddress,
         CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserIdOrThrow();
@@ -40,7 +50,7 @@ public class PaymentService : IPaymentService
                 "Không tìm thấy booking của bạn.",
                 StatusCodes.Status404NotFound);
 
-        // Kiểm tra booking còn hạn không
+        // Kiểm tra booking hết hạn
         if (booking.Status == BookingStatus.PENDING_PAYMENT &&
             booking.ExpireAt is not null &&
             booking.ExpireAt <= DateTime.UtcNow)
@@ -55,195 +65,225 @@ public class PaymentService : IPaymentService
                 "Booking này không ở trạng thái chờ thanh toán.",
                 StatusCodes.Status400BadRequest);
 
-        // Lấy config VNPay
-        var tmnCode   = _config["VNPay:TmnCode"]!;
-        var hashSecret = _config["VNPay:HashSecret"]!;
-        var baseUrl   = _config["VNPay:BaseUrl"]!;
-        var returnUrl = _config["VNPay:ReturnUrl"]!;
-        var version   = _config["VNPay:Version"]!;
-        var command   = _config["VNPay:Command"]!;
-        var currCode  = _config["VNPay:CurrCode"]!;
-        var locale    = _config["VNPay:Locale"]!;
+        // Lấy config SePay / Ngân hàng
+        var bankBin       = _config["SePay:BankBin"]!;
+        var accountNumber = _config["SePay:AccountNumber"]!;
+        var accountName   = _config["SePay:AccountName"]!;
+        var bankName      = _config["SePay:BankName"]!;
 
-        var now = DateTime.UtcNow.AddHours(7); // Giờ VN (UTC+7)
-        var expireTime = now.AddMinutes(10);
+        // Nội dung CK: MATCHOP + 8 ký tự đầu bookingId
+        var content = SePayHelper.BuildPaymentContent(bookingId);
 
-        // Amount: VNPay yêu cầu nhân 100
-        var amount = (long)(booking.TotalPrice * 100);
+        // Số tiền (VND nguyên, không nhân 100 như VNPay)
+        var amount = (long)Math.Round(booking.TotalPrice);
 
-        // OrderId = bookingId để sau này match lại
-        var orderId = booking.Id.ToString("N")[..16].ToUpper();
+        var qrUrl = SePayHelper.BuildVietQrUrl(bankBin, accountNumber, amount, content, accountName);
 
-        var parameters = new SortedList<string, string>(StringComparer.Ordinal)
+        return new CreateSePayQrResponseDto
         {
-            { "vnp_Version",    version },
-            { "vnp_Command",    command },
-            { "vnp_TmnCode",    tmnCode },
-            { "vnp_Amount",     amount.ToString() },
-            { "vnp_CreateDate", now.ToString("yyyyMMddHHmmss") },
-            { "vnp_CurrCode",   currCode },
-            { "vnp_IpAddr",     ipAddress },
-            { "vnp_Locale",     locale },
-            { "vnp_OrderInfo",  $"Thanh toan dat san MATCHOP - {booking.Id}" },
-            { "vnp_OrderType",  "other" },
-            { "vnp_ReturnUrl",  returnUrl },
-            { "vnp_TxnRef",     orderId },
-            { "vnp_ExpireDate", expireTime.ToString("yyyyMMddHHmmss") }
-        };
-
-        // Tạo chữ ký
-        var rawData  = VNPayHelper.BuildQueryString(parameters);
-        var secureHash = VNPayHelper.HmacSHA512(hashSecret, rawData);
-        parameters.Add("vnp_SecureHash", secureHash);
-
-        // Build payment URL
-        var paymentUrl = $"{baseUrl}?{VNPayHelper.BuildQueryString(parameters)}";
-
-        return new CreateVNPayPaymentResponseDto
-        {
-            PaymentUrl = paymentUrl,
-            OrderId    = orderId,
-            Amount     = booking.TotalPrice,
-            ExpireAt   = booking.ExpireAt ?? DateTime.UtcNow.AddMinutes(10)
+            QrImageUrl     = qrUrl,
+            PaymentContent = content,
+            AccountNumber  = accountNumber,
+            AccountName    = accountName,
+            BankName       = bankName,
+            Amount         = booking.TotalPrice,
+            ExpireAt       = booking.ExpireAt ?? DateTime.UtcNow.AddMinutes(10)
         };
     }
 
-    public async Task<VNPayReturnDto> HandleVNPayReturnAsync(IQueryCollection query, CancellationToken cancellationToken = default)
+    // ─────────────────────────────────────────────────────────────────────────
+    // Xử lý Webhook SePay
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public async Task<SePayWebhookResponse> HandleSePayWebhookAsync(
+        SePayWebhookPayload payload,
+        string? authorizationHeader,
+        CancellationToken cancellationToken = default)
     {
-        var hashSecret = _config["VNPay:HashSecret"]!;
-
-        // Verify chữ ký
-        if (!VNPayHelper.ValidateSignature(query, hashSecret))
-            return new VNPayReturnDto
-            {
-                Success = false,
-                Message = "Chữ ký không hợp lệ."
-            };
-
-        var responseCode = query["vnp_ResponseCode"].ToString();
-        var txnRef       = query["vnp_TxnRef"].ToString();
-        var transactionNo = query["vnp_TransactionNo"].ToString();
-        var amountStr    = query["vnp_Amount"].ToString();
-        var orderInfo    = query["vnp_OrderInfo"].ToString();
-
-        // Lấy bookingId từ OrderInfo
-        // Format: "Thanh toan dat san MATCHOP - {bookingId}"
-        var bookingIdStr = orderInfo.Split(" - ").LastOrDefault();
-        if (!Guid.TryParse(bookingIdStr, out var bookingId))
-            return new VNPayReturnDto
-            {
-                Success = false,
-                Message = "Không xác định được booking."
-            };
-
-        var booking = await _bookingRepository.GetByIdAsync(bookingId, cancellationToken);
-        if (booking is null)
-            return new VNPayReturnDto
-            {
-                Success = false,
-                Message = "Booking không tồn tại."
-            };
-
-        // Thanh toán thành công
-        if (responseCode == "00")
+        // 1. Xác thực API Key
+        var apiKey = _config["SePay:WebhookApiKey"]!;
+        if (!SePayHelper.ValidateApiKey(authorizationHeader, apiKey))
         {
-            // Kiểm tra chưa xử lý (tránh duplicate callback)
-            if (booking.Status == BookingStatus.CONFIRMED)
-                return new VNPayReturnDto
-                {
-                    Success       = true,
-                    Message       = "Booking đã được xác nhận trước đó.",
-                    OrderId       = txnRef,
-                    TransactionCode = transactionNo,
-                    Amount        = decimal.Parse(amountStr) / 100,
-                    BookingStatus = booking.Status.ToString()
-                };
-
-            if (booking.Status != BookingStatus.PENDING_PAYMENT)
-                return new VNPayReturnDto
-                {
-                    Success = false,
-                    Message = "Booking không ở trạng thái chờ thanh toán.",
-                    BookingStatus = booking.Status.ToString()
-                };
-
-            await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-            try
-            {
-                // Cập nhật booking
-                booking.Status        = BookingStatus.CONFIRMED;
-                booking.PaymentStatus = BookingPaymentStatus.PAID;
-                booking.ExpireAt      = null;
-                booking.UpdatedAt     = DateTime.UtcNow;
-
-                // Cập nhật slots
-                foreach (var slot in booking.BookingSlots
-                    .Where(s => s.Status == BookingSlotStatus.HOLDING))
-                {
-                    slot.Status    = BookingSlotStatus.BOOKED;
-                    slot.UpdatedAt = DateTime.UtcNow;
-                }
-
-                // Tạo payment record
-                _context.Payments.Add(new Entities.Payment
-                {
-                    Id              = Guid.NewGuid(),
-                    BookingId       = booking.Id,
-                    UserId          = booking.UserId,
-                    Amount          = decimal.Parse(amountStr) / 100,
-                    Method          = PaymentMethod.BANK_TRANSFER,
-                    Status          = PaymentTransactionStatus.SUCCESS,
-                    TransactionCode = transactionNo,
-                    PaidAt          = DateTime.UtcNow,
-                    CreatedAt       = DateTime.UtcNow,
-                    UpdatedAt       = DateTime.UtcNow
-                });
-
-                await _bookingRepository.SaveChangesAsync(cancellationToken);
-                await transaction.CommitAsync(cancellationToken);
-            }
-            catch
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                throw;
-            }
-
-            return new VNPayReturnDto
-            {
-                Success         = true,
-                Message         = "Thanh toán thành công.",
-                OrderId         = txnRef,
-                TransactionCode = transactionNo,
-                Amount          = decimal.Parse(amountStr) / 100,
-                BookingStatus   = booking.Status.ToString()
-            };
+            _logger.LogWarning("SePay webhook: invalid API key. Header={Header}", authorizationHeader);
+            return new SePayWebhookResponse { Success = false, Message = "Unauthorized." };
         }
 
-        // Thanh toán thất bại
-        return new VNPayReturnDto
+        // 2. Chỉ xử lý tiền vào
+        if (!string.Equals(payload.TransferType, "in", StringComparison.OrdinalIgnoreCase))
+            return new SePayWebhookResponse { Success = true, Message = "Ignored (not incoming)." };
+
+        // 3. Tách mã thanh toán từ nội dung CK
+        var rawContent = payload.Content ?? payload.Code ?? "";
+
+        // ── Membership payment (prefix MEM) ─────────────────────────────
+        if (rawContent.Contains("MEM", StringComparison.OrdinalIgnoreCase))
+            return await HandleMembershipWebhookAsync(payload, rawContent);
+
+        // ── Booking payment (prefix MATCHOP) ────────────────────────────
+        var paymentContent = SePayHelper.ExtractPaymentContent(rawContent);
+        if (paymentContent is null)
         {
-            Success       = false,
-            Message       = GetVNPayErrorMessage(responseCode),
-            OrderId       = txnRef,
-            BookingStatus = booking.Status.ToString()
-        };
+            _logger.LogInformation("SePay webhook id={Id}: no MATCHOP code in content '{Content}'",
+                payload.Id, payload.Content);
+            return new SePayWebhookResponse { Success = true, Message = "No matching order code." };
+        }
+
+        // 4. Tìm booking đang chờ thanh toán khớp với mã
+        //    Duyệt các booking PENDING_PAYMENT, so sánh content
+        var pendingBookings = await _bookingRepository.GetPendingPaymentBookingsAsync(cancellationToken);
+        var booking = pendingBookings
+            .FirstOrDefault(b => SePayHelper.TryMatchBookingId(paymentContent, b.Id));
+
+        if (booking is null)
+        {
+            _logger.LogInformation("SePay webhook id={Id}: no booking found for code '{Code}'",
+                payload.Id, paymentContent);
+            return new SePayWebhookResponse { Success = true, Message = "No booking matched." };
+        }
+
+        // 5. Idempotency: kiểm tra đã xử lý chưa (tránh SePay retry double-confirm)
+        var alreadyProcessed = _context.Payments
+            .Any(p => p.TransactionCode == payload.Id.ToString());
+        if (alreadyProcessed)
+        {
+            _logger.LogInformation("SePay webhook id={Id}: already processed.", payload.Id);
+            return new SePayWebhookResponse { Success = true, Message = "Already processed." };
+        }
+
+        // 6. Kiểm tra số tiền (±1 VND để tránh lỗi làm tròn)
+        var expectedAmount = (long)Math.Round(booking.TotalPrice);
+        if (Math.Abs(payload.TransferAmount - expectedAmount) > 1)
+        {
+            _logger.LogWarning(
+                "SePay webhook id={Id}: amount mismatch. Expected={Expected}, Received={Received}",
+                payload.Id, expectedAmount, payload.TransferAmount);
+            // Vẫn trả success=true để SePay không retry, nhưng không confirm booking
+            return new SePayWebhookResponse { Success = true, Message = "Amount mismatch – not confirmed." };
+        }
+
+        // 7. Cập nhật booking & tạo payment record (transaction)
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            booking.Status        = BookingStatus.CONFIRMED;
+            booking.PaymentStatus = BookingPaymentStatus.PAID;
+            booking.ExpireAt      = null;
+            booking.UpdatedAt     = DateTime.UtcNow;
+
+            foreach (var slot in booking.BookingSlots
+                         .Where(s => s.Status == BookingSlotStatus.HOLDING))
+            {
+                slot.Status    = BookingSlotStatus.BOOKED;
+                slot.UpdatedAt = DateTime.UtcNow;
+            }
+
+            _context.Payments.Add(new Payment
+            {
+                Id              = Guid.NewGuid(),
+                BookingId       = booking.Id,
+                UserId          = booking.UserId,
+                Amount          = payload.TransferAmount,
+                Method          = PaymentMethod.BANK_TRANSFER,
+                Status          = PaymentTransactionStatus.SUCCESS,
+                TransactionCode = payload.Id.ToString(),
+                PaidAt          = DateTime.UtcNow,
+                CreatedAt       = DateTime.UtcNow,
+                UpdatedAt       = DateTime.UtcNow
+            });
+
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "SePay webhook id={Id}: booking {BookingId} CONFIRMED. Amount={Amount}",
+                payload.Id, booking.Id, payload.TransferAmount);
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            _logger.LogError(ex, "SePay webhook id={Id}: error confirming booking {BookingId}",
+                payload.Id, booking.Id);
+            throw;
+        }
+
+        return new SePayWebhookResponse { Success = true, Message = "Booking confirmed." };
     }
 
-    private static string GetVNPayErrorMessage(string responseCode) => responseCode switch
+    // ─────────────────────────────────────────────────────────────────────────
+    // Membership webhook handler
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private async Task<SePayWebhookResponse> HandleMembershipWebhookAsync(
+        SePayWebhookPayload payload,
+        string rawContent,
+        CancellationToken cancellationToken = default)
     {
-        "07" => "Trừ tiền thành công nhưng giao dịch bị nghi ngờ gian lận.",
-        "09" => "Thẻ/Tài khoản chưa đăng ký dịch vụ Internet Banking.",
-        "10" => "Xác thực thông tin thẻ/tài khoản quá 3 lần.",
-        "11" => "Đã hết hạn chờ thanh toán.",
-        "12" => "Thẻ/Tài khoản bị khóa.",
-        "13" => "Sai mật khẩu OTP.",
-        "24" => "Giao dịch bị hủy.",
-        "51" => "Tài khoản không đủ số dư.",
-        "65" => "Tài khoản vượt quá hạn mức giao dịch trong ngày.",
-        "75" => "Ngân hàng thanh toán đang bảo trì.",
-        "79" => "Sai mật khẩu quá số lần quy định.",
-        _    => $"Thanh toán thất bại (mã lỗi: {responseCode})."
-    };
+        // Idempotency check
+        var alreadyProcessed = _context.Payments
+            .Any(p => p.TransactionCode == payload.Id.ToString());
+        if (alreadyProcessed)
+            return new SePayWebhookResponse { Success = true, Message = "Already processed." };
+
+        // Tìm subscription đang PENDING_PAYMENT khớp mã MEM
+        // Mã format: MEM + 8 ký tự đầu subscriptionId (N format)
+        var upper = rawContent.ToUpperInvariant();
+        var memIdx = upper.IndexOf("MEM", StringComparison.Ordinal);
+        if (memIdx < 0 || upper.Length < memIdx + 11)
+            return new SePayWebhookResponse { Success = true, Message = "Invalid MEM code." };
+
+        var memCode = upper.Substring(memIdx, 11); // MEM + 8 chars
+
+        // Tìm subscription có ID bắt đầu bằng 8 ký tự đó
+        var shortId = memCode[3..]; // 8 ký tự hex
+        var subscription = await _context.UserSubscriptions
+            .Where(s => s.Status == SubscriptionStatus.PENDING)
+            .FirstOrDefaultAsync(s =>
+                s.Id.ToString("N").ToUpper().StartsWith(shortId), cancellationToken);
+
+        if (subscription is null)
+        {
+            _logger.LogInformation("SePay webhook id={Id}: no subscription for MEM code '{Code}'",
+                payload.Id, memCode);
+            return new SePayWebhookResponse { Success = true, Message = "No subscription matched." };
+        }
+
+        // Activate subscription
+        try
+        {
+            await _membershipService.ActivateSubscriptionAsync(subscription.Id, cancellationToken);
+
+            _context.Payments.Add(new Payment
+            {
+                Id              = Guid.NewGuid(),
+                BookingId       = Guid.Empty, // không có booking
+                UserId          = subscription.UserId,
+                Amount          = payload.TransferAmount,
+                Method          = PaymentMethod.BANK_TRANSFER,
+                Status          = PaymentTransactionStatus.SUCCESS,
+                TransactionCode = payload.Id.ToString(),
+                PaidAt          = DateTime.UtcNow,
+                CreatedAt       = DateTime.UtcNow,
+                UpdatedAt       = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "SePay webhook id={Id}: subscription {SubId} ACTIVATED. Amount={Amount}",
+                payload.Id, subscription.Id, payload.TransferAmount);
+
+            return new SePayWebhookResponse { Success = true, Message = "Subscription activated." };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SePay webhook id={Id}: error activating subscription {SubId}",
+                payload.Id, subscription.Id);
+            throw;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Private helpers
+    // ─────────────────────────────────────────────────────────────────────────
 
     private Guid GetCurrentUserIdOrThrow()
     {
