@@ -15,7 +15,15 @@ import {
   MessageSquare,
   Building2,
   ShieldCheck,
+  Loader2,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -172,6 +180,8 @@ export default function PaymentPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [sepayData, setSepayData] = useState<any>(null);
+  const [pollingBookingId, setPollingBookingId] = useState<string | null>(null);
 
   // ── Read draft from sessionStorage ──────────────────────────────────────
   useEffect(() => {
@@ -199,6 +209,63 @@ export default function PaymentPage() {
       setIsLoaded(true);
     }
   }, []);
+
+  // ── Polling SePay payment status ──────────────────────────────────────────
+  useEffect(() => {
+    if (!pollingBookingId || !sepayData) return;
+
+    let intervalId: NodeJS.Timeout;
+    let isCancelled = false;
+
+    const checkStatus = async () => {
+      try {
+        const token = getStoredToken();
+        if (!token) return;
+
+        const res = await apiFetch<ApiResponse<any>>(`/my/bookings/${pollingBookingId}`, { token });
+        
+        // Log để debug xem API trả về status gì
+        console.log("Polling booking status:", res);
+
+        if (res.success && res.data) {
+          const booking = res.data.data || res.data;
+          
+          // BE dùng Enum dạng số: PAID = 2, CONFIRMED = 2
+          const isPaid = booking?.paymentStatus === "PAID" || booking?.paymentStatus === 2;
+          const isConfirmed = booking?.status === "CONFIRMED" || booking?.status === 2;
+
+          if (isPaid || isConfirmed) {
+            if (isCancelled) return;
+            clearInterval(intervalId);
+
+            // Setup confirmation data and redirect
+            if (draft) {
+              const confirmation: BookingConfirmation = {
+                ...draft,
+                bookingId: pollingBookingId,
+                paymentMethod: "SEPAY",
+                status: "CONFIRMED",
+                paymentStatus: "PAID",
+                createdAt: new Date().toISOString(),
+              };
+              sessionStorage.setItem(BOOKING_CONFIRMATION_KEY, JSON.stringify(confirmation));
+              router.push("/booking/success");
+            }
+          }
+        }
+      } catch (err) {
+        // ignore polling errors
+      }
+    };
+
+    // Poll every 3 seconds
+    intervalId = setInterval(checkStatus, 3000);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [pollingBookingId, sepayData, draft, router]);
 
   // ── Confirm handler ──────────────────────────────────────────────────────
   async function handleConfirm() {
@@ -232,21 +299,37 @@ export default function PaymentPage() {
 
       const bookingId = createRes.data.id;
 
-      // 2. Tích hợp thanh toán VNPay thực tế nếu chọn VNPay
-      if (selectedMethod === "VNPAY") {
-        const payRes = await apiFetch<ApiResponse<any>>(`/my/bookings/${bookingId}/pay/vnpay`, {
+      // 2. Tích hợp thanh toán SePay
+      if (selectedMethod === "SEPAY") {
+        const payRes = await apiFetch<ApiResponse<any>>(`/my/bookings/${bookingId}/pay/sepay`, {
           method: "POST",
           token,
         });
 
-        if (payRes.success && payRes.data?.data?.paymentUrl) {
-          // Redirect user sang cổng thanh toán VNPay
-          // Store booking ID for callback page to fetch status
-          sessionStorage.setItem("MATCHOP_LAST_BOOKING_ID", bookingId);
-          window.location.href = payRes.data.data.paymentUrl;
+        // Tìm link ảnh QR trong response. Backend có thể trả trực tiếp string hoặc object.
+        let qrUrl = null;
+        if (typeof payRes.data === "string") {
+          qrUrl = payRes.data;
+        } else if (payRes.data?.qrImageUrl) { // <-- Lấy đúng trường theo JSON bạn gửi
+          qrUrl = payRes.data.qrImageUrl;
+        } else if (payRes.data?.data?.qrImageUrl) {
+          qrUrl = payRes.data.data.qrImageUrl;
+        } else if (payRes.data?.paymentUrl) {
+          qrUrl = payRes.data.paymentUrl;
+        } else if (payRes.data?.qrCodeUrl) {
+          qrUrl = payRes.data.qrCodeUrl;
+        }
+
+        if (payRes.success && qrUrl) {
+          // Lưu toàn bộ data để lỡ ảnh lỗi còn có thông tin text
+          setSepayData(payRes.data?.data || payRes.data);
+          setPollingBookingId(bookingId);
+          setIsConfirming(false); // Dừng trạng thái loading của nút
           return;
         } else {
-          throw new Error(payRes.message || "Không thể khởi tạo thanh toán VNPay.");
+          // In ra chi tiết cục data trả về để debug nếu vẫn lỗi
+          const debugData = JSON.stringify(payRes.data);
+          throw new Error(`BE trả về thành công nhưng FE không tìm thấy link QR. Data BE: ${debugData}`);
         }
       }
 
@@ -259,17 +342,6 @@ export default function PaymentPage() {
 
         if (!payRes.success) {
           throw new Error(payRes.message || "Không thể xác nhận thanh toán tiền mặt.");
-        }
-      } else if (selectedMethod === "MOCK") {
-        // 4. Mock payment cho testing
-        const payRes = await apiFetch<ApiResponse<any>>(`/my/bookings/${bookingId}/pay/mock`, {
-          method: "POST",
-          token,
-          body: JSON.stringify({ transactionCode: `MOCK-${Date.now()}` }),
-        });
-
-        if (!payRes.success) {
-          throw new Error(payRes.message || "Thanh toán không thành công.");
         }
       }
 
@@ -531,6 +603,51 @@ export default function PaymentPage() {
           </div>
         </div>
       </div>
+
+      {/* ── QR Code Modal cho SePay ── */}
+      <Dialog open={!!sepayData} onOpenChange={(open) => {
+        if (!open) {
+           setSepayData(null);
+           setPollingBookingId(null);
+           router.push("/bookings");
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Thanh toán qua SePay</DialogTitle>
+            <DialogDescription>
+              Vui lòng sử dụng ứng dụng ngân hàng để quét mã QR bên dưới.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center space-y-4 py-4">
+            {sepayData?.qrImageUrl && (
+              <div className="rounded-xl overflow-hidden border border-white/10 bg-white p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={sepayData.qrImageUrl} alt="Mã QR thanh toán" className="w-64 h-64 object-contain" />
+              </div>
+            )}
+            
+            {/* Hiển thị thông tin chuyển khoản dạng text dự phòng */}
+            {sepayData && (
+              <div className="w-full bg-slate-900 rounded-lg p-3 text-sm space-y-1">
+                <div className="flex justify-between"><span className="text-slate-400">Ngân hàng:</span> <span className="font-medium text-white">{sepayData.bankName || "Đang tải"}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Chủ TK:</span> <span className="font-medium text-white">{sepayData.accountName || "Đang tải"}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Số TK:</span> <span className="font-bold text-[#86D232]">{sepayData.accountNumber || "Đang tải"}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Số tiền:</span> <span className="font-bold text-[#FF8000]">{formatCurrency(sepayData.amount || draft?.totalPrice || 0)}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Nội dung:</span> <span className="font-mono text-white">{sepayData.paymentContent || "Đang tải"}</span></div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 text-sm text-[#FF8000]">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Đang chờ xác nhận thanh toán...
+            </div>
+            <p className="text-center text-xs text-slate-500 mt-2">
+              Trang web sẽ tự động chuyển hướng khi giao dịch thành công.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

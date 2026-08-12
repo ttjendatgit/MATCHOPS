@@ -20,10 +20,10 @@ const ICON_CONFIG: Record<
     iconColor: "text-pink-400",
     iconBg: "bg-pink-500/10 border border-pink-800/30",
   },
-  VNPAY: {
-    icon: CreditCard,
-    iconColor: "text-violet-400",
-    iconBg: "bg-violet-500/10 border border-violet-800/30",
+  SEPAY: {
+    icon: Building2,
+    iconColor: "text-blue-400",
+    iconBg: "bg-blue-500/10 border border-blue-800/30",
   },
   CASH: {
     icon: Banknote,

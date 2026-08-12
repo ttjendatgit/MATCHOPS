@@ -14,7 +14,7 @@ interface BookedSlot {
 
 // ─── Payment ──────────────────────────────────────────────────────────────────
 
-export type PaymentMethod = "BANK_TRANSFER" | "MOMO" | "VNPAY" | "CASH";
+export type PaymentMethod = "BANK_TRANSFER" | "MOMO" | "VNPAY" | "CASH" | "SEPAY";
 
 export interface PaymentMethodOption {
   id: PaymentMethod;
@@ -466,27 +466,20 @@ export const MOCK_MY_BOOKINGS: Booking[] = [
 // Chỉ bao gồm các payment methods đã implement trong backend
 // VNPAY: Tích hợp cổng thanh toán VNPay (đã implement)
 // CASH: Thanh toán tiền mặt tại sân – booking xác nhận ngay, không cần cọc (đã implement)
-// MOCK: Mock payment cho testing (đã implement)
 // BANK_TRANSFER, MOMO: Chưa implement trong backend
 
 export const MOCK_PAYMENT_METHODS: PaymentMethodOption[] = [
   {
-    id: "VNPAY",
-    label: "VNPay",
-    description: "Cổng thanh toán VNPay – hỗ trợ thẻ ATM, VISA, Mastercard",
-    iconName: "CreditCard",
+    id: "SEPAY",
+    label: "Chuyển khoản (SePay)",
+    description: "Chuyển khoản ngân hàng tự động qua SePay",
+    iconName: "QrCode",
   },
   {
     id: "CASH",
     label: "Tiền mặt tại sân",
     description: "Đặt sân trước, thanh toán tiền mặt khi đến chơi",
     iconName: "Banknote",
-  },
-  {
-    id: "MOCK",
-    label: "Thanh toán test",
-    description: "Dùng để test nhanh (không cần thanh toán thực)",
-    iconName: "Wallet",
   },
 ];
 
