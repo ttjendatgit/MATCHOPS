@@ -290,12 +290,14 @@ public class PaymentService : IPaymentService
 
         var memCode = upper.Substring(memIdx, 11); // MEM + 8 chars
 
-        // Tìm subscription có ID bắt đầu bằng 8 ký tự đó
         var shortId = memCode[3..]; // 8 ký tự hex
-        var subscription = await _context.UserSubscriptions
+
+        var pendingSubscriptions = await _context.UserSubscriptions
             .Where(s => s.Status == SubscriptionStatus.PENDING)
-            .FirstOrDefaultAsync(s =>
-                s.Id.ToString("N").ToUpper().StartsWith(shortId), cancellationToken);
+            .ToListAsync(cancellationToken);
+
+        var subscription = pendingSubscriptions
+            .FirstOrDefault(s => s.Id.ToString("N").StartsWith(shortId, StringComparison.OrdinalIgnoreCase));
 
         if (subscription is null)
         {
@@ -361,10 +363,12 @@ public class PaymentService : IPaymentService
         var code = upper.Substring(idx, 13); // COACH + 8 chars
         var shortId = code[5..]; // 8 chars after COACH
 
-        var session = await _context.CoachSessions
+        var pendingSessions = await _context.CoachSessions
             .Where(s => s.Status == CoachSessionStatus.AWAITING_PAYMENT)
-            .FirstOrDefaultAsync(s =>
-                s.Id.ToString("N").ToUpper().StartsWith(shortId), cancellationToken);
+            .ToListAsync(cancellationToken);
+
+        var session = pendingSessions
+            .FirstOrDefault(s => s.Id.ToString("N").StartsWith(shortId, StringComparison.OrdinalIgnoreCase));
 
         if (session is null)
         {
