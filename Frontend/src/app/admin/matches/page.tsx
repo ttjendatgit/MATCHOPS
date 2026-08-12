@@ -182,7 +182,7 @@ export default function AdminMatchesPage() {
     if (!token) return;
     try {
       const res = await apiFetch<ApiResponse<MatchStatisticsDto>>("/admin/matches/statistics", { token });
-      if (res.data?.data) setStatistics(res.data.data);
+      if (res.data) setStatistics(res.data);
     } catch (err) {
       console.error(err);
     }

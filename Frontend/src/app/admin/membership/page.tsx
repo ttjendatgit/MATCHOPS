@@ -92,9 +92,9 @@ export default function AdminMembershipPage() {
         apiFetch<ApiResponse<MembershipStatisticsDto>>("/admin/membership/statistics", { token }),
       ]);
 
-      if (subRes.data?.data) setSubscriptions(subRes.data.data);
-      if (plansRes.data?.data) setPlans(plansRes.data.data);
-      if (statsRes.data?.data) setStats(statsRes.data.data);
+      if (subRes.data) setSubscriptions(subRes.data);
+      if (plansRes.data) setPlans(plansRes.data);
+      if (statsRes.data) setStats(statsRes.data);
     } catch (err) {
       console.error("Failed to load membership data:", err);
     } finally {

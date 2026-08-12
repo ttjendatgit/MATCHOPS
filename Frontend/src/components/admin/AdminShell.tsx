@@ -115,7 +115,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
       {/* Sidebar */}
       <AdminSidebar
-        user={user}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />

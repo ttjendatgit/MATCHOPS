@@ -66,13 +66,12 @@ function decodeTokenRole(token: string | null): string | null {
 // Every href is now unique, so key={link.href} will also be unique.
 
 const navLinks = [
-  { href: "/", label: "Trang chủ", exact: true },
+  { href: "/", label: "Trang", exact: true },
   { href: "/venues", label: "Sân thể thao", exact: false },
   { href: "/coach", label: "Huấn luyện viên", exact: false },
-  { href: "/match", label: "Ghép đối", exact: false },
-  { href: "/match/rooms", label: "Phòng chờ", exact: false },
-  { href: "/ai-chat", label: "AI Trợ lý", exact: false },
-  { href: "/pricing", label: "Gói thành viên", exact: false },
+  { href: "/match", label: "Ghép", exact: false },
+  { href: "/ai-chat", label: "AI", exact: false },
+  { href: "/pricing", label: "Gói", exact: false },
 ] as const;
 
 function checkActive(pathname: string, href: string, exact: boolean) {
@@ -117,19 +116,19 @@ function NavLink({
       href={href}
       onClick={onClick}
       className={cn(
-        "relative px-3.5 py-2 text-sm font-medium rounded-full",
+        "relative px-3 py-2 text-sm font-medium rounded-full",
         "group overflow-hidden transition-all duration-200",
         active
           ? "bg-[#FF8000]/14 text-[#FF8000] border border-[#FF8000]/32 shadow-sm shadow-[#FF8000]/18"
           : "border border-transparent text-slate-300 hover:text-white hover:bg-white/[0.07]"
       )}
     >
-      <span className="relative block overflow-hidden h-5 leading-5">
-        <span className="block motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:-translate-y-full">
+      <span className="relative block overflow-hidden h-5 leading-5 whitespace-nowrap">
+        <span className="block whitespace-nowrap motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:-translate-y-full">
           {label}
         </span>
 
-        <span className="absolute top-full left-0 block text-white motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:-translate-y-full">
+        <span className="absolute top-full left-0 block whitespace-nowrap text-white motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:-translate-y-full">
           {label}
         </span>
       </span>
@@ -482,11 +481,11 @@ export function PublicNavbar() {
         </div>
 
         {/* ── Desktop 3-col grid ── */}
-        <div className="hidden md:grid md:grid-cols-[1fr_auto_1fr] items-center w-full gap-x-8">
+        <div className="hidden md:grid md:grid-cols-[1fr_auto_1fr] items-center w-full gap-x-4">
 
           {/* Col 1 — primary nav links */}
           <nav
-            className="flex items-center gap-1"
+            className="flex items-center gap-0.5"
             aria-label="Primary navigation"
           >
             {navLinks.map((link) => (

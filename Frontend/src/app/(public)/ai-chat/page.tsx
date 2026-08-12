@@ -55,6 +55,13 @@ export default function AiChatPage() {
     }
   }, [router, fetchConversations]);
 
+  // Guard against the page opening already scrolled down (e.g. the
+  // internal messages container's own scroll bubbling to the window).
+  // The chat UI is a fixed-height view starting right below the navbar.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
+
   // Handle sending message
   const handleSendMessage = async () => {
     const content = input.trim();

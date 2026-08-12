@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import {
   ChevronLeft,
   Star,
@@ -179,6 +179,25 @@ function PageSkeleton() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function MySubscriptionPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-4xl px-4 py-12">
+          <div className="mb-8 space-y-3">
+            <div className="h-4 w-32 animate-pulse rounded bg-[#141414]" />
+            <div className="h-8 w-48 animate-pulse rounded-lg bg-[#141414]" />
+            <div className="h-4 w-80 animate-pulse rounded bg-[#141414]" />
+          </div>
+          <PageSkeleton />
+        </div>
+      }
+    >
+      <MySubscriptionContent />
+    </Suspense>
+  );
+}
+
+function MySubscriptionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 

@@ -95,8 +95,8 @@ export default function AdminSettingsPage() {
         { token }
       );
 
-      if (res.success && res.data?.data?.subscriptions) {
-        const { subscriptions } = res.data.data;
+      if (res.success && res.data?.subscriptions) {
+        const { subscriptions } = res.data;
 
         const columns = [
           { key: "userFullName" as keyof AdminSubscriptionDto, header: "Họ tên" },
@@ -145,8 +145,8 @@ export default function AdminSettingsPage() {
         { token }
       );
 
-      if (res.success && res.data?.data?.bookings) {
-        const { bookings, totalBookings, completedBookings, totalRevenue, completedRevenue } = res.data.data;
+      if (res.success && res.data?.bookings) {
+        const { bookings, totalBookings, completedBookings, totalRevenue, completedRevenue } = res.data;
 
         const columns = [
           { key: "id" as keyof typeof bookings[0], header: "Mã đơn" },
@@ -196,8 +196,8 @@ export default function AdminSettingsPage() {
         { token }
       );
 
-      if (res.success && res.data?.data) {
-        const users = res.data.data;
+      if (res.success && res.data) {
+        const users = res.data;
 
         const columns = [
           { key: "id" as keyof UserDto, header: "ID" },

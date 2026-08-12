@@ -120,9 +120,18 @@ export function useAiChat() {
     }
   }, [currentConversationId, reportAiDebug]);
 
-  // Scroll to bottom
+  // Scroll to bottom — scroll only the messages container itself
+  // (messagesEndRef's parent), never the document/window. A plain
+  // `scrollIntoView()` can bubble the scroll up to the page when the
+  // container's layout hasn't fully settled yet, which was dragging
+  // the whole /ai-chat page down to the footer on mount.
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = messagesEndRef.current?.parentElement;
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
   }, []);
 
   // Send message
