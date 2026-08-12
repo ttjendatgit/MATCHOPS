@@ -35,13 +35,8 @@ public class CoachSessionsController : ControllerBase
         return Ok(ApiResponse<List<CoachSessionResponseDto>>.Ok(result));
     }
 
-    [HttpPost("sessions/{sessionId:guid}/payment")]
-    public async Task<IActionResult> PaySession(Guid sessionId, PayCoachSessionRequestDto dto)
-    {
-        var userId = GetCurrentUserId();
-        var result = await _sessionService.PayAsync(userId, sessionId, dto);
-        return Ok(ApiResponse<CoachSessionResponseDto>.Ok(result, "Thanh toán demo thành công."));
-    }
+    // Note: Thanh toán Coach Session đã được chuyển sang SePay tại PaymentsController
+    // POST /api/my/coach-sessions/{sessionId:guid}/pay/sepay
 
     // ── Coach (own profile) ──────────────────────────────────────────────────
 

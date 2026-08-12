@@ -69,9 +69,11 @@ function formatPrice(amount: number | null, currency: string): string {
 
 function SessionCard({
   session,
+  isPaying,
   onPay,
 }: {
   session: CoachSessionResponse;
+  isPaying: boolean;
   onPay: (session: CoachSessionResponse) => void;
 }) {
   const meta = STATUS_META[session.status];
@@ -135,10 +137,10 @@ function SessionCard({
               size="sm"
               className="gap-1.5 bg-[#FF8000] text-white hover:bg-[#FF8000]/90"
               onClick={() => onPay(session)}
-              disabled={session.requiresManualPricing}
+              disabled={session.requiresManualPricing || isPaying}
             >
-              <CreditCard className="h-3.5 w-3.5" aria-hidden />
-              Thanh toán demo buổi huấn luyện
+              {isPaying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CreditCard className="h-3.5 w-3.5" />}
+              {isPaying ? "Đang tải..." : "Thanh toán"}
             </Button>
           )}
         </div>
@@ -160,8 +162,12 @@ export default function CoachSessionsPage() {
   const [mode, setMode] = useState<"loading" | "ready" | "error">("loading");
   const [pageError, setPageError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<CoachSessionResponse[]>([]);
-  const [payTarget, setPayTarget] = useState<CoachSessionResponse | null>(null);
-  const [paying, setPaying] = useState(false);
+  
+  // State QR
+  const [sepayData, setSepayData] = useState<any>(null);
+  const [pollingSessionId, setPollingSessionId] = useState<string | null>(null);
+  const [payingSessionId, setPayingSessionId] = useState<string | null>(null); // Để xoay loading đúng session
+  
   const [successSession, setSuccessSession] = useState<CoachSessionResponse | null>(null);
 
   const fetchSessions = useCallback(async () => {
@@ -197,27 +203,99 @@ export default function CoachSessionsPage() {
     fetchSessions();
   }, [router, fetchSessions]);
 
-  async function handleConfirmPay() {
-    if (!payTarget) return;
+  useEffect(() => {
+    if (!pollingSessionId || !sepayData) return;
+
+    let intervalId: NodeJS.Timeout;
+    let isCancelled = false;
+
+    const checkStatus = async () => {
+      try {
+        const token = getStoredToken();
+        if (!token) return;
+
+        // Gọi API check trạng thái từng session cụ thể theo BE hướng dẫn
+        const res = await apiFetch<ApiResponse<CoachSessionResponse>>(`/coaches/sessions/${pollingSessionId}`, { token });
+        
+        console.log("Polling coach session status:", res);
+
+        if (res.success && res.data) {
+          // Phòng trường hợp backend bọc thêm 1 lớp data bên trong
+          const currentSession = (res.data as any).data || res.data;
+          
+          if (currentSession) {
+            const pStatus = String(currentSession.paymentStatus).toUpperCase().trim();
+            const sStatus = String(currentSession.status).toUpperCase().trim();
+
+            const isPaid = pStatus === "PAID" || pStatus === "2";
+            const isConfirmed = sStatus === "CONFIRMED" || sStatus === "2" || sStatus === "COMPLETED" || sStatus === "PAID";
+
+            if (isPaid || isConfirmed) {
+              if (isCancelled) return;
+              clearInterval(intervalId);
+              
+              // Cập nhật lại UI:
+              setSepayData(null);
+              setPollingSessionId(null);
+              setSuccessSession(currentSession);
+              // Lấy lại toàn bộ danh sách để reload trang
+              await fetchSessions();
+            }
+          }
+        }
+      } catch (err) {
+        // ignore polling errors
+      }
+    };
+
+    intervalId = setInterval(checkStatus, 3000);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [pollingSessionId, sepayData]);
+
+  async function handlePaySession(session: CoachSessionResponse) {
     const token = getStoredToken();
-    setPaying(true);
+    if (!token) return;
+
+    setPayingSessionId(session.id);
     try {
-      const res = await apiFetch<ApiResponse<CoachSessionResponse>>(
-        `/coaches/sessions/${payTarget.id}/payment`,
-        { method: "POST", token, body: JSON.stringify({}) }
+      const res = await apiFetch<ApiResponse<any>>(
+        `/my/coach-sessions/${session.id}/pay/sepay`,
+        { method: "POST", token }
       );
-      if (res.success && res.data) {
-        setPayTarget(null);
-        setSuccessSession(res.data);
-        await fetchSessions();
+
+      let qrUrl = null;
+      if (typeof res.data === "string") {
+        qrUrl = res.data;
+      } else if (res.data?.qrImageUrl) {
+        qrUrl = res.data.qrImageUrl;
+      } else if (res.data?.data?.qrImageUrl) {
+        qrUrl = res.data.data.qrImageUrl;
+      } else if (res.data?.paymentUrl) {
+        qrUrl = res.data.paymentUrl;
+      } else if (res.data?.qrCodeUrl) {
+        qrUrl = res.data.qrCodeUrl;
+      } else if (res.data?.url) {
+        qrUrl = res.data.url;
+      } else if (res.data?.data?.url) {
+        qrUrl = res.data.data.url;
+      }
+
+      if (res.success && qrUrl) {
+        setSepayData(res.data?.data || res.data);
+        setPollingSessionId(session.id);
       } else {
-        toast.error(res.message || "Thanh toán thất bại.");
+        const debugData = JSON.stringify(res.data);
+        throw new Error(res.message || `Lỗi: Không tìm thấy link ảnh QR. Data BE: ${debugData}`);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Thanh toán thất bại.";
       toast.error(message);
     } finally {
-      setPaying(false);
+      setPayingSessionId(null);
     }
   }
 
@@ -290,7 +368,7 @@ export default function CoachSessionsPage() {
             <section className="space-y-4">
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Sắp tới</h2>
               {upcoming.map((session) => (
-                <SessionCard key={session.id} session={session} onPay={setPayTarget} />
+                <SessionCard key={session.id} session={session} isPaying={payingSessionId === session.id} onPay={handlePaySession} />
               ))}
             </section>
           )}
@@ -298,50 +376,53 @@ export default function CoachSessionsPage() {
             <section className="space-y-4">
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Đã qua</h2>
               {past.map((session) => (
-                <SessionCard key={session.id} session={session} onPay={setPayTarget} />
+                <SessionCard key={session.id} session={session} isPaying={payingSessionId === session.id} onPay={handlePaySession} />
               ))}
             </section>
           )}
         </div>
       )}
 
-      {/* ── Payment confirmation ── */}
-      <Dialog open={payTarget !== null} onOpenChange={(open) => !open && setPayTarget(null)}>
-        <DialogContent className="max-w-sm">
+      {/* ── Payment confirmation (QR) ── */}
+      <Dialog open={!!sepayData} onOpenChange={(open) => {
+        if (!open) {
+           setSepayData(null);
+           setPollingSessionId(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Thanh toán demo buổi huấn luyện</DialogTitle>
+            <DialogTitle>Thanh toán qua SePay</DialogTitle>
             <DialogDescription>
-              Đây là thanh toán demo, chưa qua cổng thanh toán thật. Xác nhận thanh toán demo
-              buổi huấn luyện với {payTarget?.coachDisplayName}.
+              Vui lòng sử dụng ứng dụng ngân hàng để quét mã QR bên dưới.
             </DialogDescription>
           </DialogHeader>
+          <div className="flex flex-col items-center justify-center space-y-4 py-4">
+            {sepayData?.qrImageUrl && (
+              <div className="rounded-xl overflow-hidden border border-white/10 bg-white p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={sepayData.qrImageUrl} alt="Mã QR thanh toán" className="w-64 h-64 object-contain" />
+              </div>
+            )}
+            
+            {/* Hiển thị thông tin chuyển khoản dạng text dự phòng */}
+            {sepayData && (
+              <div className="w-full bg-slate-900 rounded-lg p-3 text-sm space-y-1">
+                <div className="flex justify-between"><span className="text-slate-400">Ngân hàng:</span> <span className="font-medium text-white">{sepayData.bankName || "Đang tải"}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Chủ TK:</span> <span className="font-medium text-white">{sepayData.accountName || "Đang tải"}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Số TK:</span> <span className="font-bold text-[#86D232]">{sepayData.accountNumber || "Đang tải"}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Số tiền:</span> <span className="font-bold text-[#FF8000]">{sepayData.amount ? sepayData.amount.toLocaleString("vi-VN") + " ₫" : "Đang tải"}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Nội dung:</span> <span className="font-mono text-white">{sepayData.paymentContent || "Đang tải"}</span></div>
+              </div>
+            )}
 
-          <div className="rounded-xl border border-white/[0.06] bg-slate-950/40 p-4 text-center">
-            <p className="text-xs text-slate-500">Số tiền</p>
-            <p className="mt-1 text-2xl font-black text-white">
-              {payTarget ? formatPrice(payTarget.priceAmount, payTarget.currency) : ""}
+            <div className="flex items-center gap-2 text-sm text-[#FF8000]">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Đang chờ xác nhận thanh toán...
+            </div>
+            <p className="text-center text-xs text-slate-500 mt-2">
+              Popup sẽ tự động chuyển sang trang thành công khi giao dịch hoàn tất.
             </p>
-          </div>
-
-          <div className="flex flex-col gap-2 pt-1">
-            <Button
-              type="button"
-              onClick={handleConfirmPay}
-              disabled={paying}
-              className="w-full gap-2 bg-[#FF8000] text-white hover:bg-[#FF8000]/90 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {paying ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  Đang xử lý...
-                </>
-              ) : (
-                "Xác nhận thanh toán demo"
-              )}
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => setPayTarget(null)} disabled={paying}>
-              Huỷ
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -353,12 +434,10 @@ export default function CoachSessionsPage() {
             <div className="mx-auto mb-1 flex h-14 w-14 items-center justify-center rounded-full border border-[#86D232]/30 bg-[#86D232]/10 shadow-[0_0_24px_rgba(134,210,50,0.25)]">
               <CheckCircle2 className="h-7 w-7 text-[#86D232]" aria-hidden />
             </div>
-            <DialogTitle className="text-center text-xl">Thanh toán demo thành công</DialogTitle>
+            <DialogTitle className="text-center text-xl">Thanh toán thành công</DialogTitle>
             <DialogDescription className="text-center">
-              Đây là xác nhận thanh toán demo, chưa qua cổng thanh toán thật. Buổi huấn luyện với
-              {" "}
-              {successSession?.coachDisplayName} đã được đánh dấu đã thanh toán. Hẹn gặp bạn tại
-              buổi tập!
+              Buổi huấn luyện với {successSession?.coachDisplayName} đã được thanh toán thành công!
+              Hẹn gặp bạn tại buổi tập.
             </DialogDescription>
           </DialogHeader>
           <Button type="button" className="w-full" onClick={() => setSuccessSession(null)}>

@@ -92,6 +92,59 @@ public class PaymentService : IPaymentService
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Tạo QR SePay cho Coach Session
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public async Task<CreateSePayQrResponseDto> CreateSePayQrForCoachSessionAsync(
+        Guid sessionId,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = GetCurrentUserIdOrThrow();
+
+        var session = await _context.CoachSessions
+            .FirstOrDefaultAsync(s => s.Id == sessionId && s.RequesterId == userId, cancellationToken);
+            
+        if (session is null)
+            throw new AppException(
+                ErrorCodes.CoachSessionNotFound,
+                "Không tìm thấy buổi huấn luyện của bạn.",
+                StatusCodes.Status404NotFound);
+
+        if (session.Status != CoachSessionStatus.AWAITING_PAYMENT || session.PaymentStatus != CoachSessionPaymentStatus.UNPAID)
+            throw new AppException(
+                ErrorCodes.CoachSessionPaymentNotAllowed,
+                "Buổi huấn luyện này không ở trạng thái chờ thanh toán.",
+                StatusCodes.Status400BadRequest);
+
+        if (session.PriceAmount is null || session.PriceAmount <= 0)
+            throw new AppException(
+                ErrorCodes.CoachSessionPaymentNotAllowed,
+                "Buổi huấn luyện chưa có giá thanh toán.",
+                StatusCodes.Status400BadRequest);
+
+        var bankBin       = _config["SePay:BankBin"]!;
+        var accountNumber = _config["SePay:AccountNumber"]!;
+        var accountName   = _config["SePay:AccountName"]!;
+        var bankName      = _config["SePay:BankName"]!;
+
+        var content = $"COACH{session.Id:N}"[..13].ToUpper(); // COACH + 8 chars
+        var amount = (long)Math.Round(session.PriceAmount.Value);
+
+        var qrUrl = SePayHelper.BuildVietQrUrl(bankBin, accountNumber, amount, content, accountName);
+
+        return new CreateSePayQrResponseDto
+        {
+            QrImageUrl     = qrUrl,
+            PaymentContent = content,
+            AccountNumber  = accountNumber,
+            AccountName    = accountName,
+            BankName       = bankName,
+            Amount         = session.PriceAmount.Value,
+            ExpireAt       = DateTime.UtcNow.AddMinutes(30)
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Xử lý Webhook SePay
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -117,7 +170,11 @@ public class PaymentService : IPaymentService
 
         // ── Membership payment (prefix MEM) ─────────────────────────────
         if (rawContent.Contains("MEM", StringComparison.OrdinalIgnoreCase))
-            return await HandleMembershipWebhookAsync(payload, rawContent);
+            return await HandleMembershipWebhookAsync(payload, rawContent, cancellationToken);
+
+        // ── Coach Session payment (prefix COACH) ────────────────────────
+        if (rawContent.Contains("COACH", StringComparison.OrdinalIgnoreCase))
+            return await HandleCoachSessionWebhookAsync(payload, rawContent, cancellationToken);
 
         // ── Booking payment (prefix MATCHOP) ────────────────────────────
         var paymentContent = SePayHelper.ExtractPaymentContent(rawContent);
@@ -233,12 +290,14 @@ public class PaymentService : IPaymentService
 
         var memCode = upper.Substring(memIdx, 11); // MEM + 8 chars
 
-        // Tìm subscription có ID bắt đầu bằng 8 ký tự đó
         var shortId = memCode[3..]; // 8 ký tự hex
-        var subscription = await _context.UserSubscriptions
+
+        var pendingSubscriptions = await _context.UserSubscriptions
             .Where(s => s.Status == SubscriptionStatus.PENDING)
-            .FirstOrDefaultAsync(s =>
-                s.Id.ToString("N").ToUpper().StartsWith(shortId), cancellationToken);
+            .ToListAsync(cancellationToken);
+
+        var subscription = pendingSubscriptions
+            .FirstOrDefault(s => s.Id.ToString("N").StartsWith(shortId, StringComparison.OrdinalIgnoreCase));
 
         if (subscription is null)
         {
@@ -251,21 +310,8 @@ public class PaymentService : IPaymentService
         try
         {
             await _membershipService.ActivateSubscriptionAsync(subscription.Id, cancellationToken);
-
-            _context.Payments.Add(new Payment
-            {
-                Id              = Guid.NewGuid(),
-                BookingId       = Guid.Empty, // không có booking
-                UserId          = subscription.UserId,
-                Amount          = payload.TransferAmount,
-                Method          = PaymentMethod.BANK_TRANSFER,
-                Status          = PaymentTransactionStatus.SUCCESS,
-                TransactionCode = payload.Id.ToString(),
-                PaidAt          = DateTime.UtcNow,
-                CreatedAt       = DateTime.UtcNow,
-                UpdatedAt       = DateTime.UtcNow
-            });
-            await _context.SaveChangesAsync(cancellationToken);
+            // Ghi chú: Không tạo row trong bảng Payments vì bảng Payments có FK cứng (bắt buộc) tới Bookings.
+            // Trạng thái thanh toán của membership được track riêng thông qua Status của UserSubscriptions.
 
             _logger.LogInformation(
                 "SePay webhook id={Id}: subscription {SubId} ACTIVATED. Amount={Amount}",
@@ -277,6 +323,69 @@ public class PaymentService : IPaymentService
         {
             _logger.LogError(ex, "SePay webhook id={Id}: error activating subscription {SubId}",
                 payload.Id, subscription.Id);
+            throw;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Coach Session webhook handler
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private async Task<SePayWebhookResponse> HandleCoachSessionWebhookAsync(
+        SePayWebhookPayload payload,
+        string rawContent,
+        CancellationToken cancellationToken = default)
+    {
+        // Idempotency check
+        var alreadyProcessed = _context.Payments
+            .Any(p => p.TransactionCode == payload.Id.ToString());
+        if (alreadyProcessed)
+            return new SePayWebhookResponse { Success = true, Message = "Already processed." };
+
+        var upper = rawContent.ToUpperInvariant();
+        var idx = upper.IndexOf("COACH", StringComparison.Ordinal);
+        if (idx < 0 || upper.Length < idx + 13)
+            return new SePayWebhookResponse { Success = true, Message = "Invalid COACH code." };
+
+        var code = upper.Substring(idx, 13); // COACH + 8 chars
+        var shortId = code[5..]; // 8 chars after COACH
+
+        var pendingSessions = await _context.CoachSessions
+            .Where(s => s.Status == CoachSessionStatus.AWAITING_PAYMENT)
+            .ToListAsync(cancellationToken);
+
+        var session = pendingSessions
+            .FirstOrDefault(s => s.Id.ToString("N").StartsWith(shortId, StringComparison.OrdinalIgnoreCase));
+
+        if (session is null)
+        {
+            _logger.LogInformation("SePay webhook id={Id}: no coach session for code '{Code}'",
+                payload.Id, code);
+            return new SePayWebhookResponse { Success = true, Message = "No coach session matched." };
+        }
+
+        try
+        {
+            session.PaymentStatus = CoachSessionPaymentStatus.PAID;
+            session.Status = CoachSessionStatus.PAID;
+            session.PaymentTransactionCode = payload.Id.ToString();
+            session.PaidAt = DateTime.UtcNow;
+            session.UpdatedAt = DateTime.UtcNow;
+
+            // Ghi chú: Không tạo row trong bảng Payments vì bảng Payments có FK cứng (bắt buộc) tới Bookings.
+            // Lịch sử thanh toán của Coach Session được track trực tiếp qua PaymentTransactionCode.
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "SePay webhook id={Id}: coach session {SessionId} PAID. Amount={Amount}",
+                payload.Id, session.Id, payload.TransferAmount);
+
+            return new SePayWebhookResponse { Success = true, Message = "Coach session paid." };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SePay webhook id={Id}: error paying coach session {SessionId}",
+                payload.Id, session.Id);
             throw;
         }
     }

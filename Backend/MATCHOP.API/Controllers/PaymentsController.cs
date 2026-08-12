@@ -31,6 +31,20 @@ public class PaymentsController : ControllerBase
     }
 
     /// <summary>
+    /// USER gọi API này để lấy thông tin QR SePay (VietQR) cho Coach Session.
+    /// FE hiển thị QR + hướng dẫn nội dung chuyển khoản (COACH...).
+    /// </summary>
+    [HttpPost("api/my/coach-sessions/{sessionId:guid}/pay/sepay")]
+    [Authorize(Roles = "USER,COACH")]
+    public async Task<IActionResult> CreateSePayQrForCoachSession(
+        Guid sessionId,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _paymentService.CreateSePayQrForCoachSessionAsync(sessionId, cancellationToken);
+        return Ok(ApiResponse<CreateSePayQrResponseDto>.Ok(result, "Tạo QR thanh toán thành công."));
+    }
+
+    /// <summary>
     /// SePay gọi POST về đây khi có giao dịch ngân hàng.
     /// Không cần auth JWT — SePay xác thực bằng API Key trong header Authorization.
     /// Phải trả về HTTP 200 + { "success": true } trong vòng 30 giây.
