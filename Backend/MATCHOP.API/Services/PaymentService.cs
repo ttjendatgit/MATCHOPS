@@ -310,21 +310,8 @@ public class PaymentService : IPaymentService
         try
         {
             await _membershipService.ActivateSubscriptionAsync(subscription.Id, cancellationToken);
-
-            _context.Payments.Add(new Payment
-            {
-                Id              = Guid.NewGuid(),
-                BookingId       = Guid.Empty, // không có booking
-                UserId          = subscription.UserId,
-                Amount          = payload.TransferAmount,
-                Method          = PaymentMethod.BANK_TRANSFER,
-                Status          = PaymentTransactionStatus.SUCCESS,
-                TransactionCode = payload.Id.ToString(),
-                PaidAt          = DateTime.UtcNow,
-                CreatedAt       = DateTime.UtcNow,
-                UpdatedAt       = DateTime.UtcNow
-            });
-            await _context.SaveChangesAsync(cancellationToken);
+            // Ghi chú: Không tạo row trong bảng Payments vì bảng Payments có FK cứng (bắt buộc) tới Bookings.
+            // Trạng thái thanh toán của membership được track riêng thông qua Status của UserSubscriptions.
 
             _logger.LogInformation(
                 "SePay webhook id={Id}: subscription {SubId} ACTIVATED. Amount={Amount}",
@@ -385,19 +372,8 @@ public class PaymentService : IPaymentService
             session.PaidAt = DateTime.UtcNow;
             session.UpdatedAt = DateTime.UtcNow;
 
-            _context.Payments.Add(new Payment
-            {
-                Id              = Guid.NewGuid(),
-                BookingId       = Guid.Empty, // no booking
-                UserId          = session.RequesterId,
-                Amount          = payload.TransferAmount,
-                Method          = PaymentMethod.BANK_TRANSFER,
-                Status          = PaymentTransactionStatus.SUCCESS,
-                TransactionCode = payload.Id.ToString(),
-                PaidAt          = DateTime.UtcNow,
-                CreatedAt       = DateTime.UtcNow,
-                UpdatedAt       = DateTime.UtcNow
-            });
+            // Ghi chú: Không tạo row trong bảng Payments vì bảng Payments có FK cứng (bắt buộc) tới Bookings.
+            // Lịch sử thanh toán của Coach Session được track trực tiếp qua PaymentTransactionCode.
             await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation(
