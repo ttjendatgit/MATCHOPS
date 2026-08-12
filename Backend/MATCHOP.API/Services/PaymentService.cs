@@ -37,59 +37,78 @@ public class PaymentService : IPaymentService
     // Tạo QR SePay
     // ─────────────────────────────────────────────────────────────────────────
 
-    public async Task<CreateSePayQrResponseDto> CreateSePayQrAsync(
-        Guid bookingId,
-        CancellationToken cancellationToken = default)
+   public async Task<CreateSePayQrResponseDto> CreateSePayQrAsync(
+    Guid bookingId,
+    CancellationToken cancellationToken = default)
+{
+    var userId = GetCurrentUserIdOrThrow();
+
+    var booking = await _bookingRepository.GetByIdAndUserIdAsync(bookingId, userId, cancellationToken);
+    if (booking is null)
+        throw new AppException(
+            ErrorCodes.BookingNotFound,
+            "Không tìm thấy booking của bạn.",
+            StatusCodes.Status404NotFound);
+
+    // Kiểm tra booking hết hạn
+    if (booking.Status == BookingStatus.PENDING_PAYMENT &&
+        booking.ExpireAt is not null &&
+        booking.ExpireAt <= DateTime.UtcNow)
+        throw new AppException(
+            ErrorCodes.BookingExpired,
+            "Booking đã hết hạn thanh toán. Vui lòng đặt lại.",
+            StatusCodes.Status400BadRequest);
+
+    if (booking.Status != BookingStatus.PENDING_PAYMENT)
+        throw new AppException(
+            ErrorCodes.BookingAlreadyPaid,
+            "Booking này không ở trạng thái chờ thanh toán.",
+            StatusCodes.Status400BadRequest);
+
+    // Lấy config SePay / Ngân hàng
+    var bankBin       = _config["SePay:BankBin"];
+    var accountNumber = _config["SePay:AccountNumber"];
+    var accountName   = _config["SePay:AccountName"];
+    var bankName      = _config["SePay:BankName"];
+
+    // ========== DEBUG LOG ==========
+    _logger.LogWarning("=== SePay Config Debug ===");
+    _logger.LogWarning("BankBin       = [{BankBin}]", bankBin ?? "NULL");
+    _logger.LogWarning("AccountNumber = [{AccountNumber}]", accountNumber ?? "NULL");
+    _logger.LogWarning("AccountName   = [{AccountName}]", accountName ?? "NULL");
+    _logger.LogWarning("BankName      = [{BankName}]", bankName ?? "NULL");
+    // ==============================
+
+    // Kiểm tra config
+    if (string.IsNullOrWhiteSpace(bankBin) ||
+        string.IsNullOrWhiteSpace(accountNumber) ||
+        string.IsNullOrWhiteSpace(accountName))
     {
-        var userId = GetCurrentUserIdOrThrow();
-
-        var booking = await _bookingRepository.GetByIdAndUserIdAsync(bookingId, userId, cancellationToken);
-        if (booking is null)
-            throw new AppException(
-                ErrorCodes.BookingNotFound,
-                "Không tìm thấy booking của bạn.",
-                StatusCodes.Status404NotFound);
-
-        // Kiểm tra booking hết hạn
-        if (booking.Status == BookingStatus.PENDING_PAYMENT &&
-            booking.ExpireAt is not null &&
-            booking.ExpireAt <= DateTime.UtcNow)
-            throw new AppException(
-                ErrorCodes.BookingExpired,
-                "Booking đã hết hạn thanh toán. Vui lòng đặt lại.",
-                StatusCodes.Status400BadRequest);
-
-        if (booking.Status != BookingStatus.PENDING_PAYMENT)
-            throw new AppException(
-                ErrorCodes.BookingAlreadyPaid,
-                "Booking này không ở trạng thái chờ thanh toán.",
-                StatusCodes.Status400BadRequest);
-
-        // Lấy config SePay / Ngân hàng
-        var bankBin       = _config["SePay:BankBin"]!;
-        var accountNumber = _config["SePay:AccountNumber"]!;
-        var accountName   = _config["SePay:AccountName"]!;
-        var bankName      = _config["SePay:BankName"]!;
-
-        // Nội dung CK: MATCHOP + 8 ký tự đầu bookingId
-        var content = SePayHelper.BuildPaymentContent(bookingId);
-
-        // Số tiền (VND nguyên, không nhân 100 như VNPay)
-        var amount = (long)Math.Round(booking.TotalPrice);
-
-        var qrUrl = SePayHelper.BuildVietQrUrl(bankBin, accountNumber, amount, content, accountName);
-
-        return new CreateSePayQrResponseDto
-        {
-            QrImageUrl     = qrUrl,
-            PaymentContent = content,
-            AccountNumber  = accountNumber,
-            AccountName    = accountName,
-            BankName       = bankName,
-            Amount         = booking.TotalPrice,
-            ExpireAt       = booking.ExpireAt ?? DateTime.UtcNow.AddMinutes(10)
-        };
+        throw new AppException(
+            ErrorCodes.InternalServerError,
+            "Cấu hình SePay chưa đầy đủ (BankBin / AccountNumber / AccountName).",
+            StatusCodes.Status500InternalServerError);
     }
+
+    // Nội dung CK: MATCHOP + 8 ký tự đầu bookingId
+    var content = SePayHelper.BuildPaymentContent(bookingId);
+
+    // Số tiền (VND nguyên, không nhân 100 như VNPay)
+    var amount = (long)Math.Round(booking.TotalPrice);
+
+    var qrUrl = SePayHelper.BuildVietQrUrl(bankBin, accountNumber, amount, content, accountName);
+
+    return new CreateSePayQrResponseDto
+    {
+        QrImageUrl     = qrUrl,
+        PaymentContent = content,
+        AccountNumber  = accountNumber,
+        AccountName    = accountName,
+        BankName       = bankName,
+        Amount         = booking.TotalPrice,
+        ExpireAt       = booking.ExpireAt ?? DateTime.UtcNow.AddMinutes(10)
+    };
+}
 
     // ─────────────────────────────────────────────────────────────────────────
     // Tạo QR SePay cho Coach Session
