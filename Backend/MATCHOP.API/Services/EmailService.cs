@@ -7,14 +7,25 @@ namespace MATCHOP.API.Services
     public class EmailService : IEmailService
     {
         private readonly IConfiguration _configuration;
+        private readonly ILogger<EmailService> _logger;
 
-        public EmailService(IConfiguration configuration)
+        public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
         {
             _configuration = configuration;
+            _logger = logger;
         }
 
         public async Task SendEmailVerificationAsync(string toEmail, string fullName, string verificationUrl)
         {
+            var enableSending = _configuration.GetValue("Email:EnableSending", true);
+            if (!enableSending)
+            {
+                _logger.LogWarning(
+                    "Email:EnableSending=false — skipped verification email to {Email}. Url={Url}",
+                    toEmail, verificationUrl);
+                return;
+            }
+
             var host = _configuration["Smtp:Host"];
             var port = int.Parse(_configuration["Smtp:Port"] ?? "587");
             var username = _configuration["Smtp:Username"];
@@ -74,6 +85,8 @@ namespace MATCHOP.API.Services
             await client.AuthenticateAsync(username, password);
             await client.SendAsync(message);
             await client.DisconnectAsync(true);
+
+            _logger.LogInformation("Verification email sent to {Email}", toEmail);
         }
     }
 }

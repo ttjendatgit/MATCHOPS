@@ -139,6 +139,7 @@ function VerifyEmailContent() {
   const params = useSearchParams();
   const email  = params.get("email") ?? "";
   const token  = params.get("token") ?? "";
+  const emailFailed = params.get("emailFailed") === "1";
 
   const [pageState,     setPageState]     = useState<PageState>(
     email && token ? "checking" : "waiting",
@@ -308,6 +309,16 @@ function VerifyEmailContent() {
         <span className="font-semibold text-white">{email}</span>.{" "}
         Vui lòng kiểm tra hộp thư và nhấn vào đường link để kích hoạt tài khoản.
       </p>
+
+      {emailFailed && (
+        <div
+          className="flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-950/30 px-4 py-3 text-sm text-amber-300 text-left"
+          role="alert"
+        >
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
+          Tài khoản đã được tạo nhưng email xác thực chưa gửi được. Hãy bấm &quot;Gửi lại email xác thực&quot; bên dưới.
+        </div>
+      )}
 
       {resendDone  && <ResendSuccess />}
       {resendError && <ResendError msg={resendError} />}

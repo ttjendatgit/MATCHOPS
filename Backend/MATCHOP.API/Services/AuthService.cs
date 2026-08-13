@@ -14,17 +14,23 @@ namespace MATCHOP.API.Services
         private readonly IEmailService _emailService;
         private readonly IJwtService _jwtService;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<AuthService> _logger;
+        private readonly IHostEnvironment _environment;
 
         public AuthService(
             ApplicationDbContext context,
             IEmailService emailService,
             IJwtService jwtService,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ILogger<AuthService> logger,
+            IHostEnvironment environment)
         {
             _context = context;
             _emailService = emailService;
             _jwtService = jwtService;
             _configuration = configuration;
+            _logger = logger;
+            _environment = environment;
         }
 
         public async Task RegisterAsync(RegisterRequestDto dto, CancellationToken cancellationToken = default)
@@ -69,23 +75,24 @@ namespace MATCHOP.API.Services
             _context.Users.Add(user);
             await _context.SaveChangesAsync(cancellationToken);
 
-            var frontendBaseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:3000";
-            var verificationUrl =
-                $"{frontendBaseUrl}/verify-email?email={Uri.EscapeDataString(user.Email)}&token={Uri.EscapeDataString(token)}";
+            var verificationUrl = BuildVerificationUrl(user.Email, token);
 
-            // ✅ Gửi email không chờ, trả về ngay
-            _ = Task.Run(async () =>
+            try
             {
-                try
-                {
-                    await _emailService.SendEmailVerificationAsync(user.Email, user.FullName, verificationUrl);
-                }
-                catch (Exception ex)
-                {
-                    // Log lỗi nhưng không crash app
-                    Console.WriteLine($"Email failed: {ex.Message}");
-                }
-            });
+                await _emailService.SendEmailVerificationAsync(user.Email, user.FullName, verificationUrl);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to send verification email to {Email}. UserId={UserId}",
+                    user.Email, user.Id);
+
+                throw new AppException(
+                    "EMAIL_SEND_FAILED",
+                    "Tài khoản đã được tạo nhưng không gửi được email xác thực. " +
+                    "Vui lòng vào trang xác thực email và chọn \"Gửi lại email xác thực\", hoặc liên hệ hỗ trợ.",
+                    StatusCodes.Status503ServiceUnavailable);
+            }
         }
 
         public async Task VerifyEmailAsync(VerifyEmailRequestDto dto, CancellationToken cancellationToken = default)
@@ -151,10 +158,7 @@ namespace MATCHOP.API.Services
 
             await _context.SaveChangesAsync(cancellationToken);
 
-            var frontendBaseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:3000";
-            var verificationUrl =
-                $"{frontendBaseUrl}/verify-email?email={Uri.EscapeDataString(user.Email)}&token={Uri.EscapeDataString(token)}";
-
+            var verificationUrl = BuildVerificationUrl(user.Email, token);
             await _emailService.SendEmailVerificationAsync(user.Email, user.FullName, verificationUrl);
         }
 
@@ -312,6 +316,21 @@ namespace MATCHOP.API.Services
                 EmailConfirmed = user.EmailConfirmed,
                 AuthProvider = user.AuthProvider
             };
+        }
+
+        private string BuildVerificationUrl(string email, string token)
+        {
+            var frontendBaseUrl = (_configuration["Frontend:BaseUrl"] ?? "http://localhost:3000").TrimEnd('/');
+
+            if (_environment.IsProduction() &&
+                frontendBaseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning(
+                    "Frontend:BaseUrl is still localhost in Production. Verification links in email will be broken.");
+            }
+
+            return
+                $"{frontendBaseUrl}/verify-email?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
         }
     }
 }

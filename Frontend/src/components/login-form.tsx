@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowRight, CheckCircle2, Lock, Mail, Phone, User } from "lucide-react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
 import { setAuthData, isAuthenticated } from "@/lib/auth";
 import type { ApiWrapper, AuthApiData, User as AuthUser } from "@/types/auth";
 
@@ -459,6 +459,12 @@ export function RegisterForm() {
       });
       router.push(`/verify-email?email=${encodeURIComponent(emailTrimmed)}`);
     } catch (err) {
+      if (err instanceof ApiError && err.status === 503) {
+        router.push(
+          `/verify-email?email=${encodeURIComponent(emailTrimmed)}&emailFailed=1`,
+        );
+        return;
+      }
       setError(err instanceof Error ? err.message : "Đăng ký thất bại. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
