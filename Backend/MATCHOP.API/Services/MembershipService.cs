@@ -132,73 +132,104 @@ public class MembershipService : IMembershipService
     // ── Create Subscription ───────────────────────────────────────────────────
 
     public async Task<UserSubscription> CreateSubscriptionAsync(
-        Guid userId,
-        Guid planId,
-        string billingCycle,
-        CancellationToken cancellationToken = default)
+    Guid userId,
+    Guid planId,
+    string billingCycle,
+    CancellationToken cancellationToken = default)
+{
+    var user = await _context.Users
+        .AsNoTracking()
+        .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
+    if (user is null)
+        throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);
+
+    var plan = await _context.MembershipPlans
+        .AsNoTracking()
+        .FirstOrDefaultAsync(p => p.Id == planId && p.IsActive, cancellationToken);
+
+    if (plan is null)
+        throw new AppException(ErrorCodes.ValidationError, "Không tìm thấy gói membership.", StatusCodes.Status404NotFound);
+
+    if (plan.TargetRole != user.Role)
+        throw new AppException(
+            ErrorCodes.ValidationError,
+            $"Gói này chỉ dành cho {(plan.TargetRole == UserRole.OWNER ? "chủ sân" : "người chơi")}.",
+            StatusCodes.Status400BadRequest);
+
+    if (plan.Tier == MembershipTier.FREE)
+        throw new AppException(
+            ErrorCodes.ValidationError,
+            "Gói miễn phí không cần thanh toán.",
+            StatusCodes.Status400BadRequest);
+
+    var normalizedCycle = billingCycle.ToUpperInvariant() switch
     {
-        var user = await _context.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        "YEARLY" => "YEARLY",
+        _        => "MONTHLY"
+    };
 
-        if (user is null)
-            throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);
+    // ─── Tìm subscription hiện có của user (do có unique constraint trên UserId) ───
+    var existingSub = await _context.UserSubscriptions
+        .FirstOrDefaultAsync(s => s.UserId == userId, cancellationToken);
 
-        var plan = await _context.MembershipPlans
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == planId && p.IsActive, cancellationToken);
+    UserSubscription subscription;
 
-        if (plan is null)
-            throw new AppException(ErrorCodes.ValidationError, "Không tìm thấy gói membership.", StatusCodes.Status404NotFound);
+    if (existingSub is not null)
+    {
+        existingSub.CancelledAt = null;
+        existingSub.PendingBillingCycle = normalizedCycle;
+        existingSub.UpdatedAt = DateTime.UtcNow;
 
-        // Verify plan matches user role
-        if (plan.TargetRole != user.Role)
-            throw new AppException(
-                ErrorCodes.ValidationError,
-                $"Gói này chỉ dành cho {(plan.TargetRole == UserRole.OWNER ? "chủ sân" : "người chơi")}.",
-                StatusCodes.Status400BadRequest);
-
-        // FREE plan doesn't need payment
-        if (plan.Tier == MembershipTier.FREE)
-            throw new AppException(
-                ErrorCodes.ValidationError,
-                "Gói miễn phí không cần thanh toán.",
-                StatusCodes.Status400BadRequest);
-
-        // Check if user already has active subscription - cancel it first
-        var existingSub = await _context.UserSubscriptions
-            .FirstOrDefaultAsync(s =>
-                s.UserId == userId &&
-                s.Status == SubscriptionStatus.ACTIVE, cancellationToken);
-
-        if (existingSub is not null)
+        if (existingSub.Status == SubscriptionStatus.ACTIVE)
         {
-            existingSub.Status = SubscriptionStatus.CANCELLED;
-            existingSub.CancelledAt = DateTime.UtcNow;
-            existingSub.UpdatedAt = DateTime.UtcNow;
+            // Upgrade: giữ quyền gói hiện tại cho đến khi thanh toán thành công
+            existingSub.PendingMembershipPlanId = planId;
+        }
+        else
+        {
+            existingSub.MembershipPlanId = planId;
+            existingSub.Status = SubscriptionStatus.PENDING;
+            existingSub.PendingMembershipPlanId = null;
+            existingSub.StartedAt = DateTime.UtcNow;
+            existingSub.ExpiresAt = null;
         }
 
-        // Calculate expiration
-        var duration = billingCycle.ToUpperInvariant() == "YEARLY" ? 365 : 30;
-        var expiresAt = DateTime.UtcNow.AddDays(duration);
-
-        var subscription = new UserSubscription
+        subscription = existingSub;
+    }
+    else
+    {
+        subscription = new UserSubscription
         {
             Id = Guid.NewGuid(),
             UserId = userId,
             MembershipPlanId = planId,
-            Status = SubscriptionStatus.PENDING, // Will be ACTIVE after payment
+            Status = SubscriptionStatus.PENDING,
+            PendingBillingCycle = normalizedCycle,
             StartedAt = DateTime.UtcNow,
-            ExpiresAt = expiresAt,
+            ExpiresAt = null,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
         _context.UserSubscriptions.Add(subscription);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        return subscription;
     }
+
+    try
+    {
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+    catch (DbUpdateException ex)
+    {
+        var innerMessage = ex.InnerException?.Message ?? ex.Message;
+        throw new AppException(
+            ErrorCodes.InternalServerError,
+            $"Lỗi khi tạo subscription: {innerMessage}",
+            StatusCodes.Status500InternalServerError);
+    }
+
+    return subscription;
+}
 
     public async Task ActivateSubscriptionAsync(Guid subscriptionId, CancellationToken cancellationToken = default)
     {
@@ -209,11 +240,32 @@ public class MembershipService : IMembershipService
         if (subscription is null)
             throw new AppException(ErrorCodes.ValidationError, "Không tìm thấy subscription.", StatusCodes.Status404NotFound);
 
-        if (subscription.Status != SubscriptionStatus.PENDING)
-            throw new AppException(ErrorCodes.ValidationError, "Subscription không ở trạng thái chờ.", StatusCodes.Status400BadRequest);
+        var isPendingFirstPurchase = subscription.Status == SubscriptionStatus.PENDING;
+        var isPendingUpgrade =
+            subscription.Status == SubscriptionStatus.ACTIVE &&
+            subscription.PendingMembershipPlanId.HasValue;
 
-        subscription.Status = SubscriptionStatus.ACTIVE;
-        subscription.UpdatedAt = DateTime.UtcNow;
+        if (!isPendingFirstPurchase && !isPendingUpgrade)
+            throw new AppException(ErrorCodes.ValidationError, "Subscription không ở trạng thái chờ thanh toán.", StatusCodes.Status400BadRequest);
+
+        var billingCycle = subscription.PendingBillingCycle ?? "MONTHLY";
+        var durationDays = billingCycle == "YEARLY" ? 365 : 30;
+        var now = DateTime.UtcNow;
+
+        if (isPendingUpgrade)
+        {
+            subscription.MembershipPlanId = subscription.PendingMembershipPlanId!.Value;
+            subscription.PendingMembershipPlanId = null;
+        }
+        else
+        {
+            subscription.Status = SubscriptionStatus.ACTIVE;
+        }
+
+        subscription.PendingBillingCycle = null;
+        subscription.StartedAt = now;
+        subscription.ExpiresAt = now.AddDays(durationDays);
+        subscription.UpdatedAt = now;
         await _context.SaveChangesAsync(cancellationToken);
     }
 

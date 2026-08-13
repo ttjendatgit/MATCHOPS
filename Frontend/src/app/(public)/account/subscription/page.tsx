@@ -19,7 +19,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
@@ -199,13 +199,12 @@ export default function MySubscriptionPage() {
 
 function MySubscriptionContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const [subData,  setSubData]  = useState<MySubscriptionDto | null>(null);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState<string | null>(null);
   const [isAdmin,  setIsAdmin]  = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState<"success" | "failed" | null>(null);
+  const [isPollingPayment, setIsPollingPayment] = useState(false);
 
   const load = useCallback(async () => {
     const token = getStoredToken();
@@ -240,32 +239,55 @@ function MySubscriptionContent() {
     }
   }, [router]);
 
-  // Handle payment return from VNPay and initial load
+  // Load subscription + resume SePay polling if payment is pending
   useEffect(() => {
-    // Handle payment return
-    const payment = searchParams.get("payment");
-    const errorMsg = searchParams.get("error");
+    void load();
 
-    if (payment === "success") {
-      setPaymentStatus("success");
-      toast.success("Thanh toán thành công! Gói của bạn đã được kích hoạt.");
-    } else if (payment === "failed") {
-      setPaymentStatus("failed");
-      if (errorMsg) {
-        toast.error(`Thanh toán thất bại: ${decodeURIComponent(errorMsg)}`);
-      } else {
-        toast.error("Thanh toán thất bại. Vui lòng thử lại.");
+    const pendingPlanId = sessionStorage.getItem("MATCHOP_PENDING_PLAN_ID");
+    if (!pendingPlanId) return;
+
+    setIsPollingPayment(true);
+    let intervalId: ReturnType<typeof setInterval>;
+    let cancelled = false;
+
+    const checkStatus = async () => {
+      try {
+        const token = getStoredToken();
+        if (!token) return;
+
+        const res = await apiFetch<ApiResponse<MySubscriptionDto>>(
+          "/membership/my-subscription",
+          { token },
+        );
+
+        const sub = res.data;
+        if (
+          res.success &&
+          sub?.status === "ACTIVE" &&
+          sub.plan?.id === pendingPlanId
+        ) {
+          if (cancelled) return;
+          clearInterval(intervalId);
+          setIsPollingPayment(false);
+          sessionStorage.removeItem("MATCHOP_PENDING_SUBSCRIPTION");
+          sessionStorage.removeItem("MATCHOP_PENDING_PLAN_ID");
+          toast.success("Thanh toán thành công! Gói của bạn đã được kích hoạt.");
+          await load();
+        }
+      } catch {
+        // ignore polling errors
       }
-    }
+    };
 
-    // Clean up URL params
-    if (payment) {
-      window.history.replaceState({}, "", "/account/subscription");
-    }
+    intervalId = setInterval(checkStatus, 3000);
+    void checkStatus();
 
-    // Load subscription data
-    load();
-  }, [searchParams, load]);
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+      setIsPollingPayment(false);
+    };
+  }, [load]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -353,6 +375,22 @@ function MySubscriptionContent() {
       </div>
 
       <div className="space-y-6">
+
+        {/* ── Pending payment notice ── */}
+        {subData?.status === "PENDING" && (
+          <div
+            className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-950/20 px-4 py-3.5"
+            role="note"
+          >
+            <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" aria-hidden />
+            <p className="text-sm leading-relaxed text-amber-300">
+              Gói đang chờ xác nhận thanh toán.
+              {isPollingPayment
+                ? " Hệ thống đang kiểm tra giao dịch..."
+                : " Vui lòng hoàn tất chuyển khoản hoặc thử lại tại trang bảng giá."}
+            </p>
+          </div>
+        )}
 
         {/* ── Fallback free notice ── */}
         {subData?.isFallbackFreePlan && (

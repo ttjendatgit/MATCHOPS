@@ -115,7 +115,7 @@ public class MembershipController : ControllerBase
             AccountName            = accountName,
             BankName               = bankName,
             Amount                 = price,
-            ExpireAt               = subscription.ExpiresAt ?? DateTime.UtcNow.AddMinutes(30),
+            ExpireAt               = DateTime.UtcNow.AddMinutes(30),
             PendingSubscriptionId  = subscription.Id
         }));
     }

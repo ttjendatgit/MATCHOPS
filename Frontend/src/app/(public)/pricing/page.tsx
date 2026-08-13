@@ -15,6 +15,9 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
+import MembershipSePayModal, {
+  type MembershipPaymentData,
+} from "@/components/membership/MembershipSePayModal";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -34,13 +37,29 @@ interface MembershipPlanDto {
   sortOrder: number;
 }
 
+interface SubscriptionPaymentResponse {
+  qrImageUrl: string;
+  paymentContent: string;
+  accountNumber: string;
+  accountName: string;
+  bankName: string;
+  amount: number;
+  expireAt: string;
+  pendingSubscriptionId: string;
+}
+
+interface MySubscriptionDto {
+  status?: string | null;
+  plan: { id: string };
+}
+
+type RoleTab = "USER" | "OWNER";
+
 interface ApiResponse<T> {
   success: boolean;
   message: string;
   data: T;
 }
-
-type RoleTab = "USER" | "OWNER";
 
 // ── Marketing copy (maps plan Code → display content) ─────────────────────────
 
@@ -348,6 +367,10 @@ export default function PricingPage() {
   const [activeTab, setActiveTab] = useState<RoleTab>("USER");
   const [isYearly,  setIsYearly]  = useState(false);
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
+  const [sepayData, setSepayData] = useState<MembershipPaymentData | null>(null);
+  const [targetPlanId, setTargetPlanId] = useState<string | null>(null);
+  const [targetPlanName, setTargetPlanName] = useState<string | null>(null);
+  const [isPollingPayment, setIsPollingPayment] = useState(false);
 
   const fetchPlans = useCallback(async () => {
     setLoading(true);
@@ -366,7 +389,53 @@ export default function PricingPage() {
 
   useEffect(() => { fetchPlans(); }, [fetchPlans]);
 
-  const handleSubscribe = useCallback(async (plan: MembershipPlanDto, isYearly: boolean) => {
+  // Poll subscription status after SePay QR is shown
+  useEffect(() => {
+    if (!isPollingPayment || !targetPlanId || !sepayData) return;
+
+    let intervalId: ReturnType<typeof setInterval>;
+    let cancelled = false;
+
+    const checkStatus = async () => {
+      try {
+        const token = getStoredToken();
+        if (!token) return;
+
+        const res = await apiFetch<ApiResponse<MySubscriptionDto>>(
+          "/membership/my-subscription",
+          { token },
+        );
+
+        const sub = res.data;
+        if (
+          res.success &&
+          sub?.status === "ACTIVE" &&
+          sub.plan?.id === targetPlanId
+        ) {
+          if (cancelled) return;
+          clearInterval(intervalId);
+          setIsPollingPayment(false);
+          setSepayData(null);
+          sessionStorage.removeItem("MATCHOP_PENDING_SUBSCRIPTION");
+          sessionStorage.removeItem("MATCHOP_PENDING_PLAN_ID");
+          toast.success("Thanh toán thành công! Gói của bạn đã được kích hoạt.");
+          router.push("/account/subscription");
+        }
+      } catch {
+        // ignore polling errors
+      }
+    };
+
+    intervalId = setInterval(checkStatus, 3000);
+    void checkStatus();
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [isPollingPayment, targetPlanId, sepayData, router]);
+
+  const handleSubscribe = useCallback(async (plan: MembershipPlanDto, yearly: boolean) => {
     const token = getStoredToken();
     if (!token) {
       toast.error("Vui lòng đăng nhập để nâng cấp gói.");
@@ -383,8 +452,8 @@ export default function PricingPage() {
     setProcessingPlan(plan.id);
 
     try {
-      const billingCycle = isYearly ? "YEARLY" : "MONTHLY";
-      const res = await apiFetch<ApiResponse<{ paymentUrl: string; pendingSubscriptionId: string }>>(
+      const billingCycle = yearly ? "YEARLY" : "MONTHLY";
+      const res = await apiFetch<ApiResponse<SubscriptionPaymentResponse>>(
         "/membership/subscribe",
         {
           method: "POST",
@@ -393,23 +462,49 @@ export default function PricingPage() {
             planId: plan.id,
             billingCycle,
           }),
-        }
+        },
       );
 
-      if (res.success && res.data?.paymentUrl) {
-        // Store pending subscription ID for verification
-        sessionStorage.setItem("MATCHOP_PENDING_SUBSCRIPTION", res.data.pendingSubscriptionId);
-        // Redirect to VNPay
-        window.location.href = res.data.paymentUrl;
-      } else {
+      if (!res.success || !res.data) {
         throw new Error(res.message || "Không thể khởi tạo thanh toán.");
       }
+
+      const payment = res.data;
+      const paymentData: MembershipPaymentData = {
+        qrImageUrl: payment.qrImageUrl,
+        paymentContent: payment.paymentContent,
+        accountNumber: payment.accountNumber,
+        accountName: payment.accountName,
+        bankName: payment.bankName,
+        amount: payment.amount,
+        expireAt: payment.expireAt,
+        pendingSubscriptionId: payment.pendingSubscriptionId,
+      };
+
+      sessionStorage.setItem(
+        "MATCHOP_PENDING_SUBSCRIPTION",
+        payment.pendingSubscriptionId,
+      );
+      sessionStorage.setItem("MATCHOP_PENDING_PLAN_ID", plan.id);
+
+      setTargetPlanId(plan.id);
+      setTargetPlanName(PLAN_CONTENT[plan.code]?.displayName ?? plan.name);
+      setSepayData(paymentData);
+      setIsPollingPayment(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Đã xảy ra lỗi khi xử lý yêu cầu.");
     } finally {
       setProcessingPlan(null);
     }
   }, [router]);
+
+  function handlePaymentModalClose(open: boolean) {
+    if (open) return;
+    setSepayData(null);
+    setIsPollingPayment(false);
+    setTargetPlanId(null);
+    setTargetPlanName(null);
+  }
 
   const userPlans  = useMemo(() => plans.filter((p) => p.targetRole === "USER"),  [plans]);
   const ownerPlans = useMemo(() => plans.filter((p) => p.targetRole === "OWNER"), [plans]);
@@ -600,6 +695,13 @@ export default function PricingPage() {
         </div>
 
       </div>
+
+      <MembershipSePayModal
+        open={!!sepayData}
+        payment={sepayData}
+        planName={targetPlanName ?? undefined}
+        onOpenChange={handlePaymentModalClose}
+      />
     </section>
   );
 }

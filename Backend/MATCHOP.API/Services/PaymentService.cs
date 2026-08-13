@@ -310,19 +310,45 @@ public class PaymentService : IPaymentService
         var memCode = upper.Substring(memIdx, 11); // MEM + 8 chars
 
         var shortId = memCode[3..]; // 8 ký tự hex
-
-        var pendingSubscriptions = await _context.UserSubscriptions
-            .Where(s => s.Status == SubscriptionStatus.PENDING)
-            .ToListAsync(cancellationToken);
-
-        var subscription = pendingSubscriptions
-            .FirstOrDefault(s => s.Id.ToString("N").StartsWith(shortId, StringComparison.OrdinalIgnoreCase));
+        var subscription = await _context.UserSubscriptions
+            .Where(s =>
+                s.Status == SubscriptionStatus.PENDING ||
+                (s.Status == SubscriptionStatus.ACTIVE && s.PendingMembershipPlanId != null))
+            .FirstOrDefaultAsync(s =>
+                s.Id.ToString("N").StartsWith(shortId, StringComparison.OrdinalIgnoreCase),
+                cancellationToken);
 
         if (subscription is null)
         {
             _logger.LogInformation("SePay webhook id={Id}: no subscription for MEM code '{Code}'",
                 payload.Id, memCode);
             return new SePayWebhookResponse { Success = true, Message = "No subscription matched." };
+        }
+
+        var targetPlanId = subscription.PendingMembershipPlanId ?? subscription.MembershipPlanId;
+        var plan = await _context.MembershipPlans
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == targetPlanId, cancellationToken);
+
+        if (plan is null)
+        {
+            _logger.LogWarning("SePay webhook id={Id}: plan not found for subscription {SubId}",
+                payload.Id, subscription.Id);
+            return new SePayWebhookResponse { Success = true, Message = "Plan not found." };
+        }
+
+        var billingCycle = subscription.PendingBillingCycle ?? "MONTHLY";
+        var expectedPrice = billingCycle == "YEARLY" && plan.PricePerYear.HasValue
+            ? plan.PricePerYear.Value
+            : plan.PricePerMonth;
+        var expectedAmount = (long)Math.Round(expectedPrice);
+
+        if (Math.Abs(payload.TransferAmount - expectedAmount) > 1)
+        {
+            _logger.LogWarning(
+                "SePay webhook id={Id}: membership amount mismatch. Expected={Expected}, Received={Received}",
+                payload.Id, expectedAmount, payload.TransferAmount);
+            return new SePayWebhookResponse { Success = true, Message = "Amount mismatch – not activated." };
         }
 
         // Activate subscription

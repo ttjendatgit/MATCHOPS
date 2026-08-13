@@ -13,6 +13,12 @@ public class UserSubscription
     public DateTime? ExpiresAt   { get; set; }  // null = Free (never expires)
     public DateTime? CancelledAt { get; set; }
 
+    /// <summary>Target plan while an ACTIVE user completes an upgrade payment.</summary>
+    public Guid? PendingMembershipPlanId { get; set; }
+
+    /// <summary>"MONTHLY" | "YEARLY" — used for amount verification and activation.</summary>
+    public string? PendingBillingCycle { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
