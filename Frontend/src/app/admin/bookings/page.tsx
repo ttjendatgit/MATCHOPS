@@ -9,7 +9,20 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
 import type { ApiResponse } from "@/types/api";
-import type { BookingResponseDto } from "@/types/booking";
+
+interface BookingResponseDto {
+  id: string;
+  venueName: string;
+  courtName: string;
+  customerName: string | null;
+  customerPhone: string | null;
+  bookingDate: string;
+  startTime: string;
+  endTime: string;
+  totalPrice: number;
+  status: string;
+  paymentStatus: string;
+}
 
 const statusVariant: Record<string, any> = {
   PENDING_PAYMENT: "secondary",

@@ -10,8 +10,19 @@ import { VenueStatusBadge } from "@/components/shared/StatusBadge";
 import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
 import type { ApiResponse } from "@/types/api";
-import type { VenueResponseDto } from "@/types/venue";
+import type { VenueStatus } from "@/types/venue";
 import { toast } from "sonner";
+
+interface VenueResponseDto {
+  id: string;
+  name: string;
+  coverImageUrl?: string;
+  city: string;
+  district: string;
+  ownerName: string;
+  status: VenueStatus;
+  createdAt: string;
+}
 
 export default function AdminVenuesPage() {
   const [venues, setVenues] = useState<VenueResponseDto[]>([]);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Plus,
@@ -70,6 +70,21 @@ function toApiTime(t: string): string {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function OwnerPricingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-[#FF8000]" />
+          <p className="text-sm text-[#C4C7C9]/60">Đang tải bảng giá...</p>
+        </div>
+      }
+    >
+      <OwnerPricingContent />
+    </Suspense>
+  );
+}
+
+function OwnerPricingContent() {
   const searchParams = useSearchParams();
   const [courts,     setCourts]     = useState<CourtDto[]>([]);
   const [rulesMap,   setRulesMap]   = useState<Map<string, PriceRuleDto[]>>(new Map());

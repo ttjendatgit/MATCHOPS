@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -34,6 +34,7 @@ const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   BANK_TRANSFER: "Chuyển khoản ngân hàng",
   MOMO: "Ví MoMo",
   VNPAY: "VNPay",
+  SEPAY: "SePay",
   CASH: "Tiền mặt tại sân",
 };
 
@@ -173,6 +174,14 @@ function LoadingState() {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function BookingSuccessPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <BookingSuccessContent />
+    </Suspense>
+  );
+}
+
+function BookingSuccessContent() {
   const searchParams = useSearchParams();
   const [confirmation, setConfirmation] = useState<BookingConfirmation | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -387,7 +396,7 @@ export default function BookingSuccessPage() {
                 <SummaryRow
                   icon={CreditCard}
                   label="Thanh toán qua"
-                  value={PAYMENT_LABELS[c.paymentMethod]}
+                  value={PAYMENT_LABELS[c.paymentMethod as PaymentMethod]}
                 />
                 <div className="flex items-end justify-between pt-1">
                   <span className="text-sm text-slate-400">Tổng cộng</span>

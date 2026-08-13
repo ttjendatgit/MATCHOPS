@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Wallet, CreditCard, Banknote, FlaskConical } from "lucide-react";
+import { Building2, Wallet, CreditCard, Banknote } from "lucide-react";
 import type { PaymentMethod, PaymentMethodOption } from "@/lib/mock/bookingMockData";
 import { cn } from "@/lib/utils";
 
@@ -25,15 +25,15 @@ const ICON_CONFIG: Record<
     iconColor: "text-blue-400",
     iconBg: "bg-blue-500/10 border border-blue-800/30",
   },
+  VNPAY: {
+    icon: CreditCard,
+    iconColor: "text-sky-400",
+    iconBg: "bg-sky-500/10 border border-sky-800/30",
+  },
   CASH: {
     icon: Banknote,
     iconColor: "text-amber-400",
     iconBg: "bg-amber-500/10 border border-amber-800/30",
-  },
-  MOCK: {
-    icon: FlaskConical,
-    iconColor: "text-emerald-400",
-    iconBg: "bg-emerald-500/10 border border-emerald-800/30",
   },
 };
 

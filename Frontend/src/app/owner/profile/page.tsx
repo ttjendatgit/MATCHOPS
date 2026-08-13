@@ -82,12 +82,12 @@ export default function OwnerProfilePage() {
     setLoading(true);
     try {
       const res = await apiFetch<ApiResponse<OwnerProfileDto>>("/profile", { token });
-      if (res.data?.data) {
-        setProfile(res.data.data);
+      if (res.data) {
+        setProfile(res.data);
         setEditForm({
-          fullName: res.data.data.fullName,
-          phoneNumber: res.data.data.phoneNumber,
-          bio: res.data.data.bio,
+          fullName: res.data.fullName,
+          phoneNumber: res.data.phoneNumber,
+          bio: res.data.bio,
         });
       }
     } catch (err) {
@@ -123,15 +123,15 @@ export default function OwnerProfilePage() {
         body: JSON.stringify(editForm),
       });
 
-      if (res.data?.data) {
-        setProfile(res.data.data);
+      if (res.data) {
+        setProfile(res.data);
 
         // Update local storage
         const user = getStoredUser();
         if (user) {
           setAuthData(token, {
             ...user,
-            fullName: res.data.data.fullName,
+            fullName: res.data.fullName,
           });
         }
 
@@ -359,7 +359,9 @@ export default function OwnerProfilePage() {
                       <div className="flex items-center gap-2">
                         <p className="text-white">{profile.email}</p>
                         {profile.emailConfirmed ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-400" title="Đã xác minh" />
+                          <span title="Đã xác minh">
+                            <CheckCircle2 className="h-4 w-4 text-green-400" />
+                          </span>
                         ) : (
                           <Badge variant="secondary" className="text-xs">Chưa xác minh</Badge>
                         )}

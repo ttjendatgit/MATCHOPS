@@ -396,11 +396,11 @@ export default function PricingPage() {
         }
       );
 
-      if (res.success && res.data?.data?.paymentUrl) {
+      if (res.success && res.data?.paymentUrl) {
         // Store pending subscription ID for verification
-        sessionStorage.setItem("MATCHOP_PENDING_SUBSCRIPTION", res.data.data.pendingSubscriptionId);
+        sessionStorage.setItem("MATCHOP_PENDING_SUBSCRIPTION", res.data.pendingSubscriptionId);
         // Redirect to VNPay
-        window.location.href = res.data.data.paymentUrl;
+        window.location.href = res.data.paymentUrl;
       } else {
         throw new Error(res.message || "Không thể khởi tạo thanh toán.");
       }

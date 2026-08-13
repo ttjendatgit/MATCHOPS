@@ -74,14 +74,14 @@ export default function AdminSportsPage() {
     try {
       // Load active sports
       const activeRes = await apiFetch<ApiResponse<SportResponseDto[]>>("/sports", { token });
-      const active = activeRes.data?.data || [];
+      const active = activeRes.data || [];
 
       // Try to load all sports (including inactive) if endpoint exists
       let all = active;
       try {
         const allRes = await apiFetch<ApiResponse<SportResponseDto[]>>("/admin/sports", { token });
-        if (allRes.data?.data) {
-          all = allRes.data.data;
+        if (allRes.data) {
+          all = allRes.data;
         }
       } catch {
         // Admin endpoint might not exist, use active only

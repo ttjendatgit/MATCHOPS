@@ -24,7 +24,6 @@ import { RevenueAnalysisCard } from "@/components/shared/RevenueAnalysisCard";
 import { BookingTrendAnalysisCard } from "@/components/shared/BookingTrendAnalysisCard";
 import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
-import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils";
 import type { ApiResponse } from "@/types/api";
 import type { DashboardAdminStatistics, DashboardAiSummary } from "@/types/dashboard";
@@ -215,27 +214,7 @@ export default function AdminDashboardPage() {
                   <div className="flex items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }} />
                     {sport.label}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <Card key={card.label} className="overflow-hidden group">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className={cn("h-12 w-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", card.bg)}>
-                    <Icon className={cn("h-6 w-6", card.color)} />
                   </div>
-                  <div className="flex items-center text-[10px] font-bold text-[#86D232] bg-[#86D232]/10 px-2 py-1 rounded-full">
-                    Live <span className="ml-1 h-1 w-1 rounded-full bg-[#86D232] animate-pulse" />
-                  </div>
-                </div>
-                <p className="text-xs font-bold text-[#C4C7C9]/60 uppercase tracking-widest">{card.label}</p>
-                <p className="text-3xl font-black text-white mt-1">{card.value}</p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
                   <span>{sport.count}</span>
                 </div>
               ))}
@@ -265,13 +244,6 @@ export default function AdminDashboardPage() {
         <Card className="border-white/10 bg-slate-950/50 text-white">
           <CardHeader>
             <CardTitle className="text-base">Tóm tắt Sức khỏe</CardTitle>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="border-b border-white/[0.06]">
-            <CardTitle className="text-sm font-bold flex items-center gap-2 text-white">
-              <ShieldCheck className="h-4 w-4 text-[#86D232]" />
-              Trạng thái hệ thống
-            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-lg bg-slate-900/50 p-4">
@@ -290,36 +262,11 @@ export default function AdminDashboardPage() {
               <p className="mt-1 text-sm text-slate-300">
                 {ai.risks[0] || "Không phát hiện rủi ro hoạt động lớn nào."}
               </p>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.03]">
-                <span className="text-sm text-[#C4C7C9]">API Server</span>
-                <span className="text-xs font-bold text-[#86D232]">Ổn định</span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.03]">
-                <span className="text-sm text-[#C4C7C9]">Database</span>
-                <span className="text-xs font-bold text-[#86D232]">Ổn định</span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.03]">
-                <span className="text-sm text-[#C4C7C9]">AI Matchmaking</span>
-                <span className="text-xs font-bold text-[#86D232]">Đang chạy</span>
-              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-        <Card>
-          <CardHeader className="border-b border-white/[0.06]">
-            <CardTitle className="text-sm font-bold flex items-center gap-2 text-white">
-              <TrendingUp className="h-4 w-4 text-[#FF8000]" />
-              Hoạt động gần đây
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <Calendar className="h-10 w-10 text-[#C4C7C9]/30 mb-2" />
-              <p className="text-sm text-[#C4C7C9]/70">Xem chi tiết tại các mục quản lý tương ứng.</p>
       <Card className="border-white/10 bg-slate-950/50 text-white">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Cụm sân Hiệu suất Cao nhất</CardTitle>

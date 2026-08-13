@@ -61,6 +61,7 @@ export const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   BANK_TRANSFER: "Chuyển khoản ngân hàng",
   MOMO: "Ví MoMo",
   VNPAY: "VNPay",
+  SEPAY: "SePay",
   CASH: "Tiền mặt tại sân",
 };
 
@@ -68,6 +69,7 @@ export const PAYMENT_LABELS_SHORT: Record<PaymentMethod, string> = {
   BANK_TRANSFER: "Chuyển khoản",
   MOMO: "MoMo",
   VNPAY: "VNPay",
+  SEPAY: "SePay",
   CASH: "Tiền mặt",
 };
 
