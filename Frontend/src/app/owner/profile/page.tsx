@@ -480,7 +480,9 @@ export default function OwnerProfilePage() {
                     <div className="flex items-center gap-2">
                       <p className="text-white">{profile.email}</p>
                       {account?.emailConfirmed && (
-                        <CheckCircle2 className="h-4 w-4 text-green-400" title="Đã xác minh" />
+                        <span title="Đã xác minh">
+                          <CheckCircle2 className="h-4 w-4 text-green-400" />
+                        </span>
                       )}
                     </div>
                   </div>
