@@ -42,7 +42,13 @@ export async function apiFetch<T>(
     let errorMessage = `Lỗi máy chủ: ${response.status}`;
     try {
       const body = await response.json();
-      if (body?.message) errorMessage = body.message;
+      if (body?.errors && typeof body.errors === "object") {
+        const fieldErrors = Object.values(body.errors).flat();
+        const first = fieldErrors.find((e) => typeof e === "string" && e.length > 0);
+        if (typeof first === "string") errorMessage = first;
+      } else if (body?.message) {
+        errorMessage = body.message;
+      }
     } catch {
       // fall through to default message
     }

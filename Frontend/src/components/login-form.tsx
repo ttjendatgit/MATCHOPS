@@ -441,8 +441,20 @@ export function RegisterForm() {
       setError("Địa chỉ email không hợp lệ.");
       return;
     }
-    if (password.length < 6) {
-      setError("Mật khẩu phải có ít nhất 6 ký tự.");
+    if (password.length < 8) {
+      setError("Mật khẩu phải có ít nhất 8 ký tự.");
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      setError("Mật khẩu phải có ít nhất 1 chữ hoa.");
+      return;
+    }
+    if (!/[a-z]/.test(password)) {
+      setError("Mật khẩu phải có ít nhất 1 chữ thường.");
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      setError("Mật khẩu phải có ít nhất 1 chữ số.");
       return;
     }
 
@@ -562,6 +574,9 @@ export function RegisterForm() {
             <Lock className="inline-block mr-2 -mt-1" size={16} aria-hidden />
             Mật khẩu
           </label>
+          <p className="mt-2 text-xs text-slate-500">
+            Tối thiểu 8 ký tự, gồm chữ hoa, chữ thường và số.
+          </p>
         </div>
 
         {/* Submit */}

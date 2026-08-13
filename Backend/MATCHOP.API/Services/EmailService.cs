@@ -32,33 +32,24 @@ namespace MATCHOP.API.Services
             var password = _configuration["Smtp:Password"];
             var fromEmail = _configuration["Smtp:FromEmail"];
             var fromName = _configuration["Smtp:FromName"] ?? "MATCHOP";
+            var timeoutMs = _configuration.GetValue("Smtp:TimeoutMs", 20_000);
 
             if (string.IsNullOrWhiteSpace(host))
-            {
-                throw new InvalidOperationException("SMTP Host is missing in appsettings.json.");
-            }
+                throw new InvalidOperationException("SMTP Host is missing in configuration.");
 
             if (string.IsNullOrWhiteSpace(username))
-            {
-                throw new InvalidOperationException("SMTP Username is missing in appsettings.json.");
-            }
+                throw new InvalidOperationException("SMTP Username is missing in configuration.");
 
             if (string.IsNullOrWhiteSpace(password))
-            {
-                throw new InvalidOperationException("SMTP Password is missing in appsettings.json.");
-            }
+                throw new InvalidOperationException("SMTP Password is missing in configuration.");
 
             if (string.IsNullOrWhiteSpace(fromEmail))
-            {
-                throw new InvalidOperationException("SMTP FromEmail is missing in appsettings.json.");
-            }
+                throw new InvalidOperationException("SMTP FromEmail is missing in configuration.");
 
             var message = new MimeMessage();
-
             message.From.Add(new MailboxAddress(fromName, fromEmail));
             message.To.Add(new MailboxAddress(fullName, toEmail));
             message.Subject = "Xác thực tài khoản MATCHOP";
-
             message.Body = new TextPart("html")
             {
                 Text = $@"
@@ -79,14 +70,43 @@ namespace MATCHOP.API.Services
                 "
             };
 
-            using var client = new SmtpClient();
+            var socketOptions = ResolveSocketOptions(port);
 
-            await client.ConnectAsync(host, port, SecureSocketOptions.StartTls);
-            await client.AuthenticateAsync(username, password);
-            await client.SendAsync(message);
-            await client.DisconnectAsync(true);
+            using var client = new SmtpClient
+            {
+                Timeout = timeoutMs
+            };
 
-            _logger.LogInformation("Verification email sent to {Email}", toEmail);
+            try
+            {
+                await client.ConnectAsync(host, port, socketOptions);
+                await client.AuthenticateAsync(username, password);
+                await client.SendAsync(message);
+                await client.DisconnectAsync(true);
+
+                _logger.LogInformation("Verification email sent to {Email}", toEmail);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "SMTP failed for {Email}. Host={Host}, Port={Port}, Socket={Socket}",
+                    toEmail, host, port, socketOptions);
+                throw;
+            }
+        }
+
+        private SecureSocketOptions ResolveSocketOptions(int port)
+        {
+            var configured = _configuration["Smtp:SecureSocketOptions"];
+            if (!string.IsNullOrWhiteSpace(configured) &&
+                Enum.TryParse<SecureSocketOptions>(configured, ignoreCase: true, out var parsed))
+            {
+                return parsed;
+            }
+
+            return port == 465
+                ? SecureSocketOptions.SslOnConnect
+                : SecureSocketOptions.StartTls;
         }
     }
 }

@@ -16,6 +16,7 @@ namespace MATCHOP.API.Services
         private readonly IConfiguration _configuration;
         private readonly ILogger<AuthService> _logger;
         private readonly IHostEnvironment _environment;
+        private readonly IServiceScopeFactory _scopeFactory;
 
         public AuthService(
             ApplicationDbContext context,
@@ -23,7 +24,8 @@ namespace MATCHOP.API.Services
             IJwtService jwtService,
             IConfiguration configuration,
             ILogger<AuthService> logger,
-            IHostEnvironment environment)
+            IHostEnvironment environment,
+            IServiceScopeFactory scopeFactory)
         {
             _context = context;
             _emailService = emailService;
@@ -31,6 +33,7 @@ namespace MATCHOP.API.Services
             _configuration = configuration;
             _logger = logger;
             _environment = environment;
+            _scopeFactory = scopeFactory;
         }
 
         public async Task RegisterAsync(RegisterRequestDto dto, CancellationToken cancellationToken = default)
@@ -76,23 +79,24 @@ namespace MATCHOP.API.Services
             await _context.SaveChangesAsync(cancellationToken);
 
             var verificationUrl = BuildVerificationUrl(user.Email, token);
+            QueueVerificationEmail(user.Email, user.FullName, verificationUrl);
+        }
 
-            try
+        private void QueueVerificationEmail(string email, string fullName, string verificationUrl)
+        {
+            _ = Task.Run(async () =>
             {
-                await _emailService.SendEmailVerificationAsync(user.Email, user.FullName, verificationUrl);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to send verification email to {Email}. UserId={UserId}",
-                    user.Email, user.Id);
-
-                throw new AppException(
-                    "EMAIL_SEND_FAILED",
-                    "Tài khoản đã được tạo nhưng không gửi được email xác thực. " +
-                    "Vui lòng vào trang xác thực email và chọn \"Gửi lại email xác thực\", hoặc liên hệ hỗ trợ.",
-                    StatusCodes.Status503ServiceUnavailable);
-            }
+                try
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+                    await emailService.SendEmailVerificationAsync(email, fullName, verificationUrl);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Background verification email failed for {Email}", email);
+                }
+            });
         }
 
         public async Task VerifyEmailAsync(VerifyEmailRequestDto dto, CancellationToken cancellationToken = default)
