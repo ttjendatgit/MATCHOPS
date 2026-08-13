@@ -138,30 +138,38 @@ namespace MATCHOP.API.Services
         public async Task ResendVerificationEmailAsync(ResendVerificationEmailRequestDto dto, CancellationToken cancellationToken = default)
         {
             var email = dto.Email.Trim().ToLower();
-
             var user = await _context.Users.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
             if (user == null)
             {
                 throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);
             }
-
             if (user.EmailConfirmed)
             {
                 return;
             }
-
             var token = TokenHelper.GenerateSecureToken();
-
             user.EmailVerificationTokenHash = TokenHelper.HashToken(token);
             user.EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
             user.UpdatedAt = DateTime.UtcNow;
-
             await _context.SaveChangesAsync(cancellationToken);
 
-            var verificationUrl = BuildVerificationUrl(user.Email, token);
-            await _emailService.SendEmailVerificationAsync(user.Email, user.FullName, verificationUrl);
-        }
+            var frontendBaseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:3000";
+            var verificationUrl =
+                $"{frontendBaseUrl}/verify-email?email={Uri.EscapeDataString(user.Email)}&token={Uri.EscapeDataString(token)}";
 
+            // ✅ Gửi email không chờ, trả về ngay — tránh timeout khi SMTP chậm
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _emailService.SendEmailVerificationAsync(user.Email, user.FullName, verificationUrl);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Resend email failed: {ex.Message}");
+                }
+            });
+        }
         public async Task<AuthResponseDto> LoginAsync(LoginRequestDto dto, CancellationToken cancellationToken = default)
         {
             var email = dto.Email.Trim().ToLower();
