@@ -82,6 +82,15 @@ public class DashboardController : ControllerBase
         return Ok(ApiResponse<DashboardAiSummaryDto>.Ok(result));
     }
 
+    [HttpGet("coach/statistics")]
+    public async Task<IActionResult> GetCoachStatistics(CancellationToken cancellationToken = default)
+    {
+        var userId = GetCurrentUserId();
+        await EnsureCoachProfileAsync(userId, cancellationToken);
+        var result = await _dashboardStatisticsService.GetCoachStatisticsAsync(userId, cancellationToken);
+        return Ok(ApiResponse<DashboardCoachStatisticsDto>.Ok(result));
+    }
+
     private Guid GetCurrentUserId() =>
         _currentUserService.UserId
         ?? throw new AppException(ErrorCodes.UNAUTHORIZED, "Unauthorized", StatusCodes.Status401Unauthorized);
@@ -103,6 +112,21 @@ public class DashboardController : ControllerBase
         if (actualRole.Value != requiredRole)
         {
             throw new AppException(ErrorCodes.FORBIDDEN, "Forbidden", StatusCodes.Status403Forbidden);
+        }
+    }
+
+    private async Task EnsureCoachProfileAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var hasProfile = await _dbContext.CoachProfiles
+            .AsNoTracking()
+            .AnyAsync(c => c.UserId == userId, cancellationToken);
+
+        if (!hasProfile)
+        {
+            throw new AppException(
+                ErrorCodes.CoachProfileNotFound,
+                "Bạn chưa có hồ sơ huấn luyện viên.",
+                StatusCodes.Status404NotFound);
         }
     }
 }

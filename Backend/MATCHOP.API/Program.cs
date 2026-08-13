@@ -1,4 +1,4 @@
-﻿﻿using MATCHOP.API;
+﻿using MATCHOP.API;
 using MATCHOP.API.Middlewares;
 using MATCHOP.API.Services;
 using Microsoft.EntityFrameworkCore;
@@ -220,6 +220,7 @@ builder.Services.AddHttpClient<IGroqService, GroqService>();
 builder.Services.AddScoped<IAIChatRepository, AIChatRepository>();
 builder.Services.AddScoped<IAIService, AIService>();
 builder.Services.AddScoped<IDashboardStatisticsService, DashboardStatisticsService>();
+builder.Services.AddScoped<ITransactionHistoryService, TransactionHistoryService>();
 builder.Services.AddScoped<IGroqAnalyticsService, GroqAnalyticsService>();
 builder.Services.AddScoped<IAIAnalyticsService, AIAnalyticsService>();
 

@@ -9,6 +9,7 @@ public interface IDashboardStatisticsService
     Task<DashboardAdminStatisticsDto> GetAdminStatisticsAsync(CancellationToken cancellationToken = default);
     Task<DashboardOwnerStatisticsDto> GetOwnerStatisticsAsync(Guid ownerId, CancellationToken cancellationToken = default);
     Task<DashboardUserStatisticsDto> GetUserStatisticsAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<DashboardCoachStatisticsDto> GetCoachStatisticsAsync(Guid coachUserId, CancellationToken cancellationToken = default);
 }
 
 public class DashboardStatisticsService : IDashboardStatisticsService
@@ -429,6 +430,85 @@ public class DashboardStatisticsService : IDashboardStatisticsService
                 .ToList(),
             UnreadNotifications = notifications.Count(n => !n.IsRead),
             AverageReviewRating = reviews.Count == 0 ? 0 : Math.Round((decimal)reviews.Average(), 2)
+        };
+    }
+
+    public async Task<DashboardCoachStatisticsDto> GetCoachStatisticsAsync(
+        Guid coachUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var todayUtc = DateTime.UtcNow;
+        var today = DateOnly.FromDateTime(todayUtc);
+        var monthStart = new DateOnly(today.Year, today.Month, 1);
+        var chartDates = Enumerable.Range(0, 14).Select(offset => today.AddDays(-(13 - offset))).ToList();
+
+        var sessions = await _dbContext.CoachSessions
+            .AsNoTracking()
+            .Where(s => s.CoachProfile.UserId == coachUserId)
+            .Select(s => new
+            {
+                s.Id,
+                s.Status,
+                s.PaymentStatus,
+                s.PriceAmount,
+                s.PaidAt,
+                s.ScheduledDate,
+                SportName = s.Sport != null ? s.Sport.Name : "Khác"
+            })
+            .ToListAsync(cancellationToken);
+
+        var paidSessions = sessions
+            .Where(s => s.PaymentStatus == CoachSessionPaymentStatus.PAID && s.PriceAmount.HasValue)
+            .ToList();
+
+        static decimal SessionAmount(decimal? price) => price ?? 0m;
+
+        var revenueToday = paidSessions
+            .Where(s => s.PaidAt.HasValue && DateOnly.FromDateTime(s.PaidAt.Value) == today)
+            .Sum(s => SessionAmount(s.PriceAmount));
+
+        var revenueThisMonth = paidSessions
+            .Where(s => s.PaidAt.HasValue && DateOnly.FromDateTime(s.PaidAt.Value) >= monthStart)
+            .Sum(s => SessionAmount(s.PriceAmount));
+
+        var totalRevenue = paidSessions.Sum(s => SessionAmount(s.PriceAmount));
+
+        return new DashboardCoachStatisticsDto
+        {
+            RevenueToday = revenueToday,
+            RevenueThisMonth = revenueThisMonth,
+            TotalRevenue = totalRevenue,
+            TotalSessions = sessions.Count,
+            PaidSessions = paidSessions.Count,
+            CompletedSessions = sessions.Count(s => s.Status == CoachSessionStatus.COMPLETED),
+            PendingPaymentSessions = sessions.Count(s =>
+                s.Status == CoachSessionStatus.AWAITING_PAYMENT &&
+                s.PaymentStatus == CoachSessionPaymentStatus.UNPAID),
+            AverageSessionRevenue = paidSessions.Count == 0
+                ? 0
+                : Math.Round(totalRevenue / paidSessions.Count, 2),
+            RevenueTrend = chartDates
+                .Select(date => new DashboardSeriesPointDto
+                {
+                    Label = date.ToString("dd/MM"),
+                    Value = paidSessions
+                        .Where(s => s.PaidAt.HasValue && DateOnly.FromDateTime(s.PaidAt.Value) == date)
+                        .Sum(s => SessionAmount(s.PriceAmount))
+                })
+                .ToList(),
+            SportDistribution = sessions
+                .GroupBy(s => s.SportName)
+                .Select(g => new DashboardBreakdownItemDto
+                {
+                    Label = g.Key,
+                    Count = g.Count(),
+                    Value = g
+                        .Where(s => s.PaymentStatus == CoachSessionPaymentStatus.PAID)
+                        .Sum(s => s.PriceAmount ?? 0m)
+                })
+                .OrderByDescending(x => x.Count)
+                .Take(5)
+                .ToList()
         };
     }
 

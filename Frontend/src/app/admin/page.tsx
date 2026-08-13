@@ -13,6 +13,7 @@ import {
   Calendar,
   Settings,
   BarChart3,
+  Receipt,
 } from "lucide-react";
 import Link from "next/link";
 import { Pie, PieChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -35,6 +36,7 @@ const QUICK_ACTIONS = [
   { label: "Quản lý sân", href: "/admin/courts", icon: PlayCircle },
   { label: "Xem lịch đặt", href: "/admin/bookings", icon: Calendar },
   { label: "Thống kê", href: "/admin/analytics", icon: BarChart3 },
+  { label: "Giao dịch", href: "/admin/transactions", icon: Receipt },
   { label: "Cài đặt", href: "/admin/settings", icon: Settings },
 ] as const;
 

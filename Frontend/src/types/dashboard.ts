@@ -113,3 +113,16 @@ export interface DashboardUserStatistics {
   unreadNotifications: number;
   averageReviewRating: number;
 }
+
+export interface DashboardCoachStatistics {
+  revenueToday: number;
+  revenueThisMonth: number;
+  totalRevenue: number;
+  totalSessions: number;
+  paidSessions: number;
+  completedSessions: number;
+  pendingPaymentSessions: number;
+  averageSessionRevenue: number;
+  revenueTrend: DashboardSeriesPoint[];
+  sportDistribution: DashboardBreakdownItem[];
+}

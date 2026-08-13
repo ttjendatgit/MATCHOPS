@@ -1,45 +1,76 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { 
-  TrendingUp, ArrowRight, BarChart2, 
-  Download, GitCompare, DollarSign,
-  Calendar, Loader2, ArrowUpRight,
-  ArrowDownRight
+import { useCallback, useEffect, useState } from "react";
+import {
+  BarChart2,
+  Calendar,
+  DollarSign,
+  Download,
+  Loader2,
+  Receipt,
+  TrendingUp,
 } from "lucide-react";
-import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
+import { formatCurrency } from "@/lib/utils";
 import type { ApiResponse } from "@/types/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { DashboardOwnerStatistics } from "@/types/dashboard";
+import type { TransactionHistoryResponse, TransactionItem } from "@/types/transaction";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { cn, formatCurrency } from "@/lib/utils";
+import { RevenueAnalysisCard } from "@/components/shared/RevenueAnalysisCard";
+import { TransactionHistoryTable } from "@/components/shared/TransactionHistoryTable";
 import { toast } from "sonner";
 
-interface BookingResponseDto {
-  id: string;
-  totalPrice: number;
-  status: string;
-  bookingDate: string;
+function buildQuery(page: number) {
+  return `/transactions/owner?page=${page}&pageSize=10`;
 }
 
 export default function OwnerRevenuePage() {
   const [loading, setLoading] = useState(true);
-  const [bookings, setBookings] = useState<BookingResponseDto[]>([]);
+  const [page, setPage] = useState(1);
+  const [stats, setStats] = useState<DashboardOwnerStatistics | null>(null);
+  const [history, setHistory] = useState<TransactionHistoryResponse | null>(null);
+
+  const loadData = useCallback(async (token: string, currentPage: number) => {
+    setLoading(true);
+    try {
+      const [statsRes, historyRes] = await Promise.all([
+        apiFetch<ApiResponse<DashboardOwnerStatistics>>("/dashboard/owner/statistics", { token }),
+        apiFetch<ApiResponse<TransactionHistoryResponse>>(buildQuery(currentPage), { token }),
+      ]);
+      setStats(statsRes.data);
+      setHistory(historyRes.data);
+    } catch (err) {
+      console.error(err);
+      toast.error("Không thể tải dữ liệu doanh thu.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const token = getStoredToken();
+    if (!token) return;
+    loadData(token, page);
+  }, [page, loadData]);
 
   const handleExportReport = () => {
-    if (bookings.length === 0) {
+    const items = history?.items ?? [];
+    if (items.length === 0) {
       toast.error("Không có dữ liệu để xuất báo cáo.");
       return;
     }
 
     const rows = [
-      ["Ma don", "Ngay dat", "So tien", "Trang thai"],
-      ...bookings.map((booking) => [
-        booking.id,
-        booking.bookingDate,
-        booking.totalPrice.toString(),
-        booking.status,
+      ["Ma giao dich", "Mo ta", "So tien", "Phuong thuc", "Trang thai", "Thoi gian"],
+      ...items.map((item: TransactionItem) => [
+        item.transactionCode ?? item.id,
+        item.description,
+        item.amount.toString(),
+        item.method,
+        item.status,
+        item.paidAt ?? item.createdAt,
       ]),
     ];
 
@@ -59,28 +90,7 @@ export default function OwnerRevenuePage() {
     toast.success("Xuất báo cáo thành công.");
   };
 
-  useEffect(() => {
-    const token = getStoredToken();
-    if (!token) return;
-
-    apiFetch<ApiResponse<BookingResponseDto[]>>("/owner/bookings", { token })
-      .then(res => {
-        setBookings(res.data || []);
-      })
-      .catch(err => console.error(err))
-      .finally(() => setLoading(false));
-  }, []);
-
-  const totalRevenue = bookings
-    .filter(b => b.status === "COMPLETED" || b.status === "CONFIRMED")
-    .reduce((sum, b) => sum + b.totalPrice, 0);
-
-  const completedBookings = bookings.filter(b => b.status === "COMPLETED").length;
-  const pendingRevenue = bookings
-    .filter(b => b.status === "PENDING_PAYMENT")
-    .reduce((sum, b) => sum + b.totalPrice, 0);
-
-  if (loading) {
+  if (loading && !history) {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-[#FF8000]" />
@@ -88,150 +98,107 @@ export default function OwnerRevenuePage() {
     );
   }
 
+  const summary = history?.summary;
+  const avgOrder =
+    summary && summary.successCount > 0
+      ? summary.totalAmount / summary.successCount
+      : 0;
+
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white font-heading tracking-tight">Doanh thu</h1>
           <p className="mt-1 text-sm text-[#C4C7C9]">
-            Theo dõi hiệu quả kinh doanh từ các cụm sân của bạn.
+            Theo dõi hiệu quả kinh doanh và lịch sử giao dịch từ các cụm sân.
           </p>
         </div>
         <Button
           variant="outline"
           className="border-[rgba(134,210,50,0.2)] bg-[#141414] text-white gap-2"
           onClick={handleExportReport}
-          disabled={bookings.length === 0}
+          disabled={(history?.items.length ?? 0) === 0}
         >
           <Download className="h-4 w-4" />
           Xuất báo cáo
         </Button>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="bg-[#0A0A0A] border-[rgba(134,210,50,0.28)]">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-10 w-10 rounded-lg bg-[#FF8000]/10 flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-[#FF8000]" />
-              </div>
-              <span className="flex items-center text-[10px] font-bold text-[#86D232] bg-[#86D232]/10 px-1.5 py-0.5 rounded">
-                +12.5% <ArrowUpRight className="h-3 w-3 ml-0.5" />
-              </span>
+            <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-[#FF8000]/10">
+              <DollarSign className="h-5 w-5 text-[#FF8000]" />
             </div>
-            <p className="text-xs text-[#C4C7C9]/60 uppercase tracking-wider font-bold">Tổng doanh thu</p>
-            <p className="text-2xl font-black text-white mt-1">{formatCurrency(totalRevenue)}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-[#0A0A0A] border-[rgba(134,210,50,0.28)]">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-10 w-10 rounded-lg bg-[#86D232]/10 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-[#86D232]" />
-              </div>
-              <span className="flex items-center text-[10px] font-bold text-[#86D232] bg-[#86D232]/10 px-1.5 py-0.5 rounded">
-                +5.2% <ArrowUpRight className="h-3 w-3 ml-0.5" />
-              </span>
-            </div>
-            <p className="text-xs text-[#C4C7C9]/60 uppercase tracking-wider font-bold">Đơn hoàn tất</p>
-            <p className="text-2xl font-black text-white mt-1">{completedBookings}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-[#0A0A0A] border-[rgba(134,210,50,0.28)]">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Calendar className="h-5 w-5 text-amber-500" />
-              </div>
-            </div>
-            <p className="text-xs text-[#C4C7C9]/60 uppercase tracking-wider font-bold">Doanh thu chờ</p>
-            <p className="text-2xl font-black text-white mt-1">{formatCurrency(pendingRevenue)}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-[#0A0A0A] border-[rgba(134,210,50,0.28)]">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <BarChart2 className="h-5 w-5 text-blue-500" />
-              </div>
-              <span className="flex items-center text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded">
-                -2.4% <ArrowDownRight className="h-3 w-3 ml-0.5" />
-              </span>
-            </div>
-            <p className="text-xs text-[#C4C7C9]/60 uppercase tracking-wider font-bold">Giá TB đơn</p>
-            <p className="text-2xl font-black text-white mt-1">
-              {formatCurrency(bookings.length > 0 ? totalRevenue / bookings.length : 0)}
+            <p className="text-xs uppercase tracking-wider font-bold text-[#C4C7C9]/60">Tổng doanh thu</p>
+            <p className="mt-1 text-2xl font-black text-white">
+              {formatCurrency(summary?.totalAmount ?? 0)}
             </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-[#0A0A0A] border-[rgba(134,210,50,0.28)]">
+          <CardContent className="p-6">
+            <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-[#86D232]/10">
+              <TrendingUp className="h-5 w-5 text-[#86D232]" />
+            </div>
+            <p className="text-xs uppercase tracking-wider font-bold text-[#C4C7C9]/60">Doanh thu tháng này</p>
+            <p className="mt-1 text-2xl font-black text-white">
+              {formatCurrency(stats?.revenueThisMonth ?? summary?.thisMonthAmount ?? 0)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-[#0A0A0A] border-[rgba(134,210,50,0.28)]">
+          <CardContent className="p-6">
+            <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
+              <Calendar className="h-5 w-5 text-amber-500" />
+            </div>
+            <p className="text-xs uppercase tracking-wider font-bold text-[#C4C7C9]/60">Doanh thu hôm nay</p>
+            <p className="mt-1 text-2xl font-black text-white">
+              {formatCurrency(stats?.revenueToday ?? 0)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-[#0A0A0A] border-[rgba(134,210,50,0.28)]">
+          <CardContent className="p-6">
+            <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
+              <Receipt className="h-5 w-5 text-blue-500" />
+            </div>
+            <p className="text-xs uppercase tracking-wider font-bold text-[#C4C7C9]/60">Giá TB / giao dịch</p>
+            <p className="mt-1 text-2xl font-black text-white">{formatCurrency(avgOrder)}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Chart area placeholder */}
-      <Card className="bg-[#0A0A0A] border-[rgba(134,210,50,0.28)] overflow-hidden">
-        <CardHeader className="border-b border-[rgba(134,210,50,0.15)] bg-[#141414]/50">
-          <CardTitle className="text-sm font-bold text-white flex items-center gap-2">
-            <BarChart2 className="h-4 w-4 text-[#FF8000]" />
-            Biểu đồ tăng trưởng doanh thu
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-12 text-center">
-          <div className="flex flex-col items-center justify-center">
-            <div className="mb-4 h-16 w-16 rounded-full bg-white/5 flex items-center justify-center border border-white/5">
-              <GitCompare className="h-8 w-8 text-[#C4C7C9]/40" />
-            </div>
-            <p className="text-sm text-[#C4C7C9]/60 max-w-xs mx-auto">
-              Hệ thống đang tổng hợp dữ liệu để vẽ biểu đồ chi tiết cho từng cơ sở.
-            </p>
-            <p className="text-[10px] text-[#C4C7C9]/30 mt-2 uppercase tracking-widest font-bold">
-              Coming Soon
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {stats?.revenueTrend && stats.revenueTrend.length > 0 && (
+        <RevenueAnalysisCard
+          title="Biểu đồ doanh thu 14 ngày"
+          description="Doanh thu thực tế từ các đơn đặt sân đã thanh toán"
+          data={stats.revenueTrend}
+          className="border-[rgba(134,210,50,0.28)] bg-[#0A0A0A] text-white"
+        />
+      )}
 
-      {/* Recent Transactions placeholder */}
-      <div className="rounded-xl border border-[rgba(134,210,50,0.28)] bg-[#0A0A0A] overflow-hidden">
-        <div className="border-b border-[rgba(134,210,50,0.15)] bg-[#141414] px-5 py-4">
-          <h3 className="text-sm font-bold text-white">Giao dịch gần đây</h3>
-        </div>
-        <div className="p-0">
-          <table className="w-full text-sm">
-            <thead className="border-b border-[rgba(134,210,50,0.1)] bg-[#030303]">
-              <tr>
-                <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-[#C4C7C9]/40">Mã đơn</th>
-                <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-[#C4C7C9]/40">Ngày</th>
-                <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-[#C4C7C9]/40">Số tiền</th>
-                <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-[#C4C7C9]/40">Trạng thái</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[rgba(134,210,50,0.05)]">
-              {bookings.slice(0, 5).map((b) => (
-                <tr key={b.id} className="hover:bg-[#141414] transition-colors">
-                  <td className="px-5 py-4 text-xs font-mono text-white">#{b.id.slice(0, 8)}</td>
-                  <td className="px-5 py-4 text-xs text-[#C4C7C9]/60">{b.bookingDate}</td>
-                  <td className="px-5 py-4 text-xs font-bold text-[#FF8000]">{formatCurrency(b.totalPrice)}</td>
-                  <td className="px-5 py-4 text-right">
-                    <span className={cn(
-                      "text-[10px] font-bold px-2 py-0.5 rounded",
-                      b.status === "COMPLETED" ? "bg-[#86D232]/10 text-[#86D232]" : 
-                      b.status === "PENDING_PAYMENT" ? "bg-amber-500/10 text-amber-500" :
-                      "bg-slate-500/10 text-slate-500"
-                    )}>
-                      {b.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {!stats?.revenueTrend?.length && (
+        <Card className="bg-[#0A0A0A] border-[rgba(134,210,50,0.28)] overflow-hidden">
+          <CardContent className="flex flex-col items-center p-12 text-center">
+            <BarChart2 className="mb-4 h-12 w-12 text-[#C4C7C9]/30" />
+            <p className="text-sm text-[#C4C7C9]/60">Chưa có dữ liệu biểu đồ doanh thu.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      <TransactionHistoryTable
+        items={history?.items ?? []}
+        loading={loading}
+        showCustomer
+        page={history?.page ?? page}
+        pageSize={history?.pageSize ?? 10}
+        totalCount={history?.totalCount ?? 0}
+        onPageChange={setPage}
+      />
     </div>
   );
 }
-

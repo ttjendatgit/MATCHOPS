@@ -17,6 +17,7 @@ import {
   Image as ImageIcon,
   Loader2,
   Lock,
+  TrendingUp,
   UserCog,
   UserPlus,
   XCircle,
@@ -329,6 +330,15 @@ export default function CoachManageDashboardPage() {
           description="Xem các buổi huấn luyện đã được xác nhận, trạng thái thanh toán và đánh dấu hoàn thành."
           href="/coach/manage/sessions"
           ctaLabel="Xem lịch buổi huấn luyện"
+        />
+
+        <TaskCard
+          icon={TrendingUp}
+          accent="green"
+          title="Doanh thu & Giao dịch"
+          description="Theo dõi thu nhập từ buổi huấn luyện và lịch sử thanh toán của học viên."
+          href="/coach/manage/revenue"
+          ctaLabel="Xem doanh thu"
         />
 
         {isActive ? (

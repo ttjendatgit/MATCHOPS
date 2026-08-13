@@ -171,6 +171,9 @@ export default function ProfilePage() {
                 <a href="/change-password">Đổi mật khẩu</a>
               </Button>
               <Button variant="outline" className="w-full justify-start text-xs border-white/5 hover:bg-white/5" asChild>
+                <a href="/account/transactions">Lịch sử giao dịch</a>
+              </Button>
+              <Button variant="outline" className="w-full justify-start text-xs border-white/5 hover:bg-white/5" asChild>
                 <a href="/account/settings">Cài đặt quyền riêng tư</a>
               </Button>
             </CardContent>
@@ -262,11 +265,16 @@ export default function ProfilePage() {
 
           {dashboardStats && dashboardAi ? (
             <div className="mt-8 space-y-8">
-              <div>
-                <h2 className="text-2xl font-bold text-white">AI Dashboard</h2>
-                <p className="mt-1 text-sm text-slate-400">
-                  Personalized insights based on your bookings, spend, favorite venues, and matchmaking activity.
-                </p>
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">AI Dashboard</h2>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Personalized insights based on your bookings, spend, favorite venues, and matchmaking activity.
+                  </p>
+                </div>
+                <Button variant="outline" className="border-white/10 text-white hover:bg-white/5" asChild>
+                  <a href="/account/transactions">Xem lịch sử giao dịch</a>
+                </Button>
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">

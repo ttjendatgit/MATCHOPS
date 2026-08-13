@@ -132,6 +132,20 @@ public class DashboardUserStatisticsDto
     public decimal AverageReviewRating { get; set; }
 }
 
+public class DashboardCoachStatisticsDto
+{
+    public decimal RevenueToday { get; set; }
+    public decimal RevenueThisMonth { get; set; }
+    public decimal TotalRevenue { get; set; }
+    public int TotalSessions { get; set; }
+    public int PaidSessions { get; set; }
+    public int CompletedSessions { get; set; }
+    public int PendingPaymentSessions { get; set; }
+    public decimal AverageSessionRevenue { get; set; }
+    public List<DashboardSeriesPointDto> RevenueTrend { get; set; } = [];
+    public List<DashboardBreakdownItemDto> SportDistribution { get; set; } = [];
+}
+
 internal class GroqDashboardAiResponse
 {
     [JsonPropertyName("summary")]
