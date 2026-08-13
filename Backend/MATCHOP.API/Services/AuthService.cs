@@ -73,7 +73,19 @@ namespace MATCHOP.API.Services
             var verificationUrl =
                 $"{frontendBaseUrl}/verify-email?email={Uri.EscapeDataString(user.Email)}&token={Uri.EscapeDataString(token)}";
 
-            await _emailService.SendEmailVerificationAsync(user.Email, user.FullName, verificationUrl);
+            // ✅ Gửi email không chờ, trả về ngay
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _emailService.SendEmailVerificationAsync(user.Email, user.FullName, verificationUrl);
+                }
+                catch (Exception ex)
+                {
+                    // Log lỗi nhưng không crash app
+                    Console.WriteLine($"Email failed: {ex.Message}");
+                }
+            });
         }
 
         public async Task VerifyEmailAsync(VerifyEmailRequestDto dto, CancellationToken cancellationToken = default)
