@@ -91,6 +91,15 @@ public class DashboardController : ControllerBase
         return Ok(ApiResponse<DashboardCoachStatisticsDto>.Ok(result));
     }
 
+    [HttpGet("coach/ai-summary")]
+    public async Task<IActionResult> GetCoachAiSummary(CancellationToken cancellationToken = default)
+    {
+        var userId = GetCurrentUserId();
+        await EnsureCoachProfileAsync(userId, cancellationToken);
+        var result = await _aiAnalyticsService.GetCoachAiSummaryAsync(userId, cancellationToken);
+        return Ok(ApiResponse<DashboardAiSummaryDto>.Ok(result));
+    }
+
     private Guid GetCurrentUserId() =>
         _currentUserService.UserId
         ?? throw new AppException(ErrorCodes.UNAUTHORIZED, "Unauthorized", StatusCodes.Status401Unauthorized);

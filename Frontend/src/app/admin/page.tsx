@@ -18,7 +18,7 @@ import {
 import Link from "next/link";
 import { Pie, PieChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AIInsightCard } from "@/components/shared/AIInsightCard";
+import { AIAnalyticsReport } from "@/components/shared/AIAnalyticsReport";
 import { AIRecommendationsCard } from "@/components/shared/AIRecommendationsCard";
 import { ForecastCard } from "@/components/shared/ForecastCard";
 import { RevenueAnalysisCard } from "@/components/shared/RevenueAnalysisCard";
@@ -166,11 +166,12 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <AIInsightCard
+        <AIAnalyticsReport
           summary={ai.summary}
-          insights={ai.insights}
-          risks={ai.risks}
-          opportunities={ai.opportunities}
+          fullReport={ai.fullReport}
+          actions={ai.actions}
+          riskItems={ai.riskItems}
+          isFallback={ai.isFallback}
           className="xl:col-span-2"
         />
         <div className="space-y-6">
@@ -245,7 +246,7 @@ export default function AdminDashboardPage() {
 
         <Card className="border-white/10 bg-slate-950/50 text-white">
           <CardHeader>
-            <CardTitle className="text-base">Tóm tắt Sức khỏe</CardTitle>
+            <CardTitle className="text-base">Sức khỏe nền tảng</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-lg bg-slate-900/50 p-4">
@@ -262,7 +263,7 @@ export default function AdminDashboardPage() {
             <div className="rounded-lg bg-slate-900/50 p-4">
               <p className="text-xs uppercase tracking-wide text-slate-400">Rủi ro Hoạt động</p>
               <p className="mt-1 text-sm text-slate-300">
-                {ai.risks[0] || "Không phát hiện rủi ro hoạt động lớn nào."}
+                {ai.riskItems?.[0]?.title || ai.risks[0] || "Không phát hiện rủi ro hoạt động lớn nào."}
               </p>
             </div>
           </CardContent>

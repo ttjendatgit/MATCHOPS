@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AIInsightCard } from "@/components/shared/AIInsightCard";
+import { AIAnalyticsReport } from "@/components/shared/AIAnalyticsReport";
 import { AIRecommendationsCard } from "@/components/shared/AIRecommendationsCard";
 import { ForecastCard } from "@/components/shared/ForecastCard";
 import { RevenueAnalysisCard } from "@/components/shared/RevenueAnalysisCard";
@@ -302,11 +302,12 @@ export default function ProfilePage() {
               </div>
 
               <div className="grid gap-6 xl:grid-cols-3">
-                <AIInsightCard
+                <AIAnalyticsReport
                   summary={dashboardAi.summary}
-                  insights={dashboardAi.insights}
-                  risks={dashboardAi.risks}
-                  opportunities={dashboardAi.opportunities}
+                  fullReport={dashboardAi.fullReport}
+                  actions={dashboardAi.actions}
+                  riskItems={dashboardAi.riskItems}
+                  isFallback={dashboardAi.isFallback}
                   className="xl:col-span-2"
                 />
                 <div className="space-y-6">

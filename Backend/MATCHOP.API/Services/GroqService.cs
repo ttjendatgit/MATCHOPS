@@ -5,7 +5,7 @@ namespace MATCHOP.API.Services
 {
     public interface IGroqService
     {
-        Task<string> GetChatCompletionAsync(List<GroqMessage> messages, CancellationToken cancellationToken = default);
+        Task<string> GetChatCompletionAsync(List<GroqMessage> messages, CancellationToken cancellationToken = default, int maxTokens = 1024);
     }
 
     public class GroqMessage
@@ -26,7 +26,7 @@ namespace MATCHOP.API.Services
             _configuration = configuration;
         }
 
-        public async Task<string> GetChatCompletionAsync(List<GroqMessage> messages, CancellationToken cancellationToken = default)
+        public async Task<string> GetChatCompletionAsync(List<GroqMessage> messages, CancellationToken cancellationToken = default, int maxTokens = 1024)
         {
             var apiKey = _configuration["Groq:ApiKey"];
             if (string.IsNullOrEmpty(apiKey))
@@ -38,8 +38,8 @@ namespace MATCHOP.API.Services
             {
                 model = "llama-3.3-70b-versatile",
                 messages = messages,
-                temperature = 0.7,
-                max_tokens = 1024
+                temperature = 0.3,
+                max_tokens = maxTokens
             };
 
             var request = new HttpRequestMessage(HttpMethod.Post, GroqUrl);

@@ -21,13 +21,34 @@ export interface ForecastMetric {
 
 export interface DashboardAiSummary {
   summary: string;
+  fullReport?: string;
   insights: string[];
   recommendations: string[];
   risks: string[];
+  riskItems?: DashboardAiRiskItem[];
   opportunities: string[];
+  actions?: DashboardAiActionItem[];
   forecast: ForecastMetric[];
   isFallback: boolean;
   generatedAt: string;
+}
+
+export interface DashboardAiRiskItem {
+  level: string;
+  title: string;
+  detail: string;
+  evidence: string;
+  impact: string;
+  suggestedAction: string;
+}
+
+export interface DashboardAiActionItem {
+  priority: number;
+  level: string;
+  action: string;
+  reason: string;
+  expectedImpact: string;
+  metric: string;
 }
 
 export interface VenuePerformance {

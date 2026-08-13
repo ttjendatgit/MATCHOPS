@@ -31,13 +31,36 @@ public class ForecastMetricDto
 public class DashboardAiSummaryDto
 {
     public string Summary { get; set; } = string.Empty;
+    public string FullReport { get; set; } = string.Empty;
     public List<string> Insights { get; set; } = [];
     public List<string> Recommendations { get; set; } = [];
     public List<string> Risks { get; set; } = [];
+    public List<DashboardAiRiskItemDto> RiskItems { get; set; } = [];
     public List<string> Opportunities { get; set; } = [];
+    public List<DashboardAiActionItemDto> Actions { get; set; } = [];
     public List<ForecastMetricDto> Forecast { get; set; } = [];
     public bool IsFallback { get; set; }
     public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class DashboardAiRiskItemDto
+{
+    public string Level { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Detail { get; set; } = string.Empty;
+    public string Evidence { get; set; } = string.Empty;
+    public string Impact { get; set; } = string.Empty;
+    public string SuggestedAction { get; set; } = string.Empty;
+}
+
+public class DashboardAiActionItemDto
+{
+    public int Priority { get; set; }
+    public string Level { get; set; } = string.Empty;
+    public string Action { get; set; } = string.Empty;
+    public string Reason { get; set; } = string.Empty;
+    public string ExpectedImpact { get; set; } = string.Empty;
+    public string Metric { get; set; } = string.Empty;
 }
 
 public class VenuePerformanceDto
@@ -148,6 +171,9 @@ public class DashboardCoachStatisticsDto
 
 internal class GroqDashboardAiResponse
 {
+    [JsonPropertyName("fullReport")]
+    public string? FullReport { get; set; }
+
     [JsonPropertyName("summary")]
     public string? Summary { get; set; }
 
@@ -158,11 +184,56 @@ internal class GroqDashboardAiResponse
     public List<string>? Recommendations { get; set; }
 
     [JsonPropertyName("risks")]
-    public List<string>? Risks { get; set; }
+    public JsonElement? Risks { get; set; }
 
     [JsonPropertyName("opportunities")]
     public List<string>? Opportunities { get; set; }
 
+    [JsonPropertyName("actions")]
+    public List<GroqDashboardAiActionResponse>? Actions { get; set; }
+
     [JsonPropertyName("forecast")]
     public Dictionary<string, JsonElement>? Forecast { get; set; }
+}
+
+internal class GroqDashboardAiRiskResponse
+{
+    [JsonPropertyName("level")]
+    public string? Level { get; set; }
+
+    [JsonPropertyName("title")]
+    public string? Title { get; set; }
+
+    [JsonPropertyName("detail")]
+    public string? Detail { get; set; }
+
+    [JsonPropertyName("evidence")]
+    public string? Evidence { get; set; }
+
+    [JsonPropertyName("impact")]
+    public string? Impact { get; set; }
+
+    [JsonPropertyName("suggestedAction")]
+    public string? SuggestedAction { get; set; }
+}
+
+internal class GroqDashboardAiActionResponse
+{
+    [JsonPropertyName("priority")]
+    public int Priority { get; set; }
+
+    [JsonPropertyName("level")]
+    public string? Level { get; set; }
+
+    [JsonPropertyName("action")]
+    public string? Action { get; set; }
+
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
+
+    [JsonPropertyName("expectedImpact")]
+    public string? ExpectedImpact { get; set; }
+
+    [JsonPropertyName("metric")]
+    public string? Metric { get; set; }
 }

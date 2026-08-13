@@ -17,11 +17,14 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
 import { formatCurrency } from "@/lib/utils";
 import type { ApiResponse } from "@/types/api";
-import type { DashboardCoachStatistics } from "@/types/dashboard";
+import type { DashboardAiSummary, DashboardCoachStatistics } from "@/types/dashboard";
 import type { TransactionHistoryResponse, TransactionItem } from "@/types/transaction";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RevenueAnalysisCard } from "@/components/shared/RevenueAnalysisCard";
+import { AIAnalyticsReport } from "@/components/shared/AIAnalyticsReport";
+import { AIRecommendationsCard } from "@/components/shared/AIRecommendationsCard";
+import { ForecastCard } from "@/components/shared/ForecastCard";
 import { TransactionHistoryTable } from "@/components/shared/TransactionHistoryTable";
 import { toast } from "sonner";
 
@@ -34,16 +37,19 @@ export default function CoachRevenuePage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [stats, setStats] = useState<DashboardCoachStatistics | null>(null);
+  const [ai, setAi] = useState<DashboardAiSummary | null>(null);
   const [history, setHistory] = useState<TransactionHistoryResponse | null>(null);
 
   const loadData = useCallback(async (token: string, currentPage: number) => {
     setLoading(true);
     try {
-      const [statsRes, historyRes] = await Promise.all([
+      const [statsRes, aiRes, historyRes] = await Promise.all([
         apiFetch<ApiResponse<DashboardCoachStatistics>>("/dashboard/coach/statistics", { token }),
+        apiFetch<ApiResponse<DashboardAiSummary>>("/dashboard/coach/ai-summary", { token }),
         apiFetch<ApiResponse<TransactionHistoryResponse>>(buildQuery(currentPage), { token }),
       ]);
       setStats(statsRes.data);
+      setAi(aiRes.data);
       setHistory(historyRes.data);
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
@@ -194,6 +200,23 @@ export default function CoachRevenuePage() {
             description={`TB ${formatCurrency(stats.averageSessionRevenue)} / buổi · ${stats.pendingPaymentSessions} buổi chờ thanh toán`}
             data={stats.revenueTrend}
           />
+        </div>
+      )}
+
+      {ai && (
+        <div className="mb-8 grid gap-6 xl:grid-cols-3">
+          <AIAnalyticsReport
+            summary={ai.summary}
+            fullReport={ai.fullReport}
+            actions={ai.actions}
+            riskItems={ai.riskItems}
+            isFallback={ai.isFallback}
+            className="xl:col-span-2"
+          />
+          <div className="space-y-6">
+            <AIRecommendationsCard recommendations={ai.recommendations} />
+            <ForecastCard forecast={ai.forecast} />
+          </div>
         </div>
       )}
 

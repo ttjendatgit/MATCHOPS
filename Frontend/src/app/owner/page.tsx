@@ -14,7 +14,7 @@ import {
 import Link from "next/link";
 import { Pie, PieChart, Cell, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AIInsightCard } from "@/components/shared/AIInsightCard";
+import { AIAnalyticsReport } from "@/components/shared/AIAnalyticsReport";
 import { AIRecommendationsCard } from "@/components/shared/AIRecommendationsCard";
 import { ForecastCard } from "@/components/shared/ForecastCard";
 import { RevenueAnalysisCard } from "@/components/shared/RevenueAnalysisCard";
@@ -135,11 +135,12 @@ export default function OwnerDashboardPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <AIInsightCard
+        <AIAnalyticsReport
           summary={ai.summary}
-          insights={ai.insights}
-          risks={ai.risks}
-          opportunities={ai.opportunities}
+          fullReport={ai.fullReport}
+          actions={ai.actions}
+          riskItems={ai.riskItems}
+          isFallback={ai.isFallback}
           className="xl:col-span-2"
         />
         <div className="space-y-6">

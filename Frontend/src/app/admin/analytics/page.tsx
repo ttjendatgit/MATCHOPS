@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AIInsightCard } from "@/components/shared/AIInsightCard";
+import { AIAnalyticsReport } from "@/components/shared/AIAnalyticsReport";
 import { RevenueAnalysisCard } from "@/components/shared/RevenueAnalysisCard";
 import { BookingTrendAnalysisCard } from "@/components/shared/BookingTrendAnalysisCard";
 import { ForecastCard } from "@/components/shared/ForecastCard";
@@ -67,11 +67,12 @@ export default function AdminAnalyticsPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <AIInsightCard
+        <AIAnalyticsReport
           summary={ai.summary}
-          insights={ai.insights}
-          risks={ai.risks}
-          opportunities={ai.opportunities}
+          fullReport={ai.fullReport}
+          actions={ai.actions}
+          riskItems={ai.riskItems}
+          isFallback={ai.isFallback}
           className="xl:col-span-2"
         />
         <div className="space-y-6">
