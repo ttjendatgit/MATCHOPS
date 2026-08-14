@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/BackLink";
 import {
   AlertCircle,
   ArrowLeft,
@@ -242,15 +243,9 @@ function InvalidState({
           <p className="mb-8 text-sm leading-relaxed text-slate-400">
             {message}
           </p>
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col items-center gap-3">
             {venueId && (
-              <Link
-                href={`/venues/${venueId}`}
-                className="flex items-center justify-center gap-2 rounded-xl border border-[#FF8000]/30 bg-[#FF8000]/10 px-4 py-2.5 text-sm font-medium text-[#FF8000] transition-colors hover:bg-[#FF8000]/20"
-              >
-                <ArrowLeft className="h-4 w-4" aria-hidden />
-                Quay lại chọn giờ
-              </Link>
+              <BackLink href={`/venues/${venueId}`} label="Quay lại chọn giờ" />
             )}
             <Link
               href="/venues"
@@ -491,13 +486,7 @@ function SummaryPageInner() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Back link */}
-      <Link
-        href={`/venues/${venueId}`}
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-300"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden />
-        Quay lại chọn giờ
-      </Link>
+      <BackLink href={`/venues/${venueId}`} label="Quay lại chọn giờ" className="mb-6" />
 
       <form id="booking-summary-form" onSubmit={handleSubmit} noValidate>
         <div className="mt-2 grid gap-6 lg:grid-cols-12">

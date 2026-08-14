@@ -5,6 +5,20 @@
 /* Deep-black html backdrop — prevents white flash when intro overlay fades */
 html {
   background-color: #030303;
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Touch-friendly minimum tap targets */
+@layer utilities {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 
 /* ── Autofill override ──────────────────────────────────────────────────────

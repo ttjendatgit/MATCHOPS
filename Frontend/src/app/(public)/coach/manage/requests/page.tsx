@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/BackLink";
 import {
   AlertTriangle,
   Ban,
@@ -339,13 +340,7 @@ export default function CoachIncomingRequestsPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
-      <Link
-        href="/coach/manage"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]/50 rounded"
-      >
-        <ChevronLeft className="h-4 w-4" aria-hidden />
-        Quay lại trang quản lý huấn luyện viên
-      </Link>
+      <BackLink href="/coach/manage" label="Quay lại trang quản lý huấn luyện viên" className="mb-6" />
 
       <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
         <div className="max-w-2xl">

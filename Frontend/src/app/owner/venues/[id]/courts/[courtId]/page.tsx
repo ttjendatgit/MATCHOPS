@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { BackLink } from "@/components/shared/BackLink";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
@@ -179,15 +180,17 @@ export default function CourtDetailPage() {
     return (
       <div className="py-20 text-center">
         <p className="text-slate-400">Không tìm thấy thông tin sân.</p>
-        <Link href={`/owner/venues/${id}/courts`} className="mt-2 inline-block text-[#FF8000] hover:underline">
-          Quay lại danh sách sân
-        </Link>
+        <div className="mt-4 flex justify-center">
+          <BackLink href={`/owner/venues/${id}/courts`} label="Quay lại danh sách sân" />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      <BackLink href={`/owner/venues/${id}/courts`} label="Quay lại danh sách sân" />
+
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1 text-sm text-[#C4C7C9]/50">
         <Link href={`/owner/venues/${id}/courts`} className="hover:text-[#FF8000] transition-colors">

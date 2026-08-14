@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import {
-  ChevronLeft,
   Star,
   CheckCircle2,
   XCircle,
@@ -19,6 +18,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/BackLink";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -372,7 +372,7 @@ function MySubscriptionContent() {
   if (error) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-12">
-        <BackLink href="/profile" label="Quay lại trang cá nhân" />
+        <BackLink href="/profile" label="Quay lại trang cá nhân" className="mb-8" />
         <div className="mt-8 flex flex-col items-center justify-center gap-4 rounded-2xl border border-red-500/20 bg-red-950/20 py-16 text-center">
           <AlertCircle className="h-10 w-10 text-red-400" aria-hidden />
           <p className="text-sm text-red-400" role="alert">{error}</p>
@@ -394,7 +394,7 @@ function MySubscriptionContent() {
   if (isAdmin) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-12">
-        <BackLink href="/" label="Về trang chủ" />
+        <BackLink href="/" label="Về trang chủ" className="mb-8" />
         <div className="mt-8 flex flex-col items-center justify-center gap-4 rounded-2xl border border-[rgba(134,210,50,0.2)] bg-[#0A0A0A] py-16 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[rgba(134,210,50,0.1)]">
             <Shield className="h-8 w-8 text-[#86D232]" aria-hidden />
@@ -418,7 +418,7 @@ function MySubscriptionContent() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12">
-      <BackLink href="/profile" label="Quay lại trang cá nhân" />
+      <BackLink href="/profile" label="Quay lại trang cá nhân" className="mb-8" />
 
       {/* Header */}
       <div className="mb-8">
@@ -773,18 +773,6 @@ function MySubscriptionContent() {
 }
 
 // ── Helper sub-components (file-private) ─────────────────────────────────────
-
-function BackLink({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      href={href}
-      className="mb-8 inline-flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:underline"
-    >
-      <ChevronLeft className="h-4 w-4" aria-hidden />
-      {label}
-    </Link>
-  );
-}
 
 function DateField({
   label,

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {
   Users, Calendar, MapPin, User,
   Loader2, CheckCircle2, XCircle,
-  Trophy, ChevronLeft,
+  Trophy,
   ShieldCheck, Info, MessageCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/BackLink";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 function formatMatchDateTime(isoString: string | null | undefined): string {
@@ -128,10 +129,7 @@ export default function MatchRoomDetailPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
-      <Link href="/match/rooms" className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white mb-8 transition-colors">
-        <ChevronLeft className="h-4 w-4" />
-        Quay lại danh sách phòng
-      </Link>
+      <BackLink href="/match/rooms" label="Quay lại danh sách phòng" className="mb-8" />
 
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Info Column */}

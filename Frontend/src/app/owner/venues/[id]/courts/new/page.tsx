@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { BackLink } from "@/components/shared/BackLink";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
@@ -268,6 +269,8 @@ export default function NewCourtPage() {
         onOpenChange={setUpgradeModal}
         type="court"
       />
+
+      <BackLink href={`/owner/venues/${venueId}/courts`} label="Quay lại danh sách sân" />
 
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1 text-sm text-[#C4C7C9]/50">

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { KeyRound, Lock, Eye, EyeOff, Save, Loader2, ChevronLeft } from "lucide-react";
+import { KeyRound, Lock, Eye, EyeOff, Save, Loader2 } from "lucide-react";
+import { BackLink } from "@/components/shared/BackLink";
 import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
 import type { ApiResponse } from "@/types/api";
@@ -11,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import Link from "next/link";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -67,10 +67,7 @@ export default function ChangePasswordPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
-      <Link href="/profile" className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white mb-8 transition-colors">
-        <ChevronLeft className="h-4 w-4" />
-        Quay lại trang cá nhân
-      </Link>
+      <BackLink href="/profile" label="Quay lại trang cá nhân" className="mb-8" />
 
       <Card className="border-white/10 bg-slate-900/50 backdrop-blur-sm">
         <CardHeader className="text-center">

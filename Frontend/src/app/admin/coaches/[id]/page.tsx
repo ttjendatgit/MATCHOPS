@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { CoachStatusBadge } from "@/components/shared/StatusBadge";
+import { BackLink } from "@/components/shared/BackLink";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -181,10 +182,7 @@ export default function AdminCoachDetailPage() {
   if (error || !profile) {
     return (
       <div className="space-y-4">
-        <Link href="/admin/coaches" className="inline-flex items-center gap-1.5 text-sm text-[#C4C7C9]/70 transition-colors hover:text-white">
-          <ChevronLeft className="h-4 w-4" aria-hidden />
-          Quay lại danh sách
-        </Link>
+        <BackLink href="/admin/coaches" label="Quay lại danh sách" />
         <Card>
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
             <AlertTriangle className="h-8 w-8 text-[#FF4B4B]" aria-hidden />
@@ -204,10 +202,7 @@ export default function AdminCoachDetailPage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/admin/coaches" className="inline-flex items-center gap-1.5 text-sm text-[#C4C7C9]/70 transition-colors hover:text-white">
-        <ChevronLeft className="h-4 w-4" aria-hidden />
-        Quay lại danh sách huấn luyện viên
-      </Link>
+      <BackLink href="/admin/coaches" label="Quay lại danh sách huấn luyện viên" />
 
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold text-white font-heading">{name}</h1>

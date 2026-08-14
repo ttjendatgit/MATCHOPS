@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { BackLink } from "@/components/shared/BackLink";
 import { VenueStatusBadge } from "@/components/shared/StatusBadge";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
@@ -160,15 +161,17 @@ export default function VenueDetailOwnerPage() {
     return (
       <div className="text-center py-20">
         <p className="text-slate-400">Không tìm thấy thông tin cơ sở.</p>
-        <Link href="/owner/venues" className="text-[#FF8000] hover:underline mt-2 inline-block">
-          Quay lại danh sách
-        </Link>
+        <div className="mt-4 flex justify-center">
+          <BackLink href="/owner/venues" label="Quay lại danh sách" />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      <BackLink href="/owner/venues" label="Quay lại danh sách cơ sở" />
+
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1 text-sm text-[#C4C7C9]/50">
         <Link href="/owner/venues" className="hover:text-[#FF8000] transition-colors">

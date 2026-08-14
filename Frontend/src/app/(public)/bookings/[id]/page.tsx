@@ -18,7 +18,7 @@ import {
   Timer,
   User,
 } from "lucide-react";
-import { BookingStatusBadge, PaymentStatusBadge } from "@/components/shared/StatusBadge";
+import { DetailPageHeader, BackLink } from "@/components/shared/BackLink";
 import { cn, formatCurrency } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
@@ -103,13 +103,9 @@ function NotFoundState() {
       <p className="mb-8 text-sm leading-relaxed text-slate-400">
         Lịch đặt này không tồn tại hoặc đã bị xoá.
       </p>
-      <Link
-        href="/bookings"
-        className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-slate-800/60 px-5 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden />
-        Quay lại lịch đặt sân
-      </Link>
+      <div className="flex justify-center">
+        <BackLink href="/bookings" label="Quay lại lịch đặt sân" />
+      </div>
     </div>
   );
 }
@@ -188,10 +184,12 @@ export default function BookingDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
 
-      {/* ── Breadcrumb ── */}
-      <nav aria-label="Điều hướng" className="mb-6 flex items-center gap-1 text-sm text-slate-500">
+      <DetailPageHeader backLabel="Quay lại lịch đặt" href="/bookings" />
+
+      {/* ── Breadcrumb (desktop) ── */}
+      <nav aria-label="Điều hướng" className="mb-6 hidden items-center gap-1 text-sm text-slate-500 md:flex">
         <Link href="/bookings" className="transition-colors hover:text-slate-300">
           Lịch đặt sân
         </Link>

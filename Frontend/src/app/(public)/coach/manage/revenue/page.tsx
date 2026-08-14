@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/BackLink";
 import {
   Calendar,
   ChevronLeft,
@@ -121,13 +122,7 @@ export default function CoachRevenuePage() {
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link
-            href="/coach/manage"
-            className="mb-3 inline-flex items-center gap-1 text-xs text-slate-500 transition-colors hover:text-white"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-            Quản lý huấn luyện viên
-          </Link>
+          <BackLink href="/coach/manage" label="Quay lại trang quản lý huấn luyện viên" className="mb-3" />
           <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
             <UserCog className="h-3.5 w-3.5 text-[#FF8000]" aria-hidden />
             Dashboard huấn luyện viên

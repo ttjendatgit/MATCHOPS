@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { MapPin, Clock, Star, ChevronRight, Users } from "lucide-react";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/BackLink";
 import { apiFetch } from "@/lib/api";
 import { TimeSlotPicker } from "@/components/booking/TimeSlotPicker";
 import type { Venue, VenueStatus } from "@/types/venue";
@@ -152,12 +153,9 @@ export default async function VenueDetailPage({
     return (
       <div className="mx-auto max-w-7xl px-4 py-24 text-center sm:px-6 lg:px-8">
         <p className="text-sm text-red-400">{venueError}</p>
-        <Link
-          href="/venues"
-          className="mt-4 inline-block text-sm text-[#FF8000] hover:underline"
-        >
-          ← Quay lại danh sách sân
-        </Link>
+        <div className="mt-4 flex justify-center">
+          <BackLink href="/venues" label="Quay lại danh sách sân" />
+        </div>
       </div>
     );
   }
@@ -208,6 +206,8 @@ export default async function VenueDetailPage({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <BackLink href="/venues" label="Quay lại danh sách sân" className="mb-6" />
+
       {/* Breadcrumb */}
       <nav className="mb-6 flex items-center gap-1 text-sm text-slate-500">
         <Link href="/" className="transition-colors hover:text-slate-300">

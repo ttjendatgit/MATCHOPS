@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/BackLink";
 import {
   AlertCircle,
   ArrowLeft,
@@ -380,13 +381,7 @@ export default function PaymentPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Back link */}
-      <Link
-        href={summaryUrl}
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-300"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden />
-        Quay lại xem lại
-      </Link>
+      <BackLink href={summaryUrl} label="Quay lại xem lại" className="mb-6" />
 
       <div className="mt-2 grid gap-6 lg:grid-cols-12">
 

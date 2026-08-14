@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Loader2 } from "lucide-react";
-import Link from "next/link";
+import { BackLink } from "@/components/shared/BackLink";
 import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
 import type { ApiResponse } from "@/types/api";
@@ -54,13 +53,7 @@ export default function UserTransactionsPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12">
-      <Link
-        href="/profile"
-        className="mb-8 inline-flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-white"
-      >
-        <ChevronLeft className="h-4 w-4" />
-        Quay lại trang cá nhân
-      </Link>
+      <BackLink href="/profile" label="Quay lại trang cá nhân" className="mb-8" />
 
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white">Lịch sử giao dịch</h1>

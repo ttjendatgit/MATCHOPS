@@ -17,6 +17,7 @@ import { getStoredToken, getStoredUser, isAuthenticated } from "@/lib/auth";
 import { useRouter, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/BackLink";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -221,10 +222,7 @@ export default function MatchDetailPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
-      <Link href="/match" className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white mb-8 transition-colors">
-        <ChevronLeft className="h-4 w-4" />
-        Quay lại danh sách
-      </Link>
+      <BackLink href="/match" label="Quay lại danh sách" className="mb-8" />
 
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">

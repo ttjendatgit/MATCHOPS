@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Bell,
   CalendarCheck2,
   CalendarClock,
   ChevronDown,
@@ -21,6 +22,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { MobileDrawer } from "@/components/layout/MobileDrawer";
 import {
   getStoredUser,
   getStoredToken,
@@ -456,28 +458,48 @@ export function PublicNavbar() {
       {/* ── Main bar ── */}
       <div className="mx-auto h-16 max-w-7xl px-5 sm:px-6 flex items-center">
 
-        {/* ── Mobile row: logo-left + hamburger-right ── */}
-        <div className="flex w-full items-center justify-between md:hidden">
-          <LogoMark />
-
+        {/* ── Mobile row: menu + logo + actions ── */}
+        <div className="flex w-full items-center gap-2 md:hidden">
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-300 transition-colors duration-200 hover:bg-white/10 hover:text-white"
-            onClick={() =>
-              setMobileOpen((prev) => !prev)
-            }
-            aria-label={
-              mobileOpen ? "Đóng menu" : "Mở menu"
-            }
+            className="touch-target flex shrink-0 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Mở menu"
             aria-expanded={mobileOpen}
             aria-controls="public-mobile-nav"
           >
-            {mobileOpen ? (
-              <X className="h-4 w-4" aria-hidden />
-            ) : (
-              <Menu className="h-4 w-4" aria-hidden />
-            )}
+            <Menu className="h-5 w-5" aria-hidden />
           </button>
+
+          <div className="flex flex-1 justify-center">
+            <LogoMark />
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1">
+            <Link
+              href="/account/settings"
+              className="touch-target flex items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+              aria-label="Thông báo và cài đặt"
+            >
+              <Bell className="h-5 w-5" aria-hidden />
+            </Link>
+            {user ? (
+              <Link
+                href="/profile"
+                className="touch-target flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-[#FF8000]/30 bg-[#FF8000]/10 text-xs font-bold text-[#FF8000]"
+                aria-label="Trang cá nhân"
+              >
+                {user.fullName?.charAt(0)?.toUpperCase() ?? "U"}
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="touch-target flex items-center justify-center rounded-full px-2 text-xs font-semibold text-[#FF8000]"
+              >
+                Đăng nhập
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* ── Desktop 3-col grid ── */}
@@ -589,19 +611,13 @@ export function PublicNavbar() {
         </div>
       </div>
 
-      {/* ── Mobile dropdown ── */}
-      <div
-        id="public-mobile-nav"
-        className={cn(
-          "overflow-hidden md:hidden",
-          "bg-slate-950/95 backdrop-blur-xl",
-          "motion-safe:transition-all motion-safe:ease-in-out",
-          mobileOpen
-            ? "max-h-[640px] opacity-100 motion-safe:duration-300 border-t border-white/[0.07]"
-            : "max-h-0 opacity-0 motion-safe:duration-200"
-        )}
+      {/* ── Mobile slide drawer ── */}
+      <MobileDrawer
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        title="Menu MatchOps"
       >
-        <div className="px-4 pb-4 pt-2 space-y-1">
+        <div id="public-mobile-nav" className="space-y-1">
 
           {/* Nav links */}
           {navLinks.map((link) => {
@@ -844,7 +860,7 @@ export function PublicNavbar() {
             </>
           )}
         </div>
-      </div>
+      </MobileDrawer>
     </div>
   );
 }

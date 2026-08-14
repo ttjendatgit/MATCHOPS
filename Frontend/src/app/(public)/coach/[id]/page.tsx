@@ -12,6 +12,7 @@ import {
 import { apiFetch, ApiError } from "@/lib/api";
 import { PublicPortfolioGallery } from "@/components/coach/PublicPortfolioGallery";
 import { CoachDetailInteractive } from "@/components/coach/CoachDetailInteractive";
+import { BackLink } from "@/components/shared/BackLink";
 import type { CoachAvailabilitySlot, PublicCoachDetail } from "@/types/coach";
 
 export const metadata: Metadata = { title: "Chi tiết huấn luyện viên – MatchOps" };
@@ -82,12 +83,9 @@ export default async function CoachDetailPage({
     return (
       <div className="mx-auto max-w-7xl px-4 py-24 text-center sm:px-6 lg:px-8">
         <p className="text-sm text-red-400">{coachError}</p>
-        <Link
-          href="/coach"
-          className="mt-4 inline-block text-sm text-[#FF8000] hover:underline"
-        >
-          ← Quay lại danh sách huấn luyện viên
-        </Link>
+        <div className="mt-4 flex justify-center">
+          <BackLink href="/coach" label="Quay lại danh sách huấn luyện viên" />
+        </div>
       </div>
     );
   }
@@ -115,6 +113,8 @@ export default async function CoachDetailPage({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      <BackLink href="/coach" label="Quay lại danh sách huấn luyện viên" className="mb-6" />
+
       {/* Breadcrumb */}
       <nav className="mb-6 flex items-center gap-1 text-sm text-slate-500">
         <Link href="/" className="transition-colors hover:text-slate-300">

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { BackLink } from "@/components/shared/BackLink";
 import { toast } from "sonner";
 import { getStoredToken } from "@/lib/auth";
 import Link from "next/link";
@@ -114,6 +115,9 @@ export default function NewVenuePage() {
         onOpenChange={setUpgradeModal}
         type="venue"
       />
+
+      {/* Back */}
+      <BackLink href="/owner/venues" label="Quay lại danh sách cơ sở" />
 
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1 text-sm text-[#C4C7C9]/50">

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/BackLink";
 import Image from "next/image";
 import {
   AlertTriangle,
@@ -1233,13 +1234,7 @@ export default function CoachApplyPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <Link
-        href="/coach"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8000]/50 rounded"
-      >
-        <ChevronLeft className="h-4 w-4" aria-hidden />
-        Quay lại danh sách huấn luyện viên
-      </Link>
+      <BackLink href="/coach" label="Quay lại danh sách huấn luyện viên" className="mb-6" />
 
       {/* ── Header (always first, including on mobile) ── */}
       <div className="mb-8 max-w-2xl">

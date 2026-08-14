@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ChevronRight, Plus, Ban, Lock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { BackLink } from "@/components/shared/BackLink";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
@@ -166,6 +167,8 @@ export default function CourtBlocksPage() {
 
   return (
     <div className="space-y-6">
+      <BackLink href={`/owner/venues/${id}`} label="Quay lại chi tiết cơ sở" />
+
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1 text-sm text-[#C4C7C9]/50">
         <Link href={`/owner/venues/${id}`} className="hover:text-[#FF8000] transition-colors">

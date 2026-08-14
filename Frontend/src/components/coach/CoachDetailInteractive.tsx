@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/BackLink";
 import type { CoachAvailabilitySlot, CoachSport } from "@/types/coach";
 import {
   CoachAvailabilityPreview,
@@ -49,12 +50,7 @@ export function CoachDetailInteractive({
           onSelectSlot={handleSelectSlot}
         />
 
-        <Link
-          href="/coach"
-          className="inline-block text-sm text-[#FF8000] transition-colors hover:underline"
-        >
-          ← Quay lại danh sách huấn luyện viên
-        </Link>
+        <BackLink href="/coach" label="Quay lại danh sách huấn luyện viên" className="mt-4 lg:hidden" />
       </div>
 
       <div className="lg:col-span-1">

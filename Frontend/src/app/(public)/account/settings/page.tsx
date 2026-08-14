@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Settings, Bell, Shield, Eye, Trash2, ChevronLeft } from "lucide-react";
+import { Settings, Bell, Shield, Eye, Trash2 } from "lucide-react";
+import { BackLink } from "@/components/shared/BackLink";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import Link from "next/link";
 import { toast } from "sonner";
 
 export default function AccountSettingsPage() {
@@ -20,10 +20,7 @@ export default function AccountSettingsPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12">
-      <Link href="/profile" className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white mb-8 transition-colors">
-        <ChevronLeft className="h-4 w-4" />
-        Quay lại trang cá nhân
-      </Link>
+      <BackLink href="/profile" label="Quay lại trang cá nhân" className="mb-8" />
 
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white">Cài đặt tài khoản</h1>
