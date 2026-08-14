@@ -6,6 +6,7 @@ import {
 import { VenueStatus } from "@/types/venue";
 import { CourtStatus } from "@/types/court";
 import { CoachProfileStatus } from "@/types/coach";
+import { OwnerApplicationStatus } from "@/types/owner-application";
 
 const venueStatusMap: Record<VenueStatus, { label: string; variant: "default" | "success" | "warning" | "destructive" | "muted" | "info" }> = {
   DRAFT:            { label: "Nháp",          variant: "muted" },
@@ -68,5 +69,16 @@ const coachStatusMap: Record<CoachProfileStatus, { label: string; variant: "warn
 
 export function CoachStatusBadge({ status }: { status: CoachProfileStatus }) {
   const config = coachStatusMap[status];
+  return <Badge variant={config.variant as any}>{config.label}</Badge>;
+}
+
+const ownerApplicationStatusMap: Record<OwnerApplicationStatus, { label: string; variant: "warning" | "success" | "destructive" }> = {
+  PENDING_APPROVAL: { label: "Chờ duyệt", variant: "warning" },
+  APPROVED: { label: "Đã duyệt", variant: "success" },
+  REJECTED: { label: "Từ chối", variant: "destructive" },
+};
+
+export function OwnerApplicationStatusBadge({ status }: { status: OwnerApplicationStatus }) {
+  const config = ownerApplicationStatusMap[status];
   return <Badge variant={config.variant as any}>{config.label}</Badge>;
 }

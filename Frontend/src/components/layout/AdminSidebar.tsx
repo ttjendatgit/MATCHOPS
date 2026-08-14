@@ -18,6 +18,7 @@ import {
   TrendingUp,
   Settings,
   Receipt,
+  Store,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -28,6 +29,7 @@ import type { User } from "@/types/auth";
 const navItems = [
   { href: "/admin",            icon: LayoutDashboard, label: "Tổng quan" },
   { href: "/admin/venues",     icon: Building2,       label: "Duyệt cơ sở" },
+  { href: "/admin/owner-applications", icon: Store, label: "ĐK Chủ sân" },
   { href: "/admin/coaches",    icon: UserCheck,       label: "Huấn luyện viên" },
   { href: "/admin/users",      icon: Users,           label: "Người dùng" },
   { href: "/admin/courts",     icon: PlayCircle,      label: "Sân" },

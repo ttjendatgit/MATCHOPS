@@ -70,5 +70,8 @@ namespace MATCHOP.API.Helpers
         public const string CoachSessionNotFound = "COACH_SESSION_NOT_FOUND";
         public const string CoachSessionPaymentNotAllowed = "COACH_SESSION_PAYMENT_NOT_ALLOWED";
         public const string CoachSessionCompleteNotAllowed = "COACH_SESSION_COMPLETE_NOT_ALLOWED";
+
+        public const string OwnerApplicationNotFound = "OWNER_APPLICATION_NOT_FOUND";
+        public const string OwnerApplicationAlreadyExists = "OWNER_APPLICATION_ALREADY_EXISTS";
     }
 }

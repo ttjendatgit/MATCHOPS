@@ -50,6 +50,13 @@ namespace MATCHOP.API.DTOs.Profile
         public string Status { get; set; } = string.Empty;
         public bool EmailConfirmed { get; set; }
         public DateTime CreatedAt { get; set; }
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
+    }
+
+    public class UpdateUserRoleRequestDto
+    {
+        public string Role { get; set; } = string.Empty;
     }
 
     public class UpdateFavoriteSportsRequestDto

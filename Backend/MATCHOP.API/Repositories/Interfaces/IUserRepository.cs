@@ -6,7 +6,7 @@ namespace MATCHOP.API.Repositories.Interfaces
     public interface IUserRepository
     {
         Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
-        Task<List<User>> GetAllAsync(CancellationToken cancellationToken = default);
+        Task<List<User>> GetAllAsync(bool includeDeleted = false, CancellationToken cancellationToken = default);
         Task<User?> GetProfileAsync(Guid userId, CancellationToken cancellationToken = default);
         Task<User> UpdateAsync(User user, CancellationToken cancellationToken = default);
         Task<User?> UploadAvatarAsync(Guid userId, string avatarUrl, CancellationToken cancellationToken = default);

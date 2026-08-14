@@ -184,6 +184,11 @@ namespace MATCHOP.API.Services
                 throw new AppException("INVALID_LOGIN", "Email hoặc mật khẩu không đúng.", StatusCodes.Status401Unauthorized);
             }
 
+            if (user.IsDeleted)
+            {
+                throw new AppException(ErrorCodes.PermissionDenied, "Tài khoản đã bị xóa.", StatusCodes.Status403Forbidden);
+            }
+
             if (user.Status != UserStatus.ACTIVE)
             {
                 throw new AppException(ErrorCodes.PermissionDenied, "Tài khoản không hoạt động.", StatusCodes.Status403Forbidden);
@@ -275,6 +280,11 @@ namespace MATCHOP.API.Services
             }
             else
             {
+                if (user.IsDeleted)
+                {
+                    throw new AppException(ErrorCodes.PermissionDenied, "Tài khoản đã bị xóa.", StatusCodes.Status403Forbidden);
+                }
+
                 if (user.Status != UserStatus.ACTIVE)
                 {
                     throw new AppException(ErrorCodes.PermissionDenied, "Tài khoản không hoạt động.", StatusCodes.Status403Forbidden);
@@ -309,6 +319,11 @@ namespace MATCHOP.API.Services
             if (user == null)
             {
                 throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);
+            }
+
+            if (user.IsDeleted)
+            {
+                throw new AppException(ErrorCodes.PermissionDenied, "Tài khoản đã bị xóa.", StatusCodes.Status403Forbidden);
             }
 
             if (user.Status != UserStatus.ACTIVE)

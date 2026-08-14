@@ -172,6 +172,13 @@ public enum CoachProfileStatus
     SUSPENDED = 4
 }
 
+public enum OwnerApplicationStatus
+{
+    PENDING_APPROVAL = 1,
+    APPROVED = 2,
+    REJECTED = 3
+}
+
 public enum CoachProofType
 {
     CERTIFICATION = 1,

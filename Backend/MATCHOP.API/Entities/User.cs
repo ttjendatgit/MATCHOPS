@@ -40,6 +40,10 @@ namespace MATCHOP.API.Entities
 
         public DateTime UpdatedAt { get; set; }
 
+        public bool IsDeleted { get; set; }
+
+        public DateTime? DeletedAt { get; set; }
+
         public ICollection<Venue> OwnedVenues { get; set; } = new List<Venue>();
 
         public ICollection<Booking> Bookings { get; set; } = new List<Booking>();

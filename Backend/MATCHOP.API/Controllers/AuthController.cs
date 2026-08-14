@@ -24,9 +24,11 @@ namespace MATCHOP.API.Controllers
 
         [Authorize(Roles = "ADMIN")]
         [HttpGet("admin/users")]
-        public async Task<IActionResult> GetAllUsers(CancellationToken cancellationToken = default)
+        public async Task<IActionResult> GetAllUsers(
+            [FromQuery] bool includeDeleted = false,
+            CancellationToken cancellationToken = default)
         {
-            var result = await _userService.GetAllUsersForAdminAsync(cancellationToken);
+            var result = await _userService.GetAllUsersForAdminAsync(includeDeleted, cancellationToken);
             return Ok(ApiResponse<List<UserAdminResponseDto>>.Ok(result));
         }
 
@@ -44,6 +46,36 @@ namespace MATCHOP.API.Controllers
         {
             var result = await _userService.ActivateUserAsync(id, cancellationToken);
             return Ok(ApiResponse<UserAdminResponseDto>.Ok(result, "Người dùng đã được mở khóa."));
+        }
+
+        [Authorize(Roles = "ADMIN")]
+        [HttpPatch("admin/users/{id:guid}/role")]
+        public async Task<IActionResult> UpdateUserRole(
+            Guid id,
+            UpdateUserRoleRequestDto dto,
+            CancellationToken cancellationToken = default)
+        {
+            var result = await _userService.UpdateUserRoleAsync(id, dto, cancellationToken);
+            var message = dto.Role.Equals("OWNER", StringComparison.OrdinalIgnoreCase)
+                ? "Người dùng đã được nâng lên Chủ sân."
+                : "Vai trò người dùng đã được cập nhật.";
+            return Ok(ApiResponse<UserAdminResponseDto>.Ok(result, message));
+        }
+
+        [Authorize(Roles = "ADMIN")]
+        [HttpPatch("admin/users/{id:guid}/soft-delete")]
+        public async Task<IActionResult> SoftDeleteUser(Guid id, CancellationToken cancellationToken = default)
+        {
+            var result = await _userService.SoftDeleteUserAsync(id, cancellationToken);
+            return Ok(ApiResponse<UserAdminResponseDto>.Ok(result, "Người dùng đã được xóa mềm."));
+        }
+
+        [Authorize(Roles = "ADMIN")]
+        [HttpPatch("admin/users/{id:guid}/restore")]
+        public async Task<IActionResult> RestoreUser(Guid id, CancellationToken cancellationToken = default)
+        {
+            var result = await _userService.RestoreUserAsync(id, cancellationToken);
+            return Ok(ApiResponse<UserAdminResponseDto>.Ok(result, "Người dùng đã được khôi phục."));
         }
 
         [HttpPost("register")]

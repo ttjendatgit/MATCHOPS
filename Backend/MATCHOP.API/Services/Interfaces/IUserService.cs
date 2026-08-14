@@ -14,9 +14,12 @@ namespace MATCHOP.API.Services.Interfaces
         Task<List<FavoriteSportDto>> UpdateFavoriteSportsAsync(Guid userId, UpdateFavoriteSportsRequestDto dto, CancellationToken cancellationToken = default);
 
         // Admin
-        Task<List<UserAdminResponseDto>> GetAllUsersForAdminAsync(CancellationToken cancellationToken = default);
+        Task<List<UserAdminResponseDto>> GetAllUsersForAdminAsync(bool includeDeleted = false, CancellationToken cancellationToken = default);
         Task<UserAdminResponseDto> SuspendUserAsync(Guid userId, CancellationToken cancellationToken = default);
         Task<UserAdminResponseDto> ActivateUserAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task<UserAdminResponseDto> UpdateUserRoleAsync(Guid userId, UpdateUserRoleRequestDto dto, CancellationToken cancellationToken = default);
+        Task<UserAdminResponseDto> SoftDeleteUserAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task<UserAdminResponseDto> RestoreUserAsync(Guid userId, CancellationToken cancellationToken = default);
     }
 }
 

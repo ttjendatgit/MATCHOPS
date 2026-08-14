@@ -29,6 +29,8 @@ export interface User {
   status: UserStatus;
   emailConfirmed: boolean;
   createdAt: string;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
 }
 
 export interface AuthResponse {

@@ -5,21 +5,25 @@ using MATCHOP.API.Enums;
 using MATCHOP.API.Helpers;
 using MATCHOP.API.Repositories.Interfaces;
 using MATCHOP.API.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace MATCHOP.API.Services
 {
     public class UserService : IUserService
     {
         private readonly IUserRepository _userRepository;
+        private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _env;
         private readonly ILogger<UserService> _logger;
 
         public UserService(
             IUserRepository userRepository,
+            ApplicationDbContext context,
             IWebHostEnvironment env,
             ILogger<UserService> logger)
         {
             _userRepository = userRepository;
+            _context = context;
             _env = env;
             _logger = logger;
         }
@@ -262,20 +266,26 @@ namespace MATCHOP.API.Services
             return items.Select(ToDto).ToList();
         }
 
-        public async Task<List<UserAdminResponseDto>> GetAllUsersForAdminAsync(CancellationToken cancellationToken = default)
+        private static UserAdminResponseDto ToAdminDto(User user) => new()
         {
-            var users = await _userRepository.GetAllAsync(cancellationToken);
-            return users.Select(u => new UserAdminResponseDto
-            {
-                Id = u.Id,
-                FullName = u.FullName,
-                Email = u.Email,
-                PhoneNumber = u.PhoneNumber,
-                Role = u.Role.ToString(),
-                Status = u.Status.ToString(),
-                EmailConfirmed = u.EmailConfirmed,
-                CreatedAt = u.CreatedAt
-            }).ToList();
+            Id = user.Id,
+            FullName = user.FullName,
+            Email = user.Email,
+            PhoneNumber = user.PhoneNumber,
+            Role = user.Role.ToString(),
+            Status = user.Status.ToString(),
+            EmailConfirmed = user.EmailConfirmed,
+            CreatedAt = user.CreatedAt,
+            IsDeleted = user.IsDeleted,
+            DeletedAt = user.DeletedAt
+        };
+
+        public async Task<List<UserAdminResponseDto>> GetAllUsersForAdminAsync(
+            bool includeDeleted = false,
+            CancellationToken cancellationToken = default)
+        {
+            var users = await _userRepository.GetAllAsync(includeDeleted, cancellationToken);
+            return users.Select(ToAdminDto).ToList();
         }
 
         public async Task<UserAdminResponseDto> SuspendUserAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -284,21 +294,14 @@ namespace MATCHOP.API.Services
             if (user == null)
                 throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);
 
+            if (user.IsDeleted)
+                throw new AppException(ErrorCodes.ValidationError, "Không thể khóa tài khoản đã bị xóa.");
+
             user.Status = UserStatus.SUSPENDED;
             user.UpdatedAt = DateTime.UtcNow;
             var updated = await _userRepository.UpdateAsync(user, cancellationToken);
 
-            return new UserAdminResponseDto
-            {
-                Id = updated.Id,
-                FullName = updated.FullName,
-                Email = updated.Email,
-                PhoneNumber = updated.PhoneNumber,
-                Role = updated.Role.ToString(),
-                Status = updated.Status.ToString(),
-                EmailConfirmed = updated.EmailConfirmed,
-                CreatedAt = updated.CreatedAt
-            };
+            return ToAdminDto(updated);
         }
 
         public async Task<UserAdminResponseDto> ActivateUserAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -307,21 +310,113 @@ namespace MATCHOP.API.Services
             if (user == null)
                 throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);
 
+            if (user.IsDeleted)
+                throw new AppException(ErrorCodes.ValidationError, "Không thể kích hoạt tài khoản đã bị xóa. Hãy khôi phục trước.");
+
             user.Status = UserStatus.ACTIVE;
             user.UpdatedAt = DateTime.UtcNow;
             var updated = await _userRepository.UpdateAsync(user, cancellationToken);
 
-            return new UserAdminResponseDto
+            return ToAdminDto(updated);
+        }
+
+        public async Task<UserAdminResponseDto> UpdateUserRoleAsync(
+            Guid userId,
+            UpdateUserRoleRequestDto dto,
+            CancellationToken cancellationToken = default)
+        {
+            if (!Enum.TryParse<UserRole>(dto.Role, ignoreCase: true, out var newRole))
             {
-                Id = updated.Id,
-                FullName = updated.FullName,
-                Email = updated.Email,
-                PhoneNumber = updated.PhoneNumber,
-                Role = updated.Role.ToString(),
-                Status = updated.Status.ToString(),
-                EmailConfirmed = updated.EmailConfirmed,
-                CreatedAt = updated.CreatedAt
-            };
+                throw new AppException(ErrorCodes.ValidationError, "Vai trò không hợp lệ.");
+            }
+
+            if (newRole is UserRole.ADMIN)
+            {
+                throw new AppException(
+                    ErrorCodes.PermissionDenied,
+                    "Không thể thay đổi vai trò thành ADMIN qua giao diện này.",
+                    StatusCodes.Status403Forbidden);
+            }
+
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+                throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);
+
+            if (user.IsDeleted)
+                throw new AppException(ErrorCodes.ValidationError, "Không thể thay đổi vai trò tài khoản đã bị xóa.");
+
+            if (user.Role == UserRole.ADMIN)
+            {
+                throw new AppException(
+                    ErrorCodes.PermissionDenied,
+                    "Không thể thay đổi vai trò của tài khoản quản trị.",
+                    StatusCodes.Status403Forbidden);
+            }
+
+            if (user.Role == newRole)
+            {
+                throw new AppException(ErrorCodes.ValidationError, "Người dùng đã có vai trò này.");
+            }
+
+            user.Role = newRole;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            if (newRole == UserRole.OWNER)
+            {
+                var application = await _context.OwnerApplications
+                    .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken);
+
+                if (application is not null && application.Status != OwnerApplicationStatus.APPROVED)
+                {
+                    application.Status = OwnerApplicationStatus.APPROVED;
+                    application.RejectionReason = null;
+                    application.ApprovedAt = DateTime.UtcNow;
+                    application.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            var updated = await _userRepository.UpdateAsync(user, cancellationToken);
+
+            return ToAdminDto(updated);
+        }
+
+        public async Task<UserAdminResponseDto> SoftDeleteUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+                throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);
+
+            if (user.IsDeleted)
+                throw new AppException(ErrorCodes.ValidationError, "Tài khoản đã bị xóa trước đó.");
+
+            if (user.Role == UserRole.ADMIN)
+                throw new AppException(ErrorCodes.PermissionDenied, "Không thể xóa tài khoản quản trị.", StatusCodes.Status403Forbidden);
+
+            user.IsDeleted = true;
+            user.DeletedAt = DateTime.UtcNow;
+            user.Status = UserStatus.INACTIVE;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            var updated = await _userRepository.UpdateAsync(user, cancellationToken);
+            return ToAdminDto(updated);
+        }
+
+        public async Task<UserAdminResponseDto> RestoreUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+                throw new AppException(ErrorCodes.UserNotFound, "Không tìm thấy người dùng.", StatusCodes.Status404NotFound);
+
+            if (!user.IsDeleted)
+                throw new AppException(ErrorCodes.ValidationError, "Tài khoản chưa bị xóa.");
+
+            user.IsDeleted = false;
+            user.DeletedAt = null;
+            user.Status = UserStatus.ACTIVE;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            var updated = await _userRepository.UpdateAsync(user, cancellationToken);
+            return ToAdminDto(updated);
         }
     }
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User, Mail, Phone, Calendar, Shield, Camera, Save, Loader2 } from "lucide-react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
 import type { ApiResponse } from "@/types/api";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,18 @@ interface ProfileData {
   email: string;
   skillLevel: string;
   preferredPlayingArea: string;
+}
+
+const SKILL_LEVEL_TO_INT: Record<string, number> = {
+  Beginner: 1,
+  Intermediate: 2,
+  Advanced: 3,
+  Professional: 4,
+  Competitive: 4,
+};
+
+function resolveSkillLevel(skillLevel: string): number {
+  return SKILL_LEVEL_TO_INT[skillLevel] ?? 1;
 }
 
 export default function ProfilePage() {
@@ -63,7 +75,7 @@ export default function ProfilePage() {
           phoneNumber: profile.phoneNumber,
           email: profile.email,
           preferredPlayingArea: profile.preferredPlayingArea,
-          skillLevel: 0,
+          skillLevel: resolveSkillLevel(profile.skillLevel),
         }),
       });
 
@@ -74,7 +86,7 @@ export default function ProfilePage() {
       }
     } catch (err) {
       console.error(err);
-      toast.error("Đã xảy ra lỗi khi cập nhật");
+      toast.error(err instanceof ApiError ? err.message : "Đã xảy ra lỗi khi cập nhật");
     } finally {
       setSaving(false);
     }

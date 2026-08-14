@@ -24,6 +24,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<UserSkill> UserSkills => Set<UserSkill>();
     public DbSet<CoachProfile> CoachProfiles => Set<CoachProfile>();
+    public DbSet<OwnerApplication> OwnerApplications => Set<OwnerApplication>();
     public DbSet<CoachSport> CoachSports => Set<CoachSport>();
     public DbSet<CoachProfileProof> CoachProfileProofs => Set<CoachProfileProof>();
     public DbSet<CoachVerificationDocument> CoachVerificationDocuments => Set<CoachVerificationDocument>();
@@ -103,6 +104,12 @@ public class ApplicationDbContext : DbContext
              .IsRequired()
              .HasMaxLength(50)
              .HasDefaultValue("LOCAL");
+
+            e.Property(x => x.IsDeleted)
+             .HasDefaultValue(false);
+
+            e.HasIndex(x => x.IsDeleted)
+             .HasDatabaseName("ix_users_is_deleted");
 
             e.HasIndex(x => x.Email)
              .IsUnique()
@@ -639,6 +646,62 @@ public class ApplicationDbContext : DbContext
 
             e.HasIndex(x => new { x.City, x.District })
              .HasDatabaseName("ix_coach_profiles_location");
+        });
+
+        // ── OwnerApplication ────────────────────────────────────────────
+        modelBuilder.Entity<OwnerApplication>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id)
+             .HasDefaultValueSql("gen_random_uuid()");
+
+            e.Property(x => x.BusinessName)
+             .IsRequired()
+             .HasMaxLength(200);
+
+            e.Property(x => x.ContactPhone)
+             .IsRequired()
+             .HasMaxLength(20);
+
+            e.Property(x => x.Address)
+             .IsRequired()
+             .HasMaxLength(500);
+
+            e.Property(x => x.City)
+             .IsRequired()
+             .HasMaxLength(100);
+
+            e.Property(x => x.District)
+             .IsRequired()
+             .HasMaxLength(100);
+
+            e.Property(x => x.Description)
+             .HasMaxLength(2000);
+
+            e.Property(x => x.BusinessLicenseNumber)
+             .HasMaxLength(100);
+
+            e.Property(x => x.Status)
+             .HasConversion<int>();
+
+            e.Property(x => x.RejectionReason)
+             .HasMaxLength(500);
+
+            e.HasOne(x => x.User)
+             .WithMany()
+             .HasForeignKey(x => x.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.UserId)
+             .IsUnique()
+             .HasDatabaseName("ux_owner_applications_user_id");
+
+            e.HasIndex(x => x.Status)
+             .HasDatabaseName("ix_owner_applications_status");
+
+            e.HasIndex(x => new { x.City, x.District })
+             .HasDatabaseName("ix_owner_applications_location");
         });
 
         // ── CoachSport ────────────────────────────────────────────────

@@ -19,9 +19,13 @@ namespace MATCHOP.API.Repositories
             return await _context.Users.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         }
 
-        public async Task<List<User>> GetAllAsync(CancellationToken cancellationToken = default)
+        public async Task<List<User>> GetAllAsync(bool includeDeleted = false, CancellationToken cancellationToken = default)
         {
-            return await _context.Users.OrderByDescending(u => u.CreatedAt).ToListAsync(cancellationToken);
+            var query = _context.Users.AsQueryable();
+            if (!includeDeleted)
+                query = query.Where(x => !x.IsDeleted);
+
+            return await query.OrderByDescending(u => u.CreatedAt).ToListAsync(cancellationToken);
         }
 
         public async Task<User?> GetProfileAsync(Guid userId, CancellationToken cancellationToken = default)

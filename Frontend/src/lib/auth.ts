@@ -53,7 +53,8 @@ export async function verifySession(): Promise<User | null> {
       emailConfirmed: res.data.emailConfirmed,
       createdAt: new Date().toISOString(),
     };
-    setAuthData(token, user);
+    // /auth/me returns a fresh JWT — must persist it so role changes (e.g. USER → OWNER) take effect.
+    setAuthData(res.data.token, user);
     return user;
   } catch {
     clearAuthData();
