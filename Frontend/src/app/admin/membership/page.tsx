@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Users, CreditCard, TrendingUp, CheckCircle2, Clock, XCircle, RefreshCw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -108,19 +108,32 @@ export default function AdminMembershipPage() {
     const token = getStoredToken();
     if (!token) return;
 
+    if (!subscriptionId || subscriptionId === "undefined") {
+      toast.error("Không tìm thấy mã subscription. Vui lòng tải lại trang.");
+      return;
+    }
+
     if (!window.confirm("Xác nhận user đã chuyển khoản và kích hoạt gói này?")) return;
 
     setConfirmingId(subscriptionId);
     try {
       await apiFetch<ApiResponse<unknown>>(
-        `/admin/membership/subscriptions/${subscriptionId}/confirm-payment`,
-        { method: "POST", token },
+        "/admin/membership/confirm-payment",
+        {
+          method: "POST",
+          token,
+          body: JSON.stringify({ subscriptionId }),
+        },
       );
       toast.success("Đã kích hoạt gói thành viên.");
       await loadData();
     } catch (err) {
       console.error(err);
-      toast.error("Không thể kích hoạt gói. Kiểm tra subscription còn ở trạng thái chờ thanh toán.");
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : "Không thể kích hoạt gói. Vui lòng thử lại.";
+      toast.error(message);
     } finally {
       setConfirmingId(null);
     }

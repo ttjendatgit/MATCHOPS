@@ -140,6 +140,23 @@ public class MembershipController : ControllerBase
     }
 
     /// <summary>
+    /// POST /api/admin/membership/confirm-payment
+    /// Admin xác nhận thủ công (body JSON — ổn định hơn route param).
+    /// </summary>
+    [HttpPost("~/api/admin/membership/confirm-payment")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> AdminConfirmPaymentBody(
+        [FromBody] AdminConfirmPaymentDto dto,
+        CancellationToken cancellationToken = default)
+    {
+        if (dto.SubscriptionId == Guid.Empty)
+            throw new AppException(ErrorCodes.ValidationError, "SubscriptionId không hợp lệ.", StatusCodes.Status400BadRequest);
+
+        await _membershipService.ActivateSubscriptionByAdminAsync(dto.SubscriptionId, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(new { subscriptionId = dto.SubscriptionId }, "Đã kích hoạt gói thành viên."));
+    }
+
+    /// <summary>
     /// POST /api/admin/membership/subscriptions/{id}/confirm-payment
     /// Admin xác nhận thủ công khi user đã chuyển khoản nhưng SePay webhook/API chưa khớp.
     /// </summary>

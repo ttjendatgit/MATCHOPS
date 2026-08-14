@@ -48,8 +48,6 @@ public class MySubscriptionResponseDto
     public decimal? PendingPaymentAmount { get; set; }
 }
 
-// ── Admin DTOs ────────────────────────────────────────────────────────────────
-
 public class AdminSubscriptionDto
 {
     public Guid     SubscriptionId   { get; set; }
@@ -66,6 +64,11 @@ public class AdminSubscriptionDto
     public DateTime? ExpiresAt       { get; set; }
     public DateTime? CancelledAt     { get; set; }
     public DateTime CreatedAt        { get; set; }
+}
+
+public class AdminConfirmPaymentDto
+{
+    public Guid SubscriptionId { get; set; }
 }
 
 public class MembershipStatisticsDto
