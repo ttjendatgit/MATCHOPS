@@ -19,6 +19,7 @@ import {
   User,
 } from "lucide-react";
 import { DetailPageHeader, BackLink } from "@/components/shared/BackLink";
+import { BookingStatusBadge, PaymentStatusBadge } from "@/components/shared/StatusBadge";
 import { cn, formatCurrency } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
