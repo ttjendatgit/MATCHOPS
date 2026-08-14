@@ -139,6 +139,18 @@ public class MembershipController : ControllerBase
         return Ok(ApiResponse<MembershipPaymentVerifyResultDto>.Ok(result, result.Message));
     }
 
+    /// <summary>
+    /// POST /api/admin/membership/subscriptions/{id}/confirm-payment
+    /// Admin xác nhận thủ công khi user đã chuyển khoản nhưng SePay webhook/API chưa khớp.
+    /// </summary>
+    [HttpPost("~/api/admin/membership/subscriptions/{id:guid}/confirm-payment")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> AdminConfirmPayment(Guid id, CancellationToken cancellationToken = default)
+    {
+        await _membershipService.ActivateSubscriptionByAdminAsync(id, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(new { subscriptionId = id }, "Đã kích hoạt gói thành viên."));
+    }
+
     // VNPay return endpoint removed – membership payment now handled via SePay webhook.
     // See: POST /api/payments/sepay/webhook → HandleSePayWebhookAsync (MEM prefix logic).
 

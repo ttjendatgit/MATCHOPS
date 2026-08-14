@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Users, CreditCard, TrendingUp, CheckCircle2, Clock, XCircle, RefreshCw } from "lucide-react";
+import { Users, CreditCard, TrendingUp, CheckCircle2, Clock, XCircle, RefreshCw, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
 
@@ -76,6 +77,7 @@ export default function AdminMembershipPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -99,6 +101,28 @@ export default function AdminMembershipPage() {
       console.error("Failed to load membership data:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConfirmPayment = async (subscriptionId: string) => {
+    const token = getStoredToken();
+    if (!token) return;
+
+    if (!window.confirm("Xác nhận user đã chuyển khoản và kích hoạt gói này?")) return;
+
+    setConfirmingId(subscriptionId);
+    try {
+      await apiFetch<ApiResponse<unknown>>(
+        `/admin/membership/subscriptions/${subscriptionId}/confirm-payment`,
+        { method: "POST", token },
+      );
+      toast.success("Đã kích hoạt gói thành viên.");
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      toast.error("Không thể kích hoạt gói. Kiểm tra subscription còn ở trạng thái chờ thanh toán.");
+    } finally {
+      setConfirmingId(null);
     }
   };
 
@@ -207,12 +231,13 @@ export default function AdminMembershipPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#C4C7C9]/60">Trạng thái</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#C4C7C9]/60">Bắt đầu</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#C4C7C9]/60">Hết hạn</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#C4C7C9]/60">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[rgba(134,210,50,0.2)]">
                 {filteredSubscriptions.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-[#C4C7C9]">
+                    <td colSpan={7} className="px-4 py-10 text-center text-[#C4C7C9]">
                       Không tìm thấy subscription nào.
                     </td>
                   </tr>
@@ -255,6 +280,24 @@ export default function AdminMembershipPage() {
                         </td>
                         <td className="px-4 py-4 text-[#C4C7C9]/60">
                           {sub.expiresAt ? new Date(sub.expiresAt).toLocaleDateString("vi-VN") : "—"}
+                        </td>
+                        <td className="px-4 py-4">
+                          {sub.status === "PENDING" ? (
+                            <Button
+                              size="sm"
+                              className="bg-[#FF8000] hover:bg-[#FF8000]/85"
+                              disabled={confirmingId === sub.subscriptionId}
+                              onClick={() => handleConfirmPayment(sub.subscriptionId)}
+                            >
+                              {confirmingId === sub.subscriptionId ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                "Xác nhận CK"
+                              )}
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-[#C4C7C9]/40">—</span>
+                          )}
                         </td>
                       </tr>
                     );

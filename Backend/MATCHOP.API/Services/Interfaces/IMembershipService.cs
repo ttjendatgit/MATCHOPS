@@ -34,6 +34,9 @@ public interface IMembershipService
     /// <summary>Activates a pending subscription after successful payment.</summary>
     Task ActivateSubscriptionAsync(Guid subscriptionId, CancellationToken cancellationToken = default);
 
+    /// <summary>Admin: kích hoạt thủ công khi đã xác nhận chuyển khoản nhưng webhook/API SePay lỗi.</summary>
+    Task ActivateSubscriptionByAdminAsync(Guid subscriptionId, CancellationToken cancellationToken = default);
+
     // ── Admin Methods ────────────────────────────────────────────────────────
 
     /// <summary>Get all subscriptions (active, expired, cancelled) for admin.</summary>

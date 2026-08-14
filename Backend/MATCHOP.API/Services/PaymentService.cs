@@ -397,6 +397,20 @@ public class PaymentService : IPaymentService
             };
         }
 
+        if (!_sePayApiService.IsConfigured)
+        {
+            _logger.LogWarning(
+                "Membership verify: SePay ApiToken missing for user {UserId}, content {Content}",
+                userId,
+                paymentContent);
+
+            return new MembershipPaymentVerifyResultDto
+            {
+                Activated = false,
+                Message = "Hệ thống chưa cấu hình tra cứu SePay. Vui lòng liên hệ admin để xác nhận thanh toán."
+            };
+        }
+
         var match = await _sePayApiService.FindIncomingTransactionAsync(
             paymentContent,
             expectedAmount.Value,
@@ -407,7 +421,7 @@ public class PaymentService : IPaymentService
             return new MembershipPaymentVerifyResultDto
             {
                 Activated = false,
-                Message = "Chưa tìm thấy giao dịch khớp. Hệ thống sẽ tiếp tục kiểm tra tự động."
+                Message = $"Chưa tìm thấy giao dịch {paymentContent} ({expectedAmount:N0}đ) trên SePay. Hệ thống sẽ tiếp tục kiểm tra tự động."
             };
         }
 

@@ -111,7 +111,9 @@ public class TransactionHistoryService : ITransactionHistoryService
                 .Include(s => s.MembershipPlan)
                 .Include(s => s.User)
                 .Where(membershipFilter)
-                .Where(s => s.Status == SubscriptionStatus.ACTIVE && s.MembershipPlan.PricePerMonth > 0)
+                .Where(s =>
+                    s.MembershipPlan.PricePerMonth > 0 &&
+                    (s.Status == SubscriptionStatus.ACTIVE || s.Status == SubscriptionStatus.PENDING))
                 .ToListAsync(cancellationToken);
 
             items.AddRange(subscriptions.Select(MapMembership));
@@ -237,6 +239,7 @@ public class TransactionHistoryService : ITransactionHistoryService
     {
         var plan = subscription.MembershipPlan;
         var amount = plan.PricePerMonth;
+        var isPending = subscription.Status == SubscriptionStatus.PENDING;
 
         return new TransactionItemDto
         {
@@ -244,11 +247,15 @@ public class TransactionHistoryService : ITransactionHistoryService
             Type = "MEMBERSHIP",
             Amount = amount,
             Method = PaymentMethod.BANK_TRANSFER.ToString(),
-            Status = PaymentTransactionStatus.SUCCESS.ToString(),
+            Status = isPending
+                ? PaymentTransactionStatus.PENDING.ToString()
+                : PaymentTransactionStatus.SUCCESS.ToString(),
             TransactionCode = $"MEM{subscription.Id.ToString("N")[..8].ToUpperInvariant()}",
-            PaidAt = subscription.StartedAt,
+            PaidAt = isPending ? null : subscription.StartedAt,
             CreatedAt = subscription.CreatedAt,
-            Description = $"Gói thành viên {plan.Name}",
+            Description = isPending
+                ? $"Gói thành viên {plan.Name} (chờ xác nhận)"
+                : $"Gói thành viên {plan.Name}",
             ReferenceId = subscription.Id,
             CustomerName = subscription.User?.FullName,
             CustomerEmail = subscription.User?.Email

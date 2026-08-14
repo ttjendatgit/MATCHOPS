@@ -290,7 +290,10 @@ function MySubscriptionContent() {
   }, [load]);
 
   useEffect(() => {
-    if (subData?.status !== "PENDING") {
+    const awaitingPayment =
+      subData?.status === "PENDING" || Boolean(subData?.pendingPaymentContent);
+
+    if (!awaitingPayment) {
       setIsPollingPayment(false);
       return;
     }
@@ -320,7 +323,7 @@ function MySubscriptionContent() {
       clearInterval(intervalId);
       setIsPollingPayment(false);
     };
-  }, [subData?.status, verifyPayment]);
+  }, [subData?.status, subData?.pendingPaymentContent, verifyPayment]);
 
   const handleManualVerify = async () => {
     const token = getStoredToken();
@@ -445,7 +448,7 @@ function MySubscriptionContent() {
         )}
 
         {/* ── Pending payment notice ── */}
-        {subData?.status === "PENDING" && (
+        {(subData?.status === "PENDING" || subData?.pendingPaymentContent) && (
           <div
             className="rounded-xl border border-amber-500/20 bg-amber-950/20 px-4 py-3.5"
             role="note"

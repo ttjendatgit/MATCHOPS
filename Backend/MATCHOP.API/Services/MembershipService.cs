@@ -293,6 +293,11 @@ public class MembershipService : IMembershipService
         await _context.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task ActivateSubscriptionByAdminAsync(Guid subscriptionId, CancellationToken cancellationToken = default)
+    {
+        await ActivateSubscriptionAsync(subscriptionId, cancellationToken);
+    }
+
     // ── Admin Methods ────────────────────────────────────────────────────────
 
     /// <summary>Get all subscriptions with user and plan details for admin.</summary>
