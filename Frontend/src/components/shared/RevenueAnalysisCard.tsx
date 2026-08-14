@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn, formatCurrency } from "@/lib/utils";
+import { getChartTooltipProps } from "@/lib/chart-styles";
 import type { DashboardSeriesPoint } from "@/types/dashboard";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -43,11 +44,7 @@ export function RevenueAnalysisCard({
               <YAxis stroke={isDark ? "#94a3b8" : "#64748b"} tickFormatter={(value) => formatCurrency(Number(value))} />
               <Tooltip
                 formatter={(value: number) => formatCurrency(Number(value))}
-                contentStyle={{
-                  backgroundColor: isDark ? "#020617" : "#ffffff",
-                  border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}`,
-                  borderRadius: "12px",
-                }}
+                {...getChartTooltipProps(isDark)}
               />
               <Area type="monotone" dataKey="value" stroke="#FF8000" fill="url(#revenueFill)" strokeWidth={2} />
             </AreaChart>

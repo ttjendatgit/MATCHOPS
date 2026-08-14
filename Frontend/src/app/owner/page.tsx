@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Pie, PieChart, Cell, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { chartTooltipProps } from "@/lib/chart-styles";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AIAnalyticsReport } from "@/components/shared/AIAnalyticsReport";
 import { AIRecommendationsCard } from "@/components/shared/AIRecommendationsCard";
@@ -176,7 +177,7 @@ export default function OwnerDashboardPage() {
                       <Cell key={item.label} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip {...chartTooltipProps} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -205,7 +206,7 @@ export default function OwnerDashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
                   <XAxis dataKey="label" stroke="#94a3b8" />
                   <YAxis stroke="#94a3b8" />
-                  <Tooltip contentStyle={{ backgroundColor: "#020617", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px" }} />
+                  <Tooltip {...chartTooltipProps} />
                   <Bar dataKey="count" fill="#86D232" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>

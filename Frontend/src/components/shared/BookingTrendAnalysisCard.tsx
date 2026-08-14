@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { getChartTooltipProps } from "@/lib/chart-styles";
 import type { DashboardSeriesPoint } from "@/types/dashboard";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -37,11 +38,7 @@ export function BookingTrendAnalysisCard({
               <YAxis stroke={isDark ? "#94a3b8" : "#64748b"} />
               <Tooltip
                 formatter={(value: number) => Number(value)}
-                contentStyle={{
-                  backgroundColor: isDark ? "#020617" : "#ffffff",
-                  border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}`,
-                  borderRadius: "12px",
-                }}
+                {...getChartTooltipProps(isDark)}
               />
               <Bar dataKey="value" fill="#86D232" radius={[8, 8, 0, 0]} />
             </BarChart>
