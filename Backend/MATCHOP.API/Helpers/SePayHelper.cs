@@ -22,6 +22,28 @@ public static class SePayHelper
         return $"MATCHOP{shortId}";
     }
 
+    /// <summary>MEM + 8 ký tự đầu subscriptionId (N format).</summary>
+    public static string BuildMembershipPaymentContent(Guid subscriptionId) =>
+        $"MEM{subscriptionId:N}"[..11].ToUpperInvariant();
+
+    /// <summary>Tách mã MEM từ nội dung chuyển khoản.</summary>
+    public static string? ExtractMembershipPaymentContent(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return null;
+
+        var upper = content.ToUpperInvariant();
+        var idx = upper.IndexOf("MEM", StringComparison.Ordinal);
+        if (idx < 0 || upper.Length < idx + 11) return null;
+
+        return upper.Substring(idx, 11);
+    }
+
+    public static bool TryMatchSubscriptionId(string memCode, Guid subscriptionId)
+    {
+        var expected = BuildMembershipPaymentContent(subscriptionId);
+        return string.Equals(memCode, expected, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>
     /// Tách bookingId từ nội dung chuyển khoản.
     /// Tìm pattern MATCHOP + 8 ký tự hex trong nội dung ngân hàng.

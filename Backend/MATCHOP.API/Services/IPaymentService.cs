@@ -29,4 +29,11 @@ public interface IPaymentService
         SePayWebhookPayload payload,
         string? authorizationHeader,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Kiểm tra giao dịch SePay và kích hoạt subscription đang PENDING (fallback khi webhook chậm/lỗi).
+    /// </summary>
+    Task<MembershipPaymentVerifyResultDto> VerifyMembershipPaymentAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
 }

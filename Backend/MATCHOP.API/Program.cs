@@ -232,6 +232,7 @@ builder.Services.AddSignalR();
 builder.Services.AddScoped<ICourtBlockService, CourtBlockService>();
 builder.Services.AddHostedService<BookingExpirationHostedService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddHttpClient<ISePayApiService, SePayApiService>();
 
 // Membership
 builder.Services.AddScoped<IMembershipService, MembershipService>();

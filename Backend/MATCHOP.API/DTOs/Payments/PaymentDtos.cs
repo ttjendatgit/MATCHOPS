@@ -71,3 +71,10 @@ public class SePayWebhookResponse
     public bool Success { get; set; }
     public string? Message { get; set; }
 }
+
+public class MembershipPaymentVerifyResultDto
+{
+    public bool Activated { get; set; }
+    public bool AlreadyActive { get; set; }
+    public string Message { get; set; } = null!;
+}

@@ -67,6 +67,14 @@ interface MySubscriptionDto {
   isFallbackFreePlan: boolean;
   plan: MembershipPlanDto;
   usage?: MembershipUsageDto | null;
+  pendingPaymentContent?: string | null;
+  pendingPaymentAmount?: number | null;
+}
+
+interface MembershipVerifyResult {
+  activated: boolean;
+  alreadyActive: boolean;
+  message: string;
 }
 
 interface ApiResponse<T> {
@@ -205,6 +213,8 @@ function MySubscriptionContent() {
   const [error,    setError]    = useState<string | null>(null);
   const [isAdmin,  setIsAdmin]  = useState(false);
   const [isPollingPayment, setIsPollingPayment] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
 
   const load = useCallback(async () => {
     const token = getStoredToken();
@@ -227,6 +237,11 @@ function MySubscriptionContent() {
         setIsAdmin(true);
       } else {
         setSubData(res.data);
+        if (res.data.status === "ACTIVE" && sessionStorage.getItem("MATCHOP_PENDING_PLAN_ID")) {
+          setShowPaymentSuccess(true);
+          sessionStorage.removeItem("MATCHOP_PENDING_SUBSCRIPTION");
+          sessionStorage.removeItem("MATCHOP_PENDING_PLAN_ID");
+        }
       }
     } catch (err) {
       setError(
@@ -239,55 +254,94 @@ function MySubscriptionContent() {
     }
   }, [router]);
 
-  // Load subscription + resume SePay polling if payment is pending
+  const verifyPayment = useCallback(async (token: string, silent = false) => {
+    try {
+      const res = await apiFetch<ApiResponse<MembershipVerifyResult>>(
+        "/membership/verify-payment",
+        { method: "POST", token },
+      );
+
+      if (res.data?.activated || res.data?.alreadyActive) {
+        if (!silent) {
+          toast.success(res.data.message || "Thanh toán thành công! Gói của bạn đã được kích hoạt.");
+        }
+        setShowPaymentSuccess(true);
+        sessionStorage.removeItem("MATCHOP_PENDING_SUBSCRIPTION");
+        sessionStorage.removeItem("MATCHOP_PENDING_PLAN_ID");
+        await load();
+        return true;
+      }
+
+      if (!silent && res.data?.message) {
+        toast.info(res.data.message);
+      }
+      return false;
+    } catch {
+      if (!silent) {
+        toast.error("Không thể kiểm tra thanh toán. Vui lòng thử lại.");
+      }
+      return false;
+    }
+  }, [load]);
+
+  // Auto-verify when subscription is PENDING
   useEffect(() => {
     void load();
+  }, [load]);
 
-    const pendingPlanId = sessionStorage.getItem("MATCHOP_PENDING_PLAN_ID");
-    if (!pendingPlanId) return;
+  useEffect(() => {
+    if (subData?.status !== "PENDING") {
+      setIsPollingPayment(false);
+      return;
+    }
+
+    const token = getStoredToken();
+    if (!token) return;
 
     setIsPollingPayment(true);
     let intervalId: ReturnType<typeof setInterval>;
     let cancelled = false;
 
-    const checkStatus = async () => {
-      try {
-        const token = getStoredToken();
-        if (!token) return;
-
-        const res = await apiFetch<ApiResponse<MySubscriptionDto>>(
-          "/membership/my-subscription",
-          { token },
-        );
-
-        const sub = res.data;
-        if (
-          res.success &&
-          sub?.status === "ACTIVE" &&
-          sub.plan?.id === pendingPlanId
-        ) {
-          if (cancelled) return;
-          clearInterval(intervalId);
-          setIsPollingPayment(false);
-          sessionStorage.removeItem("MATCHOP_PENDING_SUBSCRIPTION");
-          sessionStorage.removeItem("MATCHOP_PENDING_PLAN_ID");
-          toast.success("Thanh toán thành công! Gói của bạn đã được kích hoạt.");
-          await load();
-        }
-      } catch {
-        // ignore polling errors
+    const tick = async () => {
+      if (cancelled) return;
+      const activated = await verifyPayment(token, true);
+      if (activated) {
+        clearInterval(intervalId);
+        setIsPollingPayment(false);
+        toast.success("Thanh toán thành công! Gói của bạn đã được kích hoạt.");
       }
     };
 
-    intervalId = setInterval(checkStatus, 3000);
-    void checkStatus();
+    intervalId = setInterval(tick, 4000);
+    void tick();
 
     return () => {
       cancelled = true;
       clearInterval(intervalId);
       setIsPollingPayment(false);
     };
-  }, [load]);
+  }, [subData?.status, verifyPayment]);
+
+  const handleManualVerify = async () => {
+    const token = getStoredToken();
+    if (!token) {
+      router.replace("/login?redirect=/account/subscription");
+      return;
+    }
+    setIsVerifying(true);
+    try {
+      await verifyPayment(token, false);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  // Legacy: resume polling if user came from pricing page
+  useEffect(() => {
+    const pendingPlanId = sessionStorage.getItem("MATCHOP_PENDING_PLAN_ID");
+    if (!pendingPlanId || subData?.status !== "PENDING") return;
+    setIsPollingPayment(true);
+  }, [subData?.status]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -376,19 +430,59 @@ function MySubscriptionContent() {
 
       <div className="space-y-6">
 
+        {/* ── Payment success (vừa kích hoạt) ── */}
+        {showPaymentSuccess && subData?.status === "ACTIVE" && (
+          <div
+            className="flex items-start gap-3 rounded-xl border border-[rgba(134,210,50,0.3)] bg-[rgba(134,210,50,0.08)] px-4 py-3.5"
+            role="status"
+          >
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#86D232]" aria-hidden />
+            <p className="text-sm leading-relaxed text-[#86D232]">
+              Thanh toán thành công! Gói {plan?.name} đã được kích hoạt.
+              {subData?.expiresAt && ` Hết hạn: ${formatDateVN(subData.expiresAt)}.`}
+            </p>
+          </div>
+        )}
+
         {/* ── Pending payment notice ── */}
         {subData?.status === "PENDING" && (
           <div
-            className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-950/20 px-4 py-3.5"
+            className="rounded-xl border border-amber-500/20 bg-amber-950/20 px-4 py-3.5"
             role="note"
           >
-            <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" aria-hidden />
-            <p className="text-sm leading-relaxed text-amber-300">
-              Gói đang chờ xác nhận thanh toán.
-              {isPollingPayment
-                ? " Hệ thống đang kiểm tra giao dịch..."
-                : " Vui lòng hoàn tất chuyển khoản hoặc thử lại tại trang bảng giá."}
-            </p>
+            <div className="flex items-start gap-3">
+              <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" aria-hidden />
+              <div className="flex-1 space-y-2">
+                <p className="text-sm leading-relaxed text-amber-300">
+                  Gói đang chờ xác nhận thanh toán.
+                  {isPollingPayment
+                    ? " Hệ thống đang kiểm tra giao dịch..."
+                    : " Nếu bạn đã chuyển khoản, nhấn nút bên dưới để xác nhận."}
+                </p>
+                {subData.pendingPaymentContent && (
+                  <p className="text-xs text-amber-200/80">
+                    Nội dung CK:{" "}
+                    <span className="font-mono font-semibold">{subData.pendingPaymentContent}</span>
+                    {subData.pendingPaymentAmount != null && (
+                      <> · {Math.round(subData.pendingPaymentAmount).toLocaleString("vi-VN")}đ</>
+                    )}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={handleManualVerify}
+                  disabled={isVerifying}
+                  className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-950/40 px-3 py-2 text-xs font-semibold text-amber-300 transition hover:bg-amber-950/60 disabled:opacity-60"
+                >
+                  {isVerifying ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+                  )}
+                  Tôi đã thanh toán — kiểm tra ngay
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

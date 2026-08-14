@@ -69,7 +69,7 @@ public class MembershipService : IMembershipService
         if (sub is not null)
         {
             var usage = await GetUsageAsync(userId, user.Role, cancellationToken);
-            return new MySubscriptionResponseDto
+            var dto = new MySubscriptionResponseDto
             {
                 SubscriptionId     = sub.Id,
                 Status             = sub.Status.ToString(),
@@ -80,6 +80,30 @@ public class MembershipService : IMembershipService
                 Plan               = MapPlan(sub.MembershipPlan),
                 Usage              = usage
             };
+
+            var awaitingPayment =
+                sub.Status == SubscriptionStatus.PENDING ||
+                (sub.Status == SubscriptionStatus.ACTIVE && sub.PendingMembershipPlanId.HasValue);
+
+            if (awaitingPayment)
+            {
+                dto.PendingPaymentContent = SePayHelper.BuildMembershipPaymentContent(sub.Id);
+                var billingCycle = sub.PendingBillingCycle ?? "MONTHLY";
+                var targetPlanId = sub.PendingMembershipPlanId ?? sub.MembershipPlanId;
+                var targetPlan = sub.PendingMembershipPlanId.HasValue
+                    ? await _context.MembershipPlans.AsNoTracking()
+                        .FirstOrDefaultAsync(p => p.Id == targetPlanId, cancellationToken)
+                    : sub.MembershipPlan;
+
+                if (targetPlan is not null)
+                {
+                    dto.PendingPaymentAmount = billingCycle == "YEARLY" && targetPlan.PricePerYear.HasValue
+                        ? targetPlan.PricePerYear.Value
+                        : targetPlan.PricePerMonth;
+                }
+            }
+
+            return dto;
         }
 
         // No subscription row → return FREE plan as fallback

@@ -16,6 +16,7 @@ public class PaymentService : IPaymentService
     private readonly ApplicationDbContext _context;
     private readonly ILogger<PaymentService> _logger;
     private readonly IMembershipService _membershipService;
+    private readonly ISePayApiService _sePayApiService;
 
     public PaymentService(
         IBookingRepository bookingRepository,
@@ -23,7 +24,8 @@ public class PaymentService : IPaymentService
         IConfiguration config,
         ApplicationDbContext context,
         ILogger<PaymentService> logger,
-        IMembershipService membershipService)
+        IMembershipService membershipService,
+        ISePayApiService sePayApiService)
     {
         _bookingRepository    = bookingRepository;
         _currentUserService   = currentUserService;
@@ -31,6 +33,7 @@ public class PaymentService : IPaymentService
         _context              = context;
         _logger               = logger;
         _membershipService    = membershipService;
+        _sePayApiService      = sePayApiService;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -294,30 +297,11 @@ public class PaymentService : IPaymentService
         string rawContent,
         CancellationToken cancellationToken = default)
     {
-        // Idempotency check
-        var alreadyProcessed = _context.Payments
-            .Any(p => p.TransactionCode == payload.Id.ToString());
-        if (alreadyProcessed)
-            return new SePayWebhookResponse { Success = true, Message = "Already processed." };
-
-        // Tìm subscription đang PENDING_PAYMENT khớp mã MEM
-        // Mã format: MEM + 8 ký tự đầu subscriptionId (N format)
-        var upper = rawContent.ToUpperInvariant();
-        var memIdx = upper.IndexOf("MEM", StringComparison.Ordinal);
-        if (memIdx < 0 || upper.Length < memIdx + 11)
+        var memCode = SePayHelper.ExtractMembershipPaymentContent(rawContent);
+        if (memCode is null)
             return new SePayWebhookResponse { Success = true, Message = "Invalid MEM code." };
 
-        var memCode = upper.Substring(memIdx, 11); // MEM + 8 chars
-
-        var shortId = memCode[3..]; // 8 ký tự hex
-        var subscription = await _context.UserSubscriptions
-            .Where(s =>
-                s.Status == SubscriptionStatus.PENDING ||
-                (s.Status == SubscriptionStatus.ACTIVE && s.PendingMembershipPlanId != null))
-            .FirstOrDefaultAsync(s =>
-                s.Id.ToString("N").StartsWith(shortId, StringComparison.OrdinalIgnoreCase),
-                cancellationToken);
-
+        var subscription = await FindPendingMembershipSubscriptionAsync(memCode, cancellationToken);
         if (subscription is null)
         {
             _logger.LogInformation("SePay webhook id={Id}: no subscription for MEM code '{Code}'",
@@ -325,25 +309,18 @@ public class PaymentService : IPaymentService
             return new SePayWebhookResponse { Success = true, Message = "No subscription matched." };
         }
 
-        var targetPlanId = subscription.PendingMembershipPlanId ?? subscription.MembershipPlanId;
-        var plan = await _context.MembershipPlans
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == targetPlanId, cancellationToken);
+        if (IsMembershipFullyActive(subscription))
+            return new SePayWebhookResponse { Success = true, Message = "Already activated." };
 
-        if (plan is null)
+        var expectedAmount = await GetExpectedMembershipAmountAsync(subscription, cancellationToken);
+        if (expectedAmount is null)
         {
             _logger.LogWarning("SePay webhook id={Id}: plan not found for subscription {SubId}",
                 payload.Id, subscription.Id);
             return new SePayWebhookResponse { Success = true, Message = "Plan not found." };
         }
 
-        var billingCycle = subscription.PendingBillingCycle ?? "MONTHLY";
-        var expectedPrice = billingCycle == "YEARLY" && plan.PricePerYear.HasValue
-            ? plan.PricePerYear.Value
-            : plan.PricePerMonth;
-        var expectedAmount = (long)Math.Round(expectedPrice);
-
-        if (Math.Abs(payload.TransferAmount - expectedAmount) > 1)
+        if (Math.Abs(payload.TransferAmount - expectedAmount.Value) > 1)
         {
             _logger.LogWarning(
                 "SePay webhook id={Id}: membership amount mismatch. Expected={Expected}, Received={Received}",
@@ -351,12 +328,9 @@ public class PaymentService : IPaymentService
             return new SePayWebhookResponse { Success = true, Message = "Amount mismatch – not activated." };
         }
 
-        // Activate subscription
         try
         {
             await _membershipService.ActivateSubscriptionAsync(subscription.Id, cancellationToken);
-            // Ghi chú: Không tạo row trong bảng Payments vì bảng Payments có FK cứng (bắt buộc) tới Bookings.
-            // Trạng thái thanh toán của membership được track riêng thông qua Status của UserSubscriptions.
 
             _logger.LogInformation(
                 "SePay webhook id={Id}: subscription {SubId} ACTIVATED. Amount={Amount}",
@@ -370,6 +344,125 @@ public class PaymentService : IPaymentService
                 payload.Id, subscription.Id);
             throw;
         }
+    }
+
+    public async Task<MembershipPaymentVerifyResultDto> VerifyMembershipPaymentAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = await _context.UserSubscriptions
+            .Include(s => s.MembershipPlan)
+            .FirstOrDefaultAsync(s => s.UserId == userId, cancellationToken);
+
+        if (subscription is null)
+        {
+            return new MembershipPaymentVerifyResultDto
+            {
+                Activated = false,
+                Message = "Không tìm thấy gói đang chờ thanh toán."
+            };
+        }
+
+        if (IsMembershipFullyActive(subscription))
+        {
+            return new MembershipPaymentVerifyResultDto
+            {
+                Activated = false,
+                AlreadyActive = true,
+                Message = "Gói thành viên đã được kích hoạt."
+            };
+        }
+
+        var isAwaitingPayment =
+            subscription.Status == SubscriptionStatus.PENDING ||
+            (subscription.Status == SubscriptionStatus.ACTIVE && subscription.PendingMembershipPlanId.HasValue);
+
+        if (!isAwaitingPayment)
+        {
+            return new MembershipPaymentVerifyResultDto
+            {
+                Activated = false,
+                Message = "Gói không ở trạng thái chờ thanh toán."
+            };
+        }
+
+        var paymentContent = SePayHelper.BuildMembershipPaymentContent(subscription.Id);
+        var expectedAmount = await GetExpectedMembershipAmountAsync(subscription, cancellationToken);
+        if (expectedAmount is null)
+        {
+            return new MembershipPaymentVerifyResultDto
+            {
+                Activated = false,
+                Message = "Không xác định được số tiền gói membership."
+            };
+        }
+
+        var match = await _sePayApiService.FindIncomingTransactionAsync(
+            paymentContent,
+            expectedAmount.Value,
+            cancellationToken);
+
+        if (match is null)
+        {
+            return new MembershipPaymentVerifyResultDto
+            {
+                Activated = false,
+                Message = "Chưa tìm thấy giao dịch khớp. Hệ thống sẽ tiếp tục kiểm tra tự động."
+            };
+        }
+
+        await _membershipService.ActivateSubscriptionAsync(subscription.Id, cancellationToken);
+
+        _logger.LogInformation(
+            "Membership verify: subscription {SubId} ACTIVATED via SePay API. Tx={TxId}, Amount={Amount}",
+            subscription.Id, match.TransactionId, match.AmountIn);
+
+        return new MembershipPaymentVerifyResultDto
+        {
+            Activated = true,
+            Message = "Thanh toán thành công! Gói của bạn đã được kích hoạt."
+        };
+    }
+
+    private async Task<UserSubscription?> FindPendingMembershipSubscriptionAsync(
+        string memCode,
+        CancellationToken cancellationToken)
+    {
+        var shortId = memCode[3..];
+
+        var candidates = await _context.UserSubscriptions
+            .Where(s =>
+                s.Status == SubscriptionStatus.PENDING ||
+                (s.Status == SubscriptionStatus.ACTIVE && s.PendingMembershipPlanId != null))
+            .ToListAsync(cancellationToken);
+
+        return candidates.FirstOrDefault(s =>
+            s.Id.ToString("N").StartsWith(shortId, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsMembershipFullyActive(UserSubscription subscription) =>
+        subscription.Status == SubscriptionStatus.ACTIVE &&
+        subscription.PendingMembershipPlanId == null &&
+        subscription.PendingBillingCycle == null;
+
+    private async Task<long?> GetExpectedMembershipAmountAsync(
+        UserSubscription subscription,
+        CancellationToken cancellationToken)
+    {
+        var targetPlanId = subscription.PendingMembershipPlanId ?? subscription.MembershipPlanId;
+        var plan = await _context.MembershipPlans
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == targetPlanId, cancellationToken);
+
+        if (plan is null)
+            return null;
+
+        var billingCycle = subscription.PendingBillingCycle ?? "MONTHLY";
+        var expectedPrice = billingCycle == "YEARLY" && plan.PricePerYear.HasValue
+            ? plan.PricePerYear.Value
+            : plan.PricePerMonth;
+
+        return (long)Math.Round(expectedPrice);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

@@ -401,6 +401,11 @@ export default function PricingPage() {
         const token = getStoredToken();
         if (!token) return;
 
+        await apiFetch<ApiResponse<{ activated: boolean; alreadyActive: boolean; message: string }>>(
+          "/membership/verify-payment",
+          { method: "POST", token },
+        );
+
         const res = await apiFetch<ApiResponse<MySubscriptionDto>>(
           "/membership/my-subscription",
           { token },
@@ -426,7 +431,7 @@ export default function PricingPage() {
       }
     };
 
-    intervalId = setInterval(checkStatus, 3000);
+    intervalId = setInterval(checkStatus, 4000);
     void checkStatus();
 
     return () => {

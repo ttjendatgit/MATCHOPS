@@ -40,6 +40,12 @@ public class MySubscriptionResponseDto
 
     /// <summary>Current usage statistics for this billing period.</summary>
     public MembershipUsageDto? Usage { get; set; }
+
+    /// <summary>Khi status=PENDING: nội dung CK cần ghi khi chuyển khoản.</summary>
+    public string? PendingPaymentContent { get; set; }
+
+    /// <summary>Khi status=PENDING: số tiền cần thanh toán (VND).</summary>
+    public decimal? PendingPaymentAmount { get; set; }
 }
 
 // ── Admin DTOs ────────────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 using MATCHOP.API.DTOs.Membership;
+using MATCHOP.API.DTOs.Payments;
 using MATCHOP.API.Enums;
 using MATCHOP.API.Helpers;
 using MATCHOP.API.Services;
@@ -14,15 +15,18 @@ namespace MATCHOP.API.Controllers;
 public class MembershipController : ControllerBase
 {
     private readonly IMembershipService    _membershipService;
+    private readonly IPaymentService       _paymentService;
     private readonly ICurrentUserService  _currentUser;
     private readonly IConfiguration       _config;
 
     public MembershipController(
         IMembershipService membershipService,
+        IPaymentService paymentService,
         ICurrentUserService currentUser,
         IConfiguration config)
     {
         _membershipService = membershipService;
+        _paymentService    = paymentService;
         _currentUser      = currentUser;
         _config           = config;
     }
@@ -96,7 +100,7 @@ public class MembershipController : ControllerBase
             : plan.PricePerMonth;
 
         // Tạo nội dung chuyển khoản SePay: MEM + 8 ký tự đầu subscriptionId
-        var paymentContent = $"MEM{subscription.Id:N}"[..11].ToUpper(); // MEM + 8 chars
+        var paymentContent = SePayHelper.BuildMembershipPaymentContent(subscription.Id);
         var amount = (long)Math.Round(price);
 
         // Tạo QR VietQR
@@ -118,6 +122,21 @@ public class MembershipController : ControllerBase
             ExpireAt               = DateTime.UtcNow.AddMinutes(30),
             PendingSubscriptionId  = subscription.Id
         }));
+    }
+
+    /// <summary>
+    /// POST /api/membership/verify-payment
+    /// Kiểm tra giao dịch SePay và kích hoạt gói nếu đã thanh toán (fallback khi webhook chậm).
+    /// </summary>
+    [HttpPost("verify-payment")]
+    [Authorize]
+    public async Task<IActionResult> VerifyPayment(CancellationToken cancellationToken = default)
+    {
+        var userId = _currentUser.UserId
+            ?? throw new AppException(ErrorCodes.AuthRequired, "Bạn chưa đăng nhập.", StatusCodes.Status401Unauthorized);
+
+        var result = await _paymentService.VerifyMembershipPaymentAsync(userId, cancellationToken);
+        return Ok(ApiResponse<MembershipPaymentVerifyResultDto>.Ok(result, result.Message));
     }
 
     // VNPay return endpoint removed – membership payment now handled via SePay webhook.
