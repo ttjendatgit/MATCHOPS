@@ -50,6 +50,7 @@ namespace MATCHOP.API.Helpers
         public const string InvalidCapacity = "INVALID_CAPACITY";
         public const string InvalidImageUrl = "INVALID_IMAGE_URL";
         public const string ConversationNotFound = "CONVERSATION_NOT_FOUND";
+        public const string AiRateLimited = "AI_RATE_LIMITED";
 
         // Membership
         public const string MembershipLimitExceeded = "MEMBERSHIP_LIMIT_EXCEEDED";

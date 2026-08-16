@@ -28,6 +28,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  MatchPostLocationFields,
+  createEmptyMatchPostLocation,
+  type MatchPostLocationValue,
+} from "@/components/matching/MatchPostLocationFields";
+import { formatMatchVenueLabel } from "@/lib/matchVenue";
 
 export default function MatchDetailPage() {
   const router = useRouter();
@@ -46,11 +52,11 @@ export default function MatchDetailPage() {
   const [editForm, setEditForm] = useState({
     minSkillLevel: 1,
     maxSkillLevel: 4,
-    district: "",
     preferredTime: "",
     slotsNeeded: 2,
     note: "",
-    status: "OPEN"
+    status: "OPEN",
+    location: createEmptyMatchPostLocation(),
   });
 
   const skillNameToInt: Record<string, number> = {
@@ -72,11 +78,19 @@ export default function MatchDetailPage() {
         setEditForm({
           minSkillLevel: skillNameToInt[res.data.minSkillLevel] ?? 1,
           maxSkillLevel: skillNameToInt[res.data.maxSkillLevel] ?? 4,
-          district: res.data.district,
           preferredTime: new Date(res.data.preferredTime).toISOString().slice(0, 16),
           slotsNeeded: res.data.slotsNeeded,
           note: res.data.note || "",
-          status: res.data.status
+          status: res.data.status,
+          location: {
+            city: res.data.city,
+            district: res.data.district,
+            hasVenue: !!(res.data.venueId || res.data.externalVenueName),
+            venueSource: res.data.venueId ? "matchop" : "external",
+            venueId: res.data.venueId ?? "",
+            courtId: res.data.courtId ?? "",
+            externalVenueName: res.data.externalVenueName ?? "",
+          },
         });
       }
     } catch (err) {
@@ -122,13 +136,31 @@ export default function MatchDetailPage() {
     setActionLoading("update");
     const token = getStoredToken();
     try {
+      const loc = editForm.location;
+      const payload: Record<string, unknown> = {
+        minSkillLevel: editForm.minSkillLevel,
+        maxSkillLevel: editForm.maxSkillLevel,
+        city: loc.city,
+        district: loc.district,
+        preferredTime: new Date(editForm.preferredTime).toISOString(),
+        slotsNeeded: editForm.slotsNeeded,
+        note: editForm.note,
+        status: editForm.status,
+      };
+
+      if (!loc.hasVenue) {
+        payload.clearVenue = true;
+      } else if (loc.venueSource === "matchop") {
+        payload.venueId = loc.venueId;
+        if (loc.courtId) payload.courtId = loc.courtId;
+      } else {
+        payload.externalVenueName = loc.externalVenueName.trim();
+      }
+
       const res = await apiFetch<ApiResponse<unknown>>(`/matching/posts/${id}`, {
         method: "PATCH",
         token,
-        body: JSON.stringify({
-          ...editForm,
-          preferredTime: new Date(editForm.preferredTime).toISOString()
-        })
+        body: JSON.stringify(payload),
       });
 
       if (res.success) {
@@ -249,22 +281,21 @@ export default function MatchDetailPage() {
             <CardContent className="p-8">
               {isEditing ? (
                 <form onSubmit={handleUpdate} className="space-y-6">
+                  <MatchPostLocationFields
+                    value={editForm.location}
+                    onChange={(location: MatchPostLocationValue) =>
+                      setEditForm({ ...editForm, location })
+                    }
+                    sportId={post.sportId}
+                  />
+
                   <div className="grid gap-6 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Quận/Huyện</Label>
-                      <Input 
-                        value={editForm.district}
-                        onChange={(e) => setEditForm({...editForm, district: e.target.value})}
-                        className="bg-slate-950 border-white/10"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 sm:col-span-2">
                       <Label>Thời gian dự kiến</Label>
-                      <Input 
-                        type="datetime-local" 
+                      <Input
+                        type="datetime-local"
                         value={editForm.preferredTime}
-                        onChange={(e) => setEditForm({...editForm, preferredTime: e.target.value})}
+                        onChange={(e) => setEditForm({ ...editForm, preferredTime: e.target.value })}
                         className="bg-slate-950 border-white/10 [color-scheme:dark]"
                         required
                       />
@@ -383,8 +414,14 @@ export default function MatchDetailPage() {
                       <div className="flex items-start gap-3">
                         <MapPin className="h-5 w-5 text-[#FF8000] shrink-0 mt-0.5" />
                         <div>
-                          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Địa điểm</p>
+                          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Khu vực</p>
                           <p className="text-lg text-white font-medium">{post.district}, {post.city}</p>
+                          {formatMatchVenueLabel(post) && (
+                            <>
+                              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-3">Sân</p>
+                              <p className="text-base text-slate-200">{formatMatchVenueLabel(post)}</p>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

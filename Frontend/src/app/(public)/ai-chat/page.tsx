@@ -20,8 +20,37 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { isAuthenticated } from "@/lib/auth";
+import { isAuthenticated, getStoredUser } from "@/lib/auth";
 import { useAiChat } from "@/hooks/useAiChat";
+
+const USER_PROMPTS = [
+  "Tìm sân gần tôi",
+  "Tìm sân cầu lông tối nay",
+  "Sân pickleball dưới 150k",
+  "Xem booking của tôi",
+  "Tìm sân đang còn trống",
+];
+
+const OWNER_PROMPTS = [
+  "Phân tích doanh thu tháng này",
+  "Phân tích booking",
+  "Khung giờ nào đông nhất?",
+  "Sân nào hoạt động kém?",
+  "Tìm sân cầu lông quận 1",
+];
+
+const ADMIN_PROMPTS = [
+  "Phân tích doanh thu nền tảng",
+  "Tăng trưởng người dùng",
+  "Thống kê booking tháng này",
+  "Venue nào hoạt động tốt nhất?",
+];
+
+function getQuickPrompts(role?: string): string[] {
+  if (role === "OWNER") return OWNER_PROMPTS;
+  if (role === "ADMIN") return ADMIN_PROMPTS;
+  return USER_PROMPTS;
+}
 
 export default function AiChatPage() {
   const router = useRouter();
@@ -29,6 +58,8 @@ export default function AiChatPage() {
   const [input, setInput] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const userRole = getStoredUser()?.role;
+  const quickPrompts = getQuickPrompts(userRole);
 
   const {
     messages,
@@ -36,6 +67,7 @@ export default function AiChatPage() {
     currentConversationId,
     isLoading,
     isLoadingHistory,
+    isSelectingConversation,
     error,
     messagesEndRef,
     fetchConversations,
@@ -44,25 +76,25 @@ export default function AiChatPage() {
     newConversation,
     deleteConversation,
     renameConversation,
+    setError,
   } = useAiChat();
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated + clear stale error from previous session
   useEffect(() => {
     if (!isAuthenticated()) {
       router.push("/login?redirect=/ai-chat");
     } else {
       fetchConversations();
+      setError(null);
     }
-  }, [router, fetchConversations]);
+  }, [router, fetchConversations, setError]);
 
-  // Guard against the page opening already scrolled down (e.g. the
-  // internal messages container's own scroll bubbling to the window).
-  // The chat UI is a fixed-height view starting right below the navbar.
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "auto" });
-  }, []);
+  const displayError = error?.includes("429")
+    ? "AI đang quá tải. Vui lòng đợi vài giây rồi thử lại."
+    : error?.includes("Response status code")
+      ? "AI tạm thời không phản hồi. Vui lòng thử lại sau."
+      : error;
 
-  // Handle sending message
   const handleSendMessage = async () => {
     const content = input.trim();
     if (!content) return;
@@ -88,7 +120,7 @@ export default function AiChatPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-[#030303] overflow-hidden">
+    <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-[#030303]">
       {/* Sidebar */}
       <aside
         className={`${
@@ -127,9 +159,9 @@ export default function AiChatPage() {
             <div className="flex justify-center p-4">
               <Loader2 className="h-6 w-6 animate-spin text-[#FF8000]" />
             </div>
-          ) : error ? (
+          ) : displayError ? (
             <div className="p-4 text-center space-y-3">
-              <p className="text-red-400 text-sm">{error}</p>
+              <p className="text-red-400 text-sm">{displayError}</p>
               <Button
                 variant="ghost"
                 size="sm"
@@ -224,6 +256,15 @@ export default function AiChatPage() {
       <main className="flex-1 flex flex-col bg-[#030303]">
         {/* Header */}
         <header className="p-4 border-b border-white/5 bg-slate-950/50 flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 text-slate-400 md:hidden shrink-0"
+            onClick={() => router.back()}
+            aria-label="Quay lại"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
           {!isSidebarOpen && (
             <Button
               variant="ghost"
@@ -239,7 +280,7 @@ export default function AiChatPage() {
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h2 className="font-semibold text-white">MatchOps Assistant</h2>
+              <h2 className="font-semibold text-white">🤖 MATCHOP AI</h2>
               <p className="text-xs text-[#86D232]">Đang hoạt động</p>
             </div>
           </div>
@@ -247,27 +288,43 @@ export default function AiChatPage() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {error && (
+          {displayError && (
             <div className="p-4 text-center space-y-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-              <p className="text-red-400 text-sm">{error}</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  fetchConversations();
-                  if (currentConversationId) {
-                    selectConversation(currentConversationId);
-                  }
-                }}
-                className="flex items-center gap-2 text-slate-300"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Thử lại
-              </Button>
+              <p className="text-red-400 text-sm">{displayError}</p>
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setError(null);
+                    fetchConversations();
+                    if (currentConversationId) {
+                      selectConversation(currentConversationId);
+                    }
+                  }}
+                  className="flex items-center gap-2 text-slate-300"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Thử lại
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setError(null)}
+                  className="text-slate-400"
+                >
+                  Đóng
+                </Button>
+              </div>
             </div>
           )}
           
-          {messages.length === 0 ? (
+          {isSelectingConversation ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-[#FF8000]" />
+              <p className="text-slate-400 text-sm">Đang tải cuộc trò chuyện...</p>
+            </div>
+          ) : messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
               <div className="h-20 w-20 rounded-full bg-gradient-to-br from-[#FF8000]/10 to-orange-600/10 flex items-center justify-center">
                 <Bot className="h-10 w-10 text-[#FF8000]" />
@@ -281,16 +338,12 @@ export default function AiChatPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl mt-6">
-                {[
-                  "Làm thế nào để tìm sân cầu lông gần đây?",
-                  "Tôi muốn tìm người chơi cùng trận badminton",
-                  "Giải thích quy trình đặt sân?",
-                  "Làm sao để hủy đặt sân?"
-                ].map((suggestion, idx) => (
+                {quickPrompts.map((suggestion, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setInput(suggestion)}
-                    className="p-3 text-left border border-white/5 rounded-xl bg-slate-900/50 hover:bg-slate-900 hover:border-[#FF8000]/20 transition-all"
+                    onClick={() => void sendMessage(suggestion)}
+                    disabled={isLoading || isSelectingConversation}
+                    className="p-3 text-left border border-white/5 rounded-xl bg-slate-900/50 hover:bg-slate-900 hover:border-[#FF8000]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <p className="text-sm text-slate-300">{suggestion}</p>
                   </button>

@@ -9,6 +9,9 @@ namespace MATCHOP.API.DTOs.Matching
         public SkillLevel MaxSkillLevel { get; set; }
         public string City { get; set; } = string.Empty;
         public string District { get; set; } = string.Empty;
+        public Guid? VenueId { get; set; }
+        public Guid? CourtId { get; set; }
+        public string? ExternalVenueName { get; set; }
         public DateTime PreferredTime { get; set; }
         public int SlotsNeeded { get; set; }
         public string? Note { get; set; }
@@ -20,6 +23,10 @@ namespace MATCHOP.API.DTOs.Matching
         public SkillLevel? MaxSkillLevel { get; set; }
         public string? City { get; set; }
         public string? District { get; set; }
+        public Guid? VenueId { get; set; }
+        public Guid? CourtId { get; set; }
+        public string? ExternalVenueName { get; set; }
+        public bool ClearVenue { get; set; }
         public DateTime? PreferredTime { get; set; }
         public int? SlotsNeeded { get; set; }
         public string? Note { get; set; }
@@ -38,6 +45,11 @@ namespace MATCHOP.API.DTOs.Matching
         public string MaxSkillLevel { get; set; } = string.Empty;
         public string City { get; set; } = string.Empty;
         public string District { get; set; } = string.Empty;
+        public Guid? VenueId { get; set; }
+        public string? VenueName { get; set; }
+        public Guid? CourtId { get; set; }
+        public string? CourtName { get; set; }
+        public string? ExternalVenueName { get; set; }
         public DateTime PreferredTime { get; set; }
         public int SlotsNeeded { get; set; }
         public int SlotsFilled { get; set; }

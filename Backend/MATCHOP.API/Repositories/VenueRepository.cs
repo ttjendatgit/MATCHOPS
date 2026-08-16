@@ -1,5 +1,6 @@
 using MATCHOP.API.Entities;
 using MATCHOP.API.Enums;
+using MATCHOP.API.Helpers;
 using Microsoft.EntityFrameworkCore;
 
 namespace MATCHOP.API.Repositories;
@@ -29,12 +30,30 @@ public class VenueRepository : IVenueRepository
             .Where(v => v.Status == VenueStatus.ACTIVE);
 
         if (!string.IsNullOrWhiteSpace(city))
+        {
+            var cityFilter = city.Trim();
             query = query.Where(v =>
-                v.City.ToLower().Contains(city.ToLower()));
+                EF.Functions.ILike(v.City, $"%{cityFilter}%") ||
+                (EF.Functions.ILike(cityFilter, "%hcm%") && EF.Functions.ILike(v.City, "%hcm%")) ||
+                (EF.Functions.ILike(cityFilter, "%ho chi minh%") && EF.Functions.ILike(v.City, "%ho chi minh%")) ||
+                (EF.Functions.ILike(cityFilter, "%binh duong%") && EF.Functions.ILike(v.City, "%binh duong%")) ||
+                (EF.Functions.ILike(cityFilter, "%bình dương%") && EF.Functions.ILike(v.City, "%dương%")));
+        }
 
         if (!string.IsNullOrWhiteSpace(district))
+        {
+            var districtFilter = district.Trim();
+            var districtCore = districtFilter
+                .Replace("Quận ", "", StringComparison.OrdinalIgnoreCase)
+                .Replace("Huyện ", "", StringComparison.OrdinalIgnoreCase)
+                .Replace("Thành phố ", "", StringComparison.OrdinalIgnoreCase)
+                .Trim();
+
             query = query.Where(v =>
-                v.District.ToLower().Contains(district.ToLower()));
+                EF.Functions.ILike(v.District, $"%{districtFilter}%") ||
+                EF.Functions.ILike(v.District, $"%{districtCore}%") ||
+                EF.Functions.ILike(districtFilter, $"%{v.District}%"));
+        }
 
         if (!string.IsNullOrWhiteSpace(keyword))
             query = query.Where(v =>

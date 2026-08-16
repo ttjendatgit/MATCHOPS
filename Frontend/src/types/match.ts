@@ -9,6 +9,11 @@ export interface MatchPost {
   maxSkillLevel: string;
   city: string;
   district: string;
+  venueId?: string | null;
+  venueName?: string | null;
+  courtId?: string | null;
+  courtName?: string | null;
+  externalVenueName?: string | null;
   preferredTime: string;
   slotsNeeded: number;
   slotsFilled: number;
@@ -72,6 +77,9 @@ export interface CreateMatchPostDto {
   maxSkillLevel: number;
   city: string;
   district: string;
+  venueId?: string;
+  courtId?: string;
+  externalVenueName?: string;
   preferredTime: string;
   slotsNeeded: number;
   note?: string;
@@ -88,6 +96,10 @@ export interface UpdateMatchPostDto {
   maxSkillLevel?: number;
   city?: string;
   district?: string;
+  venueId?: string;
+  courtId?: string;
+  externalVenueName?: string;
+  clearVenue?: boolean;
   preferredTime?: string;
   slotsNeeded?: number;
   note?: string;

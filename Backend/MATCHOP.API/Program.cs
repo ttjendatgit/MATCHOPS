@@ -1,6 +1,7 @@
 ﻿using MATCHOP.API;
 using MATCHOP.API.Middlewares;
 using MATCHOP.API.Services;
+using MATCHOP.API.Services.AI;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -216,8 +217,14 @@ builder.Services.AddScoped<IMatchRequestRepository, MatchRequestRepository>();
 builder.Services.AddScoped<IMatchRequestService, MatchRequestService>();
 
 // AI Assistant
-builder.Services.AddHttpClient<IGroqService, GroqService>();
+builder.Services.AddHttpClient<IGroqService, GroqService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(60);
+});
 builder.Services.AddScoped<IAIChatRepository, AIChatRepository>();
+builder.Services.AddScoped<IAiIntentPlanner, AiIntentPlanner>();
+builder.Services.AddScoped<IAiToolExecutor, AiToolExecutor>();
+builder.Services.AddSingleton<IAiRateLimiter, AiRateLimiter>();
 builder.Services.AddScoped<IAIService, AIService>();
 builder.Services.AddScoped<IDashboardStatisticsService, DashboardStatisticsService>();
 builder.Services.AddScoped<ITransactionHistoryService, TransactionHistoryService>();

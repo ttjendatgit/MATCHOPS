@@ -33,6 +33,8 @@ public class TransactionItemDto
     public string? CourtName { get; set; }
     public string? CustomerName { get; set; }
     public string? CustomerEmail { get; set; }
+    public string? CustomerPhone { get; set; }
+    public string? BookingSource { get; set; }
 }
 
 public class TransactionHistoryResponseDto

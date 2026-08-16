@@ -66,7 +66,7 @@ public class CourtBlockService : ICourtBlockService
                 court.Id,
                 dto.BlockDate,
                 slotStartTimes,
-                cancellationToken);
+                cancellationToken: cancellationToken);
 
             if (hasConflict)
             {
@@ -236,7 +236,7 @@ public class CourtBlockService : ICourtBlockService
             throw new AppException(ErrorCodes.InvalidTimeRange, "StartTime phải nhỏ hơn EndTime.");
         }
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VenueTimeHelper.GetToday();
         if (date < today)
         {
             throw new AppException(ErrorCodes.BookingInPast, "Không thể khóa sân trong quá khứ.");

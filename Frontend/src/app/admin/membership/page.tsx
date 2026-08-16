@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Users, CreditCard, TrendingUp, CheckCircle2, Clock, XCircle, RefreshCw, Loader2 } from "lucide-react";
+import { Users, CreditCard, TrendingUp, CheckCircle2, Clock, XCircle, RefreshCw, Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch, ApiError } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
@@ -139,6 +139,38 @@ export default function AdminMembershipPage() {
     }
   };
 
+  const handleExportSubscriptions = () => {
+    if (filteredSubscriptions.length === 0) {
+      toast.error("Không có dữ liệu để xuất.");
+      return;
+    }
+    const headers = ["Họ tên", "Email", "Vai trò", "Gói", "Tier", "Giá", "Trạng thái", "Bắt đầu", "Hết hạn"];
+    const rows = filteredSubscriptions.map((sub) => [
+      sub.userFullName,
+      sub.userEmail,
+      sub.userRole,
+      sub.planName,
+      sub.planTier,
+      sub.planPrice.toString(),
+      sub.status,
+      sub.startedAt,
+      sub.expiresAt ?? "",
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `membership-subscriptions-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Xuất danh sách subscription thành công.");
+  };
+
   const filteredSubscriptions = subscriptions.filter((sub) => {
     const matchesSearch =
       !search ||
@@ -162,9 +194,20 @@ export default function AdminMembershipPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">Quản lý Membership</h1>
-        <p className="text-sm text-[#C4C7C9]">Quản lý gói thành viên và subscriptions</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">Quản lý Membership</h1>
+          <p className="text-sm text-[#C4C7C9]">Quản lý gói thành viên và subscriptions</p>
+        </div>
+        <Button
+          variant="outline"
+          className="gap-2 border-[rgba(134,210,50,0.2)] bg-[#141414] text-white"
+          onClick={handleExportSubscriptions}
+          disabled={filteredSubscriptions.length === 0}
+        >
+          <Download className="h-4 w-4" />
+          Xuất báo cáo
+        </Button>
       </div>
 
       {/* Statistics Cards */}
@@ -326,39 +369,73 @@ export default function AdminMembershipPage() {
       <Card className="border-[rgba(134,210,50,0.2)] bg-[#0A0A0A]">
         <CardHeader>
           <CardTitle className="text-lg">Các gói Membership</CardTitle>
+          <p className="text-sm text-[#C4C7C9]/60">
+            Số người đang dùng từng gói (ACTIVE hoặc PENDING).
+          </p>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {plans.map((plan) => {
-              const tierCount = stats?.subscriptionsByTier[plan.tier] || 0;
+              const planSubs = subscriptions.filter(
+                (s) => s.planId === plan.id && (s.status === "ACTIVE" || s.status === "PENDING"),
+              );
+              const activeCount = planSubs.filter((s) => s.status === "ACTIVE").length;
+
               return (
                 <div
                   key={plan.id}
-                  className={`rounded-lg border p-4 ${
+                  className={`rounded-xl border p-4 transition-colors ${
                     plan.isActive
-                      ? "border-[rgba(134,210,50,0.2)] bg-[#141414]"
+                      ? "border-[rgba(134,210,50,0.2)] bg-[#141414] hover:border-[rgba(255,128,0,0.3)]"
                       : "border-red-500/20 bg-red-950/10 opacity-60"
                   }`}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="font-semibold text-white">{plan.name}</p>
                       <p className="text-xs text-[#C4C7C9]/60">{plan.targetRole}</p>
                     </div>
-                    {!plan.isActive && (
-                      <Badge variant="destructive" className="text-xs">Inactive</Badge>
-                    )}
+                    <Badge variant="outline" className="text-[10px] shrink-0">
+                      {plan.tier}
+                    </Badge>
                   </div>
                   <div className="mt-3 flex items-baseline gap-1">
                     <span className="text-2xl font-bold text-[#FF8000]">
-                      {(plan.pricePerMonth / 1000).toLocaleString("vi-VN")}
+                      {plan.pricePerMonth === 0
+                        ? "0"
+                        : (plan.pricePerMonth / 1000).toLocaleString("vi-VN")}
                     </span>
-                    <span className="text-sm text-[#C4C7C9]/60">.000đ/tháng</span>
+                    <span className="text-sm text-[#C4C7C9]/60">
+                      {plan.pricePerMonth === 0 ? "đ" : ".000đ/tháng"}
+                    </span>
                   </div>
-                  <div className="mt-2 flex items-center justify-between text-xs text-[#C4C7C9]/60">
-                    <span>{tierCount} subscriptions</span>
-                    <Badge variant="outline" className="text-xs">{plan.tier}</Badge>
+                  <div className="mt-3 flex items-center justify-between text-xs">
+                    <span className="font-medium text-[#86D232]">
+                      {activeCount} đang dùng
+                    </span>
+                    {planSubs.length > activeCount && (
+                      <span className="text-amber-400">{planSubs.length - activeCount} chờ CK</span>
+                    )}
                   </div>
+                  {planSubs.length > 0 ? (
+                    <ul className="mt-3 max-h-28 space-y-1.5 overflow-y-auto border-t border-[rgba(134,210,50,0.1)] pt-3">
+                      {planSubs.slice(0, 5).map((sub) => (
+                        <li key={sub.subscriptionId} className="text-xs">
+                          <p className="truncate font-medium text-white">{sub.userFullName}</p>
+                          <p className="truncate text-[#C4C7C9]/50">{sub.userEmail}</p>
+                        </li>
+                      ))}
+                      {planSubs.length > 5 && (
+                        <li className="text-[10px] text-[#C4C7C9]/40">
+                          +{planSubs.length - 5} người khác
+                        </li>
+                      )}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 border-t border-[rgba(134,210,50,0.1)] pt-3 text-xs text-[#C4C7C9]/40">
+                      Chưa có người dùng gói này
+                    </p>
+                  )}
                 </div>
               );
             })}

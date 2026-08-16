@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MATCHOP.API.Tests;
 
@@ -134,6 +135,7 @@ public class BookingServiceIntegrationTests
             new CourtRepository(context),
             new PriceRuleRepository(context),
             new FakeCurrentUserService(userId),
+            NullLogger<BookingService>.Instance,
             configuration);
     }
 

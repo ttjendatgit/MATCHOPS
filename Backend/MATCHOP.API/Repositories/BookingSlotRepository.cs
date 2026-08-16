@@ -31,12 +31,14 @@ public class BookingSlotRepository : IBookingSlotRepository
         Guid courtId,
         DateOnly date,
         List<TimeOnly> slotStartTimes,
+        Guid? excludeBookingId = null,
         CancellationToken cancellationToken = default)
     {
         return await _context.BookingSlots.AnyAsync(s =>
             s.CourtId == courtId &&
             s.SlotDate == date &&
             slotStartTimes.Contains(s.SlotStartTime) &&
+            (excludeBookingId == null || s.BookingId != excludeBookingId) &&
             (s.Status == BookingSlotStatus.HOLDING ||
              s.Status == BookingSlotStatus.BOOKED ||
              s.Status == BookingSlotStatus.BLOCKED), cancellationToken);

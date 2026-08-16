@@ -13,6 +13,9 @@ public interface IBookingService
     Task<List<BookingResponseDto>> GetOwnerBookingsAsync(DateOnly? date, Guid? venueId, Guid? courtId, CancellationToken cancellationToken = default);
     Task<BookingResponseDto> GetOwnerBookingByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<BookingResponseDto> CreateOfflineBookingAsync(CreateOfflineBookingDto dto, CancellationToken cancellationToken = default);
+    Task<BookingResponseDto> CreateExternalBookingAsync(CreateExternalBookingDto dto, CancellationToken cancellationToken = default);
+    Task<BookingResponseDto> UpdateExternalBookingAsync(Guid id, UpdateExternalBookingDto dto, CancellationToken cancellationToken = default);
+    Task<OwnerCourtCalendarResponseDto> GetOwnerCourtCalendarAsync(Guid courtId, DateOnly date, CancellationToken cancellationToken = default);
     Task<BookingResponseDto> CancelOwnerBookingAsync(Guid id, CancelBookingDto dto, CancellationToken cancellationToken = default);
     Task<BookingResponseDto> ConfirmOwnerBookingAsync(Guid id, CancellationToken cancellationToken = default);
     Task<BookingResponseDto> CompleteOwnerBookingAsync(Guid id, CancellationToken cancellationToken = default);

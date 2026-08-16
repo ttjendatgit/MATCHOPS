@@ -16,6 +16,7 @@ public class BookingRepository : IBookingRepository
 
     private IQueryable<Booking> BaseQuery() =>
         _context.Bookings
+            .Include(b => b.User)
             .Include(b => b.Court)
                 .ThenInclude(c => c.Venue)
             .Include(b => b.Court)
@@ -141,6 +142,27 @@ public class BookingRepository : IBookingRepository
         return await BaseQuery()
             .Where(b => b.Status == BookingStatus.PENDING_PAYMENT
                      && (b.ExpireAt == null || b.ExpireAt > DateTime.UtcNow))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<Booking>> GetCalendarBookingsByCourtAndDateAsync(
+        Guid courtId,
+        DateOnly date,
+        CancellationToken cancellationToken = default)
+    {
+        var activeStatuses = new[]
+        {
+            BookingStatus.PENDING_PAYMENT,
+            BookingStatus.CONFIRMED,
+            BookingStatus.COMPLETED
+        };
+
+        return await BaseQuery()
+            .Where(b =>
+                b.CourtId == courtId &&
+                b.BookingDate == date &&
+                activeStatuses.Contains(b.Status))
+            .OrderBy(b => b.StartTime)
             .ToListAsync(cancellationToken);
     }
 }

@@ -11,6 +11,7 @@ public interface IBookingSlotRepository
         Guid courtId,
         DateOnly date,
         List<TimeOnly> slotStartTimes,
+        Guid? excludeBookingId = null,
         CancellationToken cancellationToken = default);
 
     Task<List<BookingSlot>> GetActiveSlotsAsync(

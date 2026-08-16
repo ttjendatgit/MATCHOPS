@@ -93,9 +93,11 @@ public class TransactionHistoryService : ITransactionHistoryService
         var payments = await _dbContext.Payments
             .AsNoTracking()
             .Include(p => p.Booking)
-                .ThenInclude(b => b.Venue)
+                .ThenInclude(b => b!.Venue)
             .Include(p => p.Booking)
-                .ThenInclude(b => b.Court)
+                .ThenInclude(b => b!.Court)
+            .Include(p => p.Booking)
+                .ThenInclude(b => b!.User)
             .Include(p => p.User)
             .Where(paymentFilter)
             .ToListAsync(cancellationToken);
@@ -230,9 +232,25 @@ public class TransactionHistoryService : ITransactionHistoryService
             ReferenceId = booking?.Id,
             VenueName = venueName,
             CourtName = courtName,
-            CustomerName = payment.User?.FullName,
-            CustomerEmail = payment.User?.Email
+            CustomerName = ResolveCustomerName(booking, payment.User),
+            CustomerEmail = payment.User?.Email ?? booking?.User?.Email,
+            CustomerPhone = booking?.CustomerPhone ?? booking?.User?.PhoneNumber,
+            BookingSource = booking?.BookingSource.ToString()
         };
+    }
+
+    private static string? ResolveCustomerName(Entities.Booking? booking, Entities.User? paymentUser)
+    {
+        if (!string.IsNullOrWhiteSpace(booking?.CustomerName))
+            return booking.CustomerName.Trim();
+
+        if (!string.IsNullOrWhiteSpace(paymentUser?.FullName))
+            return paymentUser.FullName.Trim();
+
+        if (!string.IsNullOrWhiteSpace(booking?.User?.FullName))
+            return booking.User.FullName.Trim();
+
+        return null;
     }
 
     private static TransactionItemDto MapMembership(Entities.UserSubscription subscription)

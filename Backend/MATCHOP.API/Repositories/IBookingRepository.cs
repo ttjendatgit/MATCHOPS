@@ -19,4 +19,9 @@ public interface IBookingRepository
 
     /// <summary>Lấy tất cả booking đang PENDING_PAYMENT (chưa hết hạn) – dùng cho SePay webhook matching.</summary>
     Task<List<Booking>> GetPendingPaymentBookingsAsync(CancellationToken cancellationToken = default);
+
+    Task<List<Booking>> GetCalendarBookingsByCourtAndDateAsync(
+        Guid courtId,
+        DateOnly date,
+        CancellationToken cancellationToken = default);
 }

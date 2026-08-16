@@ -14,6 +14,11 @@ namespace MATCHOP.API.Entities
         public SkillLevel MaxSkillLevel { get; set; }
         public string City { get; set; } = string.Empty;
         public string District { get; set; } = string.Empty;
+        public Guid? VenueId { get; set; }
+        public Venue? Venue { get; set; }
+        public Guid? CourtId { get; set; }
+        public Court? Court { get; set; }
+        public string? ExternalVenueName { get; set; }
         public DateTime PreferredTime { get; set; }
         public int SlotsNeeded { get; set; }
         public int SlotsFilled { get; set; }

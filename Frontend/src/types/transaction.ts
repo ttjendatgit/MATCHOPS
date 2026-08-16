@@ -20,6 +20,8 @@ export interface TransactionItem {
   courtName?: string | null;
   customerName?: string | null;
   customerEmail?: string | null;
+  customerPhone?: string | null;
+  bookingSource?: string | null;
 }
 
 export interface TransactionHistoryResponse {

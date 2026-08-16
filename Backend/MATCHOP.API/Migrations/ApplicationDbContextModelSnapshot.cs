@@ -72,6 +72,9 @@ namespace MATCHOP.API.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("NOW()");
 
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("jsonb");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -102,6 +105,11 @@ namespace MATCHOP.API.Migrations
 
                     b.Property<DateOnly>("BookingDate")
                         .HasColumnType("date");
+
+                    b.Property<int>("BookingSource")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.Property<int>("BookingType")
                         .HasColumnType("integer");
@@ -944,6 +952,9 @@ namespace MATCHOP.API.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<Guid?>("CourtId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -954,6 +965,10 @@ namespace MATCHOP.API.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ExternalVenueName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<int>("MaxSkillLevel")
                         .HasColumnType("integer");
@@ -983,7 +998,12 @@ namespace MATCHOP.API.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("VenueId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("CourtId");
 
                     b.HasIndex("CreatorId")
                         .HasDatabaseName("ix_match_posts_creator");
@@ -993,6 +1013,8 @@ namespace MATCHOP.API.Migrations
 
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_match_posts_status");
+
+                    b.HasIndex("VenueId");
 
                     b.HasIndex("City", "District")
                         .HasDatabaseName("ix_match_posts_location");
@@ -2282,6 +2304,11 @@ namespace MATCHOP.API.Migrations
 
             modelBuilder.Entity("MATCHOP.API.Entities.MatchPost", b =>
                 {
+                    b.HasOne("MATCHOP.API.Entities.Court", "Court")
+                        .WithMany()
+                        .HasForeignKey("CourtId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("MATCHOP.API.Entities.User", "Creator")
                         .WithMany("MatchPosts")
                         .HasForeignKey("CreatorId")
@@ -2294,9 +2321,18 @@ namespace MATCHOP.API.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MATCHOP.API.Entities.Venue", "Venue")
+                        .WithMany()
+                        .HasForeignKey("VenueId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Court");
+
                     b.Navigation("Creator");
 
                     b.Navigation("Sport");
+
+                    b.Navigation("Venue");
                 });
 
             modelBuilder.Entity("MATCHOP.API.Entities.MatchQueue", b =>

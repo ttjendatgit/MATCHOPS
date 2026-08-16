@@ -118,7 +118,15 @@ export default function ChatBubble() {
     };
   }, [connection, selectedConv, isOpen]);
 
+  const scrollToBottom = () => {
+    const container = messagesEndRef.current?.parentElement;
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    }
+  };
+
   useEffect(() => {
+    if (messages.length === 0) return;
     scrollToBottom();
   }, [messages]);
 
@@ -182,10 +190,6 @@ export default function ChatBubble() {
     } catch (err) {
       toast.error("Không thể gửi tin nhắn");
     }
-  };
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   // Helper to get the other participant (not current user)

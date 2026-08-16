@@ -2,227 +2,233 @@ using MATCHOP.API.DTOs.AI;
 using MATCHOP.API.Entities;
 using MATCHOP.API.Helpers;
 using MATCHOP.API.Repositories;
-using MATCHOP.API.Services;
+using MATCHOP.API.Services.AI;
 using MATCHOP.API.Services.Interfaces;
-using System.Net.Http;
+using System.Diagnostics;
 using System.Text;
-using System.Text.Json;
 
-namespace MATCHOP.API.Services
+namespace MATCHOP.API.Services;
+
+public interface IAIService
 {
-    public interface IAIService
+    Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage, Guid? conversationId = null, CancellationToken cancellationToken = default);
+}
+
+public class AIService : IAIService
+{
+    private readonly IGroqService _groqService;
+    private readonly IAIChatRepository _aiChatRepository;
+    private readonly IAiIntentPlanner _intentPlanner;
+    private readonly IAiToolExecutor _toolExecutor;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IAiRateLimiter _rateLimiter;
+    private readonly ILogger<AIService> _logger;
+
+    public AIService(
+        IGroqService groqService,
+        IAIChatRepository aiChatRepository,
+        IAiIntentPlanner intentPlanner,
+        IAiToolExecutor toolExecutor,
+        ICurrentUserService currentUserService,
+        IAiRateLimiter rateLimiter,
+        ILogger<AIService> logger)
     {
-        Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage, Guid? conversationId = null, CancellationToken cancellationToken = default);
+        _groqService = groqService;
+        _aiChatRepository = aiChatRepository;
+        _intentPlanner = intentPlanner;
+        _toolExecutor = toolExecutor;
+        _currentUserService = currentUserService;
+        _rateLimiter = rateLimiter;
+        _logger = logger;
     }
 
-    public class AIService : IAIService
+    public async Task<ChatResponseDto> ProcessMessageAsync(
+        Guid userId,
+        string userMessage,
+        Guid? conversationId = null,
+        CancellationToken cancellationToken = default)
     {
-        private readonly IGroqService _groqService;
-        private readonly IAIChatRepository _aiChatRepository;
-        private readonly IVenueService _venueService;
-        private readonly IBookingService _bookingService;
-        private readonly ISportService _sportService;
-        private readonly IUserSkillService _userSkillService;
+        var normalizedUserMessage = string.IsNullOrWhiteSpace(userMessage) ? string.Empty : userMessage.Trim();
+        _rateLimiter.CheckLimit(userId, 20);
 
-        public AIService(
-            IGroqService groqService,
-            IAIChatRepository aiChatRepository,
-            IVenueService venueService,
-            IBookingService bookingService,
-            ISportService sportService,
-            IUserSkillService userSkillService)
+        var sw = Stopwatch.StartNew();
+        AIConversation conversation;
+        List<AIChatMessage> history;
+
+        if (conversationId.HasValue)
         {
-            _groqService = groqService;
-            _aiChatRepository = aiChatRepository;
-            _venueService = venueService;
-            _bookingService = bookingService;
-            _sportService = sportService;
-            _userSkillService = userSkillService;
+            conversation = await _aiChatRepository.GetConversationAsync(conversationId.Value, userId, cancellationToken)
+                ?? throw new AppException(ErrorCodes.ConversationNotFound, "Conversation not found");
+
+            history = await _aiChatRepository.GetMessagesByConversationAsync(conversationId.Value, cancellationToken);
+        }
+        else
+        {
+            conversation = new AIConversation
+            {
+                UserId = userId,
+                Title = normalizedUserMessage.Length > 50
+                    ? normalizedUserMessage[..50] + "..."
+                    : normalizedUserMessage
+            };
+            await _aiChatRepository.AddConversationAsync(conversation, cancellationToken);
+            history = [];
         }
 
-        public async Task<ChatResponseDto> ProcessMessageAsync(Guid userId, string userMessage, Guid? conversationId = null, CancellationToken cancellationToken = default)
+        var metadata = AiJsonHelper.DeserializeMetadata(conversation.MetadataJson);
+        var role = _currentUserService.Role ?? "USER";
+
+        string aiResponse;
+        string intent = AiIntents.Unknown;
+
+        try
         {
-            var normalizedUserMessage = string.IsNullOrWhiteSpace(userMessage) ? string.Empty : userMessage.Trim();
-            AIConversation conversation;
-            List<AIChatMessage> history;
-            // #region debug-point F:service-process-start
-            _ = ReportAiDebugAsync("F", "AIService.ProcessMessageAsync started", new
+            var plan = await _intentPlanner.PlanAsync(normalizedUserMessage, history, metadata, cancellationToken);
+            intent = plan.Intent;
+
+            if (plan.NeedsClarification && !string.IsNullOrWhiteSpace(plan.ClarificationQuestion))
             {
-                userId,
-                messageLength = normalizedUserMessage.Length,
-                conversationId
-            });
-            // #endregion
-            
-            // 1. Check if conversation exists or create new
-            if (conversationId.HasValue)
-            {
-                // Try to load existing conversation
-                conversation = await _aiChatRepository.GetConversationAsync(conversationId.Value, userId, cancellationToken)
-                    ?? throw new AppException(ErrorCodes.ConversationNotFound, "Conversation not found");
-                
-                history = await _aiChatRepository.GetMessagesByConversationAsync(conversationId.Value, cancellationToken);
-                // #region debug-point F:service-existing-conversation
-                _ = ReportAiDebugAsync("F", "AIService loaded existing conversation", new
-                {
-                    userId,
-                    conversationId = conversation.Id,
-                    title = conversation.Title,
-                    historyCount = history.Count
-                });
-                // #endregion
+                aiResponse = plan.ClarificationQuestion;
             }
             else
             {
-                // Create new conversation
-                conversation = new AIConversation
+                var context = new AiExecutionContext
                 {
                     UserId = userId,
-                    Title = normalizedUserMessage.Length > 50 ? normalizedUserMessage.Substring(0, 50) + "..." : normalizedUserMessage
+                    Role = role,
+                    Metadata = metadata
                 };
-                await _aiChatRepository.AddConversationAsync(conversation, cancellationToken);
-                history = new List<AIChatMessage>();
-                // #region debug-point F:service-new-conversation
-                _ = ReportAiDebugAsync("F", "AIService created new conversation", new
+
+                var toolResult = await _toolExecutor.ExecuteAsync(plan, context, cancellationToken);
+                metadata = context.Metadata;
+
+                var formatted = AiResponseFormatter.TryFormat(toolResult, intent);
+                if (formatted != null)
                 {
-                    userId,
-                    conversationId = conversation.Id,
-                    title = conversation.Title
-                });
-                // #endregion
+                    aiResponse = formatted;
+                }
+                else if (!toolResult.Success && !string.IsNullOrWhiteSpace(toolResult.Message))
+                {
+                    aiResponse = toolResult.Message;
+                }
+                else if (intent is AiIntents.GeneralChat or AiIntents.Faq or AiIntents.Unknown)
+                {
+                    aiResponse = await SynthesizeResponseAsync(
+                        normalizedUserMessage,
+                        role,
+                        metadata,
+                        toolResult,
+                        history,
+                        cancellationToken);
+                }
+                else
+                {
+                    aiResponse = toolResult.Message
+                        ?? "Xin lỗi, tôi chưa hiểu yêu cầu. Bạn có thể thử tìm sân, kiểm tra lịch hoặc xem booking.";
+                }
             }
+        }
+        catch (AppException ex) when (ex.Code == ErrorCodes.AiRateLimited)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "AI processing failed for user {UserId}", userId);
+            aiResponse = "Xin lỗi, hệ thống AI hiện đang gặp sự cố. Bạn có thể thử lại sau.";
+        }
 
-            // 2. Get Context from Database
-            var context = await GetSystemContextAsync(userId, cancellationToken);
+        conversation.MetadataJson = AiJsonHelper.SerializeMetadata(metadata);
+        conversation.UpdatedAt = DateTime.UtcNow;
 
-            // 3. Prepare Messages for Groq
-            var messages = new List<GroqMessage>();
-            
-            // System Prompt with Database Context
-            messages.Add(new GroqMessage 
-            { 
-                role = "system", 
-                content = $@"Bạn là trợ lý AI thông minh của hệ thống MATCHOP - ứng dụng đặt sân và ghép trận thể thao (Cầu lông, Pickleball, Bóng bàn).
+        var userMessageEntity = new AIChatMessage
+        {
+            UserId = userId,
+            Role = "user",
+            Content = normalizedUserMessage,
+            ConversationId = conversation.Id
+        };
+        await _aiChatRepository.AddMessageAsync(userMessageEntity, cancellationToken);
 
-Dữ liệu hiện tại của hệ thống:
-{context}
+        var assistantMessageEntity = new AIChatMessage
+        {
+            UserId = userId,
+            Role = "assistant",
+            Content = aiResponse,
+            ConversationId = conversation.Id
+        };
+        await _aiChatRepository.AddMessageAsync(assistantMessageEntity, cancellationToken);
 
-Nhiệm vụ của bạn:
-1. Trả lời câu hỏi về đặt sân, địa điểm (venue), sân (court) còn trống.
-2. Trả lời câu hỏi về lịch sử đặt sân của người dùng.
-3. Gợi ý địa điểm chơi phù hợp.
-4. Gợi ý đối thủ dựa trên trình độ kỹ năng.
-5. Trả lời lịch sự, ngắn gọn và hữu ích bằng tiếng Việt.
-
-Nếu người dùng hỏi về thông tin không có trong dữ liệu trên, hãy trả lời rằng bạn không có thông tin chính xác và khuyên họ kiểm tra lại trên ứng dụng."
-            });
-
-            // History
-            foreach (var msg in history)
-            {
-                messages.Add(new GroqMessage { role = msg.Role, content = msg.Content });
-            }
-
-            // Current User Message
-            messages.Add(new GroqMessage { role = "user", content = normalizedUserMessage });
-
-            // 4. Call Groq API
-            var aiResponse = await _groqService.GetChatCompletionAsync(messages, cancellationToken) ?? string.Empty;
-
-            // 5. Save History
-            var userMessageEntity = new AIChatMessage { UserId = userId, Role = "user", Content = normalizedUserMessage, ConversationId = conversation.Id };
-            await _aiChatRepository.AddMessageAsync(userMessageEntity, cancellationToken);
-            
-            var assistantMessageEntity = new AIChatMessage { UserId = userId, Role = "assistant", Content = aiResponse, ConversationId = conversation.Id };
-            await _aiChatRepository.AddMessageAsync(assistantMessageEntity, cancellationToken);
-
-            // Update conversation
-            conversation.UpdatedAt = DateTime.UtcNow;
+        try
+        {
             await _aiChatRepository.UpdateConversationAsync(conversation, cancellationToken);
-
-            // 6. Return Result
-            var updatedHistory = await _aiChatRepository.GetMessagesByConversationAsync(conversation.Id, cancellationToken);
-            // #region debug-point F:service-process-success
-            _ = ReportAiDebugAsync("F", "AIService.ProcessMessageAsync succeeded", new
-            {
-                userId,
-                conversationId = conversation.Id,
-                updatedHistoryCount = updatedHistory.Count,
-                assistantMessageId = assistantMessageEntity.Id
-            });
-            // #endregion
-            return new ChatResponseDto
-            {
-                Response = aiResponse,
-                ConversationId = conversation.Id,
-                Id = assistantMessageEntity.Id,
-                Timestamp = assistantMessageEntity.CreatedAt,
-                History = updatedHistory.Select(m => new ChatMessageDto
-                {
-                    Role = m.Role,
-                    Content = m.Content,
-                    CreatedAt = m.CreatedAt
-                }).ToList()
-            };
         }
-
-        // #region debug-point F:service-report-helper
-        private static async Task ReportAiDebugAsync(string hypothesisId, string message, object data)
+        catch (Exception ex)
         {
-            try
-            {
-                using var client = new HttpClient();
-                using var content = new StringContent(JsonSerializer.Serialize(new
-                {
-                    sessionId = "ai-chat-history",
-                    runId = "pre-fix",
-                    hypothesisId,
-                    location = "Backend/MATCHOP.API/Services/AIService.cs",
-                    msg = $"[DEBUG] {message}",
-                    data,
-                    ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                }), Encoding.UTF8, "application/json");
-                await client.PostAsync("http://127.0.0.1:7777/event", content);
-            }
-            catch
-            {
-            }
+            _logger.LogWarning(ex, "Failed to update conversation metadata for {ConversationId}", conversation.Id);
         }
-        // #endregion
 
-        private async Task<string> GetSystemContextAsync(Guid userId, CancellationToken cancellationToken = default)
+        sw.Stop();
+        _logger.LogInformation(
+            "AI chat completed UserId={UserId} Intent={Intent} DurationMs={DurationMs} Success=true",
+            userId, intent, sw.ElapsedMilliseconds);
+
+        var updatedHistory = await _aiChatRepository.GetMessagesByConversationAsync(conversation.Id, cancellationToken);
+
+        return new ChatResponseDto
         {
-            var sb = new StringBuilder();
-
-            // Sports
-            var sports = await _sportService.GetActiveSportsAsync(cancellationToken);
-            sb.AppendLine("Môn thể thao:");
-            foreach (var s in sports) sb.AppendLine($"- {s.Name} (ID: {s.Id})");
-
-            // Venues
-            var venues = await _venueService.GetActiveVenuesAsync(null, null, null, null, cancellationToken);
-            sb.AppendLine("\nĐịa điểm (Venues):");
-            foreach (var v in venues.Take(10)) sb.AppendLine($"- {v.Name}: {v.Address}, {v.District}, {v.City}. Mở cửa: {v.OpeningTime}-{v.ClosingTime}");
-
-            // User Skills
-            var skills = await _userSkillService.GetUserSkillsAsync(userId, cancellationToken);
-            sb.AppendLine("\nTrình độ của bạn:");
-            if (skills.Any())
+            Response = aiResponse,
+            ConversationId = conversation.Id,
+            Id = assistantMessageEntity.Id,
+            Timestamp = assistantMessageEntity.CreatedAt,
+            History = updatedHistory.Select(m => new ChatMessageDto
             {
-                foreach (var sk in skills) sb.AppendLine($"- {sk.SportName}: {sk.Level}");
-            }
-            else sb.AppendLine("- Bạn chưa cập nhật trình độ.");
-
-            // User Bookings
-            var bookings = await _bookingService.GetMyBookingsAsync(cancellationToken);
-            sb.AppendLine("\nĐơn đặt sân của bạn:");
-            if (bookings.Any())
-            {
-                foreach (var b in bookings.Take(5)) sb.AppendLine($"- Đơn {b.Id}: {b.VenueName}, Sân {b.CourtName}, Ngày {b.BookingDate}, Tổng {b.TotalPrice} VNĐ, Trạng thái: {b.Status}");
-            }
-            else sb.AppendLine("- Bạn chưa có đơn đặt sân nào.");
-
-            return sb.ToString();
-        }
+                Role = m.Role,
+                Content = m.Content,
+                CreatedAt = m.CreatedAt
+            }).ToList()
+        };
     }
+
+    private async Task<string> SynthesizeResponseAsync(
+        string userMessage,
+        string role,
+        AiConversationMetadata metadata,
+        AiToolResult toolResult,
+        List<AIChatMessage> history,
+        CancellationToken cancellationToken)
+    {
+        var pendingSummary = metadata.PendingBooking != null
+            ? $"{metadata.PendingBooking.CourtName} - {metadata.PendingBooking.VenueName}, {metadata.PendingBooking.BookingDate} {metadata.PendingBooking.StartTime}-{metadata.PendingBooking.EndTime}, {metadata.PendingBooking.TotalPrice:N0}đ"
+            : null;
+
+        var toolJson = AiJsonHelper.SerializeToolResult(toolResult);
+        var historyText = string.Join("\n", history.TakeLast(6).Select(m => $"{m.Role}: {Truncate(m.Content, 300)}"));
+
+        var messages = new List<GroqMessage>
+        {
+            new() { role = "system", content = AiPrompts.BuildSynthesizerSystem(role, pendingSummary) },
+            new()
+            {
+                role = "user",
+                content = $"""
+                    Câu hỏi người dùng: {userMessage}
+
+                    Lịch sử gần đây:
+                    {historyText}
+
+                    KẾT QUẢ HỆ THỐNG (JSON):
+                    {toolJson}
+
+                    Hãy trả lời người dùng bằng tiếng Việt dựa CHỈ trên dữ liệu trên.
+                    """
+            }
+        };
+
+        return await _groqService.GetChatCompletionAsync(messages, cancellationToken, maxTokens: 1536)
+               ?? "Xin lỗi, tôi chưa thể tạo câu trả lời. Vui lòng thử lại.";
+    }
+
+    private static string Truncate(string text, int max) =>
+        text.Length <= max ? text : text[..max] + "...";
 }

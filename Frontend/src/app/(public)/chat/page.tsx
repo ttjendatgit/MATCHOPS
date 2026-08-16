@@ -171,7 +171,15 @@ function ChatContent() {
     };
   }, [connection, selectedConv]);
 
+  const scrollToBottom = () => {
+    const container = messagesEndRef.current?.parentElement;
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    }
+  };
+
   useEffect(() => {
+    if (messages.length === 0) return;
     scrollToBottom();
   }, [messages, typingUsers]);
 
@@ -251,10 +259,6 @@ function ChatContent() {
     }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   const getOtherParticipant = (conv: Conversation) => {
     if (!currentUser) return null;
     return conv.participants.find(p => p.userId !== currentUser.id);
@@ -263,7 +267,7 @@ function ChatContent() {
   const isOtherTyping = selectedConv?.participants.some(p => p.userId !== currentUser?.id && typingUsers[p.userId]);
 
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-[#030303]">
+    <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-[#030303]">
       {/* Sidebar */}
       <div className={cn(
         "flex w-full flex-col border-r border-white/5 bg-slate-950/50 md:w-80 lg:w-96",

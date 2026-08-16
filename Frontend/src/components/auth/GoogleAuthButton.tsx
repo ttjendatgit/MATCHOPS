@@ -54,14 +54,6 @@ export function GoogleAuthButton({ mode, redirectTo, onError }: GoogleAuthButton
   const [scriptState, setScriptState] = useState<ScriptState>("loading");
   const [isProcessing, setIsProcessing] = useState(false);
 
-  useEffect(() => {
-    if (!clientId) {
-      console.error(
-        "[GoogleAuthButton] Missing NEXT_PUBLIC_GOOGLE_CLIENT_ID env var — Google Sign-In is disabled."
-      );
-    }
-  }, [clientId]);
-
   const handleCredentialResponse = useCallback(
     async (response: GoogleCredentialResponse) => {
       if (isProcessingRef.current) return;

@@ -17,6 +17,7 @@ public class Booking
     public BookingStatus Status { get; set; } = BookingStatus.PENDING_PAYMENT;
     public BookingPaymentStatus PaymentStatus { get; set; } = BookingPaymentStatus.UNPAID;
     public BookingType BookingType { get; set; } = BookingType.ONLINE;
+    public BookingSource BookingSource { get; set; } = BookingSource.MATCHOP;
     public string? CustomerName { get; set; }
     public string? CustomerPhone { get; set; }
     public DateTime? ExpireAt { get; set; }

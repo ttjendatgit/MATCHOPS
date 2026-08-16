@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   DollarSign,
+  Download,
   Loader2,
   Receipt,
   TrendingUp,
@@ -11,12 +12,15 @@ import {
 import { apiFetch } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
 import { formatCurrency } from "@/lib/utils";
+import { exportTransactionsCsv } from "@/lib/exportReports";
 import type { ApiResponse } from "@/types/api";
 import type { DashboardAdminStatistics } from "@/types/dashboard";
 import type { TransactionHistoryResponse } from "@/types/transaction";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { RevenueAnalysisCard } from "@/components/shared/RevenueAnalysisCard";
 import { TransactionHistoryTable } from "@/components/shared/TransactionHistoryTable";
+import { toast } from "sonner";
 
 function buildQuery(page: number) {
   return `/transactions/admin?page=${page}&pageSize=15`;
@@ -60,13 +64,31 @@ export default function AdminTransactionsPage() {
 
   const summary = history?.summary;
 
+  const handleExport = () => {
+    const items = history?.items ?? [];
+    const ok = exportTransactionsCsv(items, "admin-transactions", { includeCustomer: true });
+    if (ok) toast.success("Xuất báo cáo giao dịch thành công.");
+    else toast.error("Không có dữ liệu để xuất.");
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Doanh thu & Giao dịch</h1>
-        <p className="mt-1 text-sm text-[#C4C7C9]">
-          Thống kê doanh thu toàn nền tảng và lịch sử giao dịch chi tiết.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Doanh thu & Giao dịch</h1>
+          <p className="mt-1 text-sm text-[#C4C7C9]">
+            Thống kê doanh thu toàn nền tảng và lịch sử giao dịch chi tiết.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          className="gap-2 border-[rgba(134,210,50,0.2)] bg-[#141414] text-white"
+          onClick={handleExport}
+          disabled={(history?.items.length ?? 0) === 0}
+        >
+          <Download className="h-4 w-4" />
+          Xuất báo cáo
+        </Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

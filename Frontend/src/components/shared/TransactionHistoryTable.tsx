@@ -24,6 +24,23 @@ const TYPE_LABELS: Record<string, string> = {
   COACH_SESSION: "Huấn luyện",
 };
 
+const SOURCE_LABELS: Record<string, string> = {
+  MATCHOP: "MATCHOP",
+  ZALO: "Zalo",
+  FACEBOOK: "Facebook",
+  PHONE: "Điện thoại",
+  DIRECT: "Trực tiếp",
+  OTHER: "Khác",
+};
+
+function displayCustomer(item: TransactionItem) {
+  const name = item.customerName?.trim();
+  if (name) return name;
+  if (item.customerPhone?.trim()) return item.customerPhone.trim();
+  if (item.customerEmail?.trim()) return item.customerEmail.trim();
+  return "—";
+}
+
 function formatDate(value?: string | null) {
   if (!value) return "—";
   return new Date(value).toLocaleString("vi-VN", {
@@ -140,10 +157,18 @@ function TransactionCard({
           <dt className="text-[#C4C7C9]/50">Thời gian</dt>
           <dd className={isDark ? "text-slate-300" : "text-slate-700"}>{formatDate(item.paidAt ?? item.createdAt)}</dd>
         </div>
-        {showCustomer && item.customerName && (
+        {showCustomer && (
           <div className="col-span-2">
             <dt className="text-[#C4C7C9]/50">Khách hàng</dt>
-            <dd className={isDark ? "text-slate-300" : "text-slate-700"}>{item.customerName}</dd>
+            <dd className={isDark ? "text-slate-300" : "text-slate-700"}>{displayCustomer(item)}</dd>
+            {item.customerPhone && item.customerName && (
+              <dd className="text-[10px] text-[#C4C7C9]/50">{item.customerPhone}</dd>
+            )}
+            {item.bookingSource && item.bookingSource !== "MATCHOP" && (
+              <dd className="mt-1 text-[10px] text-purple-300">
+                {SOURCE_LABELS[item.bookingSource] ?? item.bookingSource}
+              </dd>
+            )}
           </div>
         )}
       </dl>
@@ -264,11 +289,19 @@ export function TransactionHistoryTable({
                     <td className="px-5 py-4 text-xs text-[#C4C7C9]/70">{TYPE_LABELS[item.type] ?? item.type}</td>
                     {showCustomer && (
                       <td className="px-5 py-4">
-                        <p className={cn("text-xs", isDark ? "text-white" : "text-slate-900")}>
-                          {item.customerName ?? "—"}
+                        <p className={cn("text-xs font-medium", isDark ? "text-white" : "text-slate-900")}>
+                          {displayCustomer(item)}
                         </p>
-                        {item.customerEmail && (
+                        {item.customerPhone && (
+                          <p className="text-[10px] text-[#C4C7C9]/50">{item.customerPhone}</p>
+                        )}
+                        {item.customerEmail && item.customerName && (
                           <p className="text-[10px] text-[#C4C7C9]/50">{item.customerEmail}</p>
+                        )}
+                        {item.bookingSource && item.bookingSource !== "MATCHOP" && (
+                          <span className="mt-1 inline-block rounded border border-purple-500/30 bg-purple-500/10 px-1.5 py-0.5 text-[10px] text-purple-300">
+                            {SOURCE_LABELS[item.bookingSource] ?? item.bookingSource}
+                          </span>
                         )}
                       </td>
                     )}

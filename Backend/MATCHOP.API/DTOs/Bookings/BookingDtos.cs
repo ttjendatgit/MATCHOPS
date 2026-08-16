@@ -1,3 +1,5 @@
+using MATCHOP.API.Enums;
+
 namespace MATCHOP.API.DTOs.Bookings;
 
 public class CreateBookingDto
@@ -18,6 +20,53 @@ public class CreateOfflineBookingDto
     public string CustomerName { get; set; } = string.Empty;
     public string CustomerPhone { get; set; } = string.Empty;
     public string? Note { get; set; }
+}
+
+public class CreateExternalBookingDto
+{
+    public Guid CourtId { get; set; }
+    public DateOnly BookingDate { get; set; }
+    public TimeOnly StartTime { get; set; }
+    public TimeOnly EndTime { get; set; }
+    public BookingSource BookingSource { get; set; }
+    public string CustomerName { get; set; } = string.Empty;
+    public string CustomerPhone { get; set; } = string.Empty;
+    public string? Notes { get; set; }
+}
+
+public class UpdateExternalBookingDto
+{
+    public BookingSource? BookingSource { get; set; }
+    public string? CustomerName { get; set; }
+    public string? CustomerPhone { get; set; }
+    public DateOnly? BookingDate { get; set; }
+    public TimeOnly? StartTime { get; set; }
+    public TimeOnly? EndTime { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class CourtCalendarEntryDto
+{
+    public Guid? BookingId { get; set; }
+    public Guid? BlockId { get; set; }
+    public string EntryType { get; set; } = null!;
+    public string StartTime { get; set; } = null!;
+    public string EndTime { get; set; } = null!;
+    public string Status { get; set; } = null!;
+    public string? BookingSource { get; set; }
+    public string? CustomerName { get; set; }
+    public string? Note { get; set; }
+}
+
+public class OwnerCourtCalendarResponseDto
+{
+    public Guid CourtId { get; set; }
+    public string CourtName { get; set; } = null!;
+    public string VenueName { get; set; } = null!;
+    public string Date { get; set; } = null!;
+    public string OpeningTime { get; set; } = null!;
+    public string ClosingTime { get; set; } = null!;
+    public List<CourtCalendarEntryDto> Entries { get; set; } = new();
 }
 
 public class MockPaymentRequestDto
@@ -44,6 +93,7 @@ public class BookingResponseDto
     public string SportName { get; set; } = null!;
     public string? CustomerName { get; set; }
     public string? CustomerPhone { get; set; }
+    public string? UserEmail { get; set; }
     public string BookingDate { get; set; } = null!;
     public string StartTime { get; set; } = null!;
     public string EndTime { get; set; } = null!;
@@ -51,6 +101,7 @@ public class BookingResponseDto
     public string Status { get; set; } = null!;
     public string PaymentStatus { get; set; } = null!;
     public string BookingType { get; set; } = null!;
+    public string BookingSource { get; set; } = null!;
     public string? Note { get; set; }
     public DateTime? ExpireAt { get; set; }
     public DateTime CreatedAt { get; set; }

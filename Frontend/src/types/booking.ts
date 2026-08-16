@@ -10,6 +10,14 @@ export type BookingStatus =
 export type BookingPaymentStatus = "UNPAID" | "PAID" | "FAILED" | "REFUNDED";
 export type BookingType = "ONLINE" | "OFFLINE" | "ADMIN";
 
+export type BookingSource =
+  | "MATCHOP"
+  | "ZALO"
+  | "FACEBOOK"
+  | "PHONE"
+  | "DIRECT"
+  | "OTHER";
+
 export interface Booking {
   id: string;
   userId?: string;
@@ -24,6 +32,7 @@ export interface Booking {
   status: BookingStatus;
   paymentStatus: BookingPaymentStatus;
   bookingType: BookingType;
+  bookingSource?: BookingSource;
   customerName?: string;
   customerPhone?: string;
   expireAt?: string;
@@ -32,6 +41,39 @@ export interface Booking {
   venueName?: string;
   courtName?: string;
   sportName?: string;
+}
+
+export interface CourtCalendarEntry {
+  bookingId?: string;
+  blockId?: string;
+  entryType: "BOOKING" | "BLOCK";
+  startTime: string;
+  endTime: string;
+  status: string;
+  bookingSource?: BookingSource;
+  customerName?: string;
+  note?: string;
+}
+
+export interface OwnerCourtCalendar {
+  courtId: string;
+  courtName: string;
+  venueName: string;
+  date: string;
+  openingTime: string;
+  closingTime: string;
+  entries: CourtCalendarEntry[];
+}
+
+export interface CreateExternalBookingRequest {
+  courtId: string;
+  bookingDate: string;
+  startTime: string;
+  endTime: string;
+  bookingSource: BookingSource;
+  customerName: string;
+  customerPhone: string;
+  notes?: string;
 }
 
 export interface CreateBookingRequest {

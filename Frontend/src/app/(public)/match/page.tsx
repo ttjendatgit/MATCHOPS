@@ -36,6 +36,13 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MembershipLimitModal from "@/components/membership/MembershipLimitModal";
+import {
+  MatchPostLocationFields,
+  createEmptyMatchPostLocation,
+  type MatchPostLocationValue,
+} from "@/components/matching/MatchPostLocationFields";
+import { formatMatchLocation } from "@/lib/matchVenue";
+import { VIETNAM_CITIES } from "@/lib/vietnamLocations";
 
 function isMembershipLimitError(message: string): boolean {
   return message.includes("Nâng cấp Pro để tiếp tục");
@@ -80,6 +87,7 @@ export default function MatchmakingPage() {
   const [userSkills, setUserSkills] = useState<UserSkill[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSport, setSelectedSport] = useState<string>("all");
+  const [selectedCity, setSelectedCity] = useState<string>("all");
   const [selectedLevel, setSelectedLevel] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<"all" | "requests" | "my_posts">("all");
   const [myPosts, setMyPosts] = useState<MatchPost[]>([]);
@@ -97,11 +105,10 @@ export default function MatchmakingPage() {
     sportId: "",
     minSkillLevel: "1",
     maxSkillLevel: "4",
-    city: "TP.HCM",
-    district: "",
     preferredTime: "",
     slotsNeeded: 2,
-    note: ""
+    note: "",
+    location: createEmptyMatchPostLocation(),
   });
 
   useEffect(() => {
@@ -165,6 +172,7 @@ export default function MatchmakingPage() {
     try {
       const params = new URLSearchParams();
       if (selectedSport !== "all") params.append("sportId", selectedSport);
+      if (selectedCity !== "all") params.append("city", selectedCity);
       if (selectedLevel !== "all") params.append("level", selectedLevel);
       if (searchQuery) params.append("district", searchQuery);
       const qs = params.toString();
@@ -179,7 +187,7 @@ export default function MatchmakingPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSport, selectedLevel, searchQuery]);
+  }, [selectedSport, selectedCity, selectedLevel, searchQuery]);
 
   const fetchMyPosts = useCallback(async () => {
     if (!isAuthenticated()) return;
@@ -288,9 +296,23 @@ export default function MatchmakingPage() {
       return;
     }
 
-    if (!newPost.district.trim()) {
-      toast.error("Vui lòng nhập quận/huyện.");
+    if (!newPost.location.district) {
+      toast.error("Vui lòng chọn quận/huyện.");
       return;
+    }
+
+    if (newPost.location.hasVenue) {
+      if (newPost.location.venueSource === "matchop" && !newPost.location.venueId) {
+        toast.error("Vui lòng chọn cơ sở thể thao trên MATCHOP.");
+        return;
+      }
+      if (
+        newPost.location.venueSource === "external" &&
+        !newPost.location.externalVenueName.trim()
+      ) {
+        toast.error("Vui lòng nhập tên sân hoặc địa điểm.");
+        return;
+      }
     }
 
     const hasSkill = userSkills.some(s => s.sportId === newPost.sportId);
@@ -305,19 +327,31 @@ export default function MatchmakingPage() {
     const token = getStoredToken();
 
     try {
+      const loc = newPost.location;
+      const payload: Record<string, unknown> = {
+        sportId: newPost.sportId,
+        minSkillLevel: parseInt(newPost.minSkillLevel),
+        maxSkillLevel: parseInt(newPost.maxSkillLevel),
+        city: loc.city,
+        district: loc.district,
+        preferredTime: selectedTime.toISOString(),
+        slotsNeeded: newPost.slotsNeeded,
+        note: newPost.note || undefined,
+      };
+
+      if (loc.hasVenue) {
+        if (loc.venueSource === "matchop") {
+          payload.venueId = loc.venueId;
+          if (loc.courtId) payload.courtId = loc.courtId;
+        } else {
+          payload.externalVenueName = loc.externalVenueName.trim();
+        }
+      }
+
       const res = await apiFetch<ApiResponse<MatchPost>>("/matching/posts", {
         method: "POST",
         token,
-        body: JSON.stringify({
-          sportId: newPost.sportId,
-          minSkillLevel: parseInt(newPost.minSkillLevel),
-          maxSkillLevel: parseInt(newPost.maxSkillLevel),
-          city: newPost.city,
-          district: newPost.district,
-          preferredTime: selectedTime.toISOString(),
-          slotsNeeded: newPost.slotsNeeded,
-          note: newPost.note || undefined
-        })
+        body: JSON.stringify(payload),
       });
 
       if (res.success) {
@@ -327,11 +361,10 @@ export default function MatchmakingPage() {
           sportId: "",
           minSkillLevel: "1",
           maxSkillLevel: "4",
-          city: "TP.HCM",
-          district: "",
           preferredTime: "",
           slotsNeeded: 2,
-          note: ""
+          note: "",
+          location: createEmptyMatchPostLocation(),
         });
         fetchPosts();
         fetchMyPosts();
@@ -532,7 +565,7 @@ export default function MatchmakingPage() {
   };
 
   const handleShare = (post: MatchPost) => {
-    const text = `Tham gia trận ${post.sportName} cùng tôi tại ${post.district}, ${post.city}!`;
+    const text = `Tham gia trận ${post.sportName} cùng tôi tại ${formatMatchLocation(post)}!`;
     if (navigator.share) {
       navigator.share({ title: "MatchOps - Tìm đối thủ", text, url: window.location.href }).catch(console.error);
     } else {
@@ -649,7 +682,21 @@ export default function MatchmakingPage() {
                 className="pl-10 bg-slate-900/50 border-white/10 text-white focus:border-[#FF8000]"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Select value={selectedCity} onValueChange={setSelectedCity}>
+                <SelectTrigger className="w-[160px] border-white/10 bg-slate-900/50 text-white">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    <SelectValue placeholder="Thành phố" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/10 text-white">
+                  <SelectItem value="all">Tất cả thành phố</SelectItem>
+                  {VIETNAM_CITIES.map((city) => (
+                    <SelectItem key={city} value={city}>{city}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select value={selectedLevel} onValueChange={setSelectedLevel}>
                 <SelectTrigger className="w-[180px] border-white/10 bg-slate-900/50 text-white">
                   <div className="flex items-center gap-2">
@@ -740,7 +787,7 @@ export default function MatchmakingPage() {
                           </div>
                           <div className="flex items-center gap-3 text-sm text-slate-300">
                             <MapPin className="h-4 w-4 text-slate-500 shrink-0" />
-                            <span className="truncate">{post.district}, {post.city}</span>
+                            <span className="truncate">{formatMatchLocation(post)}</span>
                           </div>
                           <div className="flex items-center gap-3 text-sm text-slate-300">
                             <Trophy className="h-4 w-4 text-slate-500 shrink-0" />
@@ -971,7 +1018,7 @@ export default function MatchmakingPage() {
                       </div>
                       <div className="flex items-center gap-3 text-sm text-slate-300">
                         <MapPin className="h-4 w-4 text-slate-500 shrink-0" />
-                        <span>{post.district}, {post.city}</span>
+                        <span>{formatMatchLocation(post)}</span>
                       </div>
                       <div className="flex items-center gap-3 text-sm text-slate-300">
                         <Users className="h-4 w-4 text-slate-500 shrink-0" />
@@ -1014,7 +1061,7 @@ export default function MatchmakingPage() {
         setIsCreateModalOpen(open);
         if (!open) setIsSettingSkill(false);
       }}>
-        <DialogContent className="bg-slate-950 border-white/10 text-white sm:max-w-[500px]">
+        <DialogContent className="bg-slate-950 border-white/10 text-white sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black">
               {isSettingSkill ? "Cập nhật trình độ" : "Tạo bài tìm trận mới"}
@@ -1091,17 +1138,16 @@ export default function MatchmakingPage() {
                 </div>
               </div>
 
+              <MatchPostLocationFields
+                value={newPost.location}
+                onChange={(location: MatchPostLocationValue) =>
+                  setNewPost({ ...newPost, location })
+                }
+                sportId={newPost.sportId || undefined}
+              />
+
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Quận/Huyện <span className="text-red-400">*</span></Label>
-                  <Input
-                    placeholder="VD: Quận 7"
-                    value={newPost.district}
-                    onChange={(e) => setNewPost({ ...newPost, district: e.target.value })}
-                    className="bg-slate-900 border-white/10"
-                  />
-                </div>
-                <div className="space-y-2">
+                <div className="space-y-2 sm:col-span-2">
                   <Label>Thời gian tổ chức <span className="text-red-400">*</span></Label>
                   <Input
                     type="datetime-local"

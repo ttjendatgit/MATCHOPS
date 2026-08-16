@@ -8,13 +8,16 @@ namespace MATCHOP.API.Middlewares
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<ExceptionMiddleware> _logger;
+        private readonly IHostEnvironment _environment;
 
         public ExceptionMiddleware(
             RequestDelegate next,
-            ILogger<ExceptionMiddleware> logger)
+            ILogger<ExceptionMiddleware> logger,
+            IHostEnvironment environment)
         {
             _next = next;
             _logger = logger;
+            _environment = environment;
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -55,7 +58,7 @@ namespace MATCHOP.API.Middlewares
             await context.Response.WriteAsync(json);
         }
 
-        private static async Task HandleUnknownExceptionAsync(HttpContext context, Exception ex)
+        private async Task HandleUnknownExceptionAsync(HttpContext context, Exception ex)
         {
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
@@ -64,12 +67,18 @@ namespace MATCHOP.API.Middlewares
             {
                 Success = false,
                 Code = ErrorCodes.InternalServerError,
-                Message = $"Lỗi: {ex.Message}",
-                Errors = new Dictionary<string, string[]>
+                Message = _environment.IsDevelopment()
+                    ? $"Lỗi: {ex.Message}"
+                    : "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.",
+            };
+
+            if (_environment.IsDevelopment())
+            {
+                response.Errors = new Dictionary<string, string[]>
                 {
                     { "stack", new[] { ex.StackTrace ?? "no stack" } }
-                }
-            };
+                };
+            }
 
             var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
             {

@@ -1,5 +1,6 @@
 using FluentValidation;
 using MATCHOP.API.DTOs.Bookings;
+using MATCHOP.API.Enums;
 
 namespace MATCHOP.API.Validators;
 
@@ -72,6 +73,118 @@ public class CreateOfflineBookingDtoValidator : AbstractValidator<CreateOfflineB
     }
 
     private static bool NotBlank(string? value) => !string.IsNullOrWhiteSpace(value);
+}
+
+public class CreateExternalBookingDtoValidator : AbstractValidator<CreateExternalBookingDto>
+{
+    private static readonly BookingSource[] ExternalSources =
+    [
+        BookingSource.ZALO,
+        BookingSource.FACEBOOK,
+        BookingSource.PHONE,
+        BookingSource.DIRECT,
+        BookingSource.OTHER
+    ];
+
+    public CreateExternalBookingDtoValidator()
+    {
+        RuleFor(x => x.CourtId)
+            .NotEmpty()
+            .WithMessage("CourtId là bắt buộc.");
+
+        RuleFor(x => x.BookingDate)
+            .Must(date => date != default)
+            .WithMessage("Ngày đặt sân là bắt buộc.");
+
+        RuleFor(x => x)
+            .Must(x => x.StartTime < x.EndTime)
+            .OverridePropertyName("startTime")
+            .WithMessage("StartTime phải nhỏ hơn EndTime.");
+
+        RuleFor(x => x.BookingSource)
+            .Must(source => ExternalSources.Contains(source))
+            .WithMessage("Nguồn booking phải là ZALO, FACEBOOK, PHONE, DIRECT hoặc OTHER.");
+
+        RuleFor(x => x.CustomerName)
+            .Cascade(CascadeMode.Stop)
+            .Must(NotBlank)
+            .WithMessage("Tên khách hàng là bắt buộc.")
+            .Must(value => value!.Trim().Length <= 200)
+            .WithMessage("Tên khách hàng không được vượt quá 200 ký tự.");
+
+        RuleFor(x => x.CustomerPhone)
+            .Cascade(CascadeMode.Stop)
+            .Must(NotBlank)
+            .WithMessage("Số điện thoại khách hàng là bắt buộc.")
+            .MaximumLength(20)
+            .WithMessage("Số điện thoại không được vượt quá 20 ký tự.")
+            .Matches(@"^\+?[0-9\s().-]{8,20}$")
+            .WithMessage("Số điện thoại không đúng định dạng.");
+
+        RuleFor(x => x.Notes)
+            .MaximumLength(1000)
+            .WithMessage("Ghi chú không được vượt quá 1000 ký tự.")
+            .When(x => x.Notes is not null);
+    }
+
+    private static bool NotBlank(string? value) => !string.IsNullOrWhiteSpace(value);
+}
+
+public class UpdateExternalBookingDtoValidator : AbstractValidator<UpdateExternalBookingDto>
+{
+    private static readonly BookingSource[] ExternalSources =
+    [
+        BookingSource.ZALO,
+        BookingSource.FACEBOOK,
+        BookingSource.PHONE,
+        BookingSource.DIRECT,
+        BookingSource.OTHER
+    ];
+
+    public UpdateExternalBookingDtoValidator()
+    {
+        RuleFor(x => x)
+            .Must(x =>
+                x.BookingSource.HasValue ||
+                x.CustomerName is not null ||
+                x.CustomerPhone is not null ||
+                x.BookingDate.HasValue ||
+                x.StartTime.HasValue ||
+                x.EndTime.HasValue ||
+                x.Notes is not null)
+            .WithMessage("Cần ít nhất một trường để cập nhật.");
+
+        RuleFor(x => x.BookingSource)
+            .Must(source => !source.HasValue || ExternalSources.Contains(source.Value))
+            .WithMessage("Nguồn booking không hợp lệ.")
+            .When(x => x.BookingSource.HasValue);
+
+        RuleFor(x => x)
+            .Must(x =>
+                !x.StartTime.HasValue ||
+                !x.EndTime.HasValue ||
+                x.StartTime.Value < x.EndTime.Value)
+            .OverridePropertyName("startTime")
+            .WithMessage("StartTime phải nhỏ hơn EndTime.")
+            .When(x => x.StartTime.HasValue && x.EndTime.HasValue);
+
+        RuleFor(x => x.CustomerName)
+            .Must(value => !string.IsNullOrWhiteSpace(value))
+            .WithMessage("Tên khách hàng không được để trống.")
+            .When(x => x.CustomerName is not null);
+
+        RuleFor(x => x.CustomerPhone)
+            .MaximumLength(20)
+            .WithMessage("Số điện thoại không được vượt quá 20 ký tự.")
+            .Matches(@"^\+?[0-9\s().-]{8,20}$")
+            .WithMessage("Số điện thoại không đúng định dạng.")
+            .When(x => x.CustomerPhone is not null);
+
+        RuleFor(x => x.Notes)
+            .MaximumLength(1000)
+            .WithMessage("Ghi chú không được vượt quá 1000 ký tự.")
+            .When(x => x.Notes is not null);
+    }
 }
 
 public class MockPaymentRequestDtoValidator : AbstractValidator<MockPaymentRequestDto>

@@ -62,6 +62,7 @@ public class BookingService : IBookingService
             userId: userId,
             ownerId: null,
             bookingType: BookingType.ONLINE,
+            bookingSource: BookingSource.MATCHOP,
             customerName: null,
             customerPhone: null,
             note: dto.Note,
@@ -352,6 +353,7 @@ public class BookingService : IBookingService
             userId: null,
             ownerId: ownerId,
             bookingType: BookingType.OFFLINE,
+            bookingSource: BookingSource.OTHER,
             customerName: dto.CustomerName,
             customerPhone: dto.CustomerPhone,
             note: dto.Note,
@@ -361,6 +363,277 @@ public class BookingService : IBookingService
             expireAt: null,
             createSuccessPayment: true,
             cancellationToken: cancellationToken);
+    }
+
+    public async Task<BookingResponseDto> CreateExternalBookingAsync(
+        CreateExternalBookingDto dto,
+        CancellationToken cancellationToken = default)
+    {
+        var ownerId = GetCurrentUserIdOrThrow();
+
+        if (dto.BookingSource == BookingSource.MATCHOP)
+            throw new AppException(
+                ErrorCodes.ValidationError,
+                "Nguồn booking phải là Zalo, Facebook, Điện thoại, Trực tiếp hoặc Khác.",
+                StatusCodes.Status400BadRequest);
+
+        var court = await _courtRepository.GetOwnerCourtByIdAsync(dto.CourtId, ownerId, cancellationToken);
+        if (court is null)
+            throw new AppException(
+                ErrorCodes.CourtNotFound,
+                "Không tìm thấy sân của bạn.",
+                StatusCodes.Status404NotFound);
+
+        EnsureCourtCanBeBooked(court);
+
+        var result = await CreateBookingCoreAsync(
+            court: court,
+            bookingDate: dto.BookingDate,
+            startTime: dto.StartTime,
+            endTime: dto.EndTime,
+            userId: null,
+            ownerId: ownerId,
+            bookingType: BookingType.OFFLINE,
+            bookingSource: dto.BookingSource,
+            customerName: dto.CustomerName,
+            customerPhone: dto.CustomerPhone,
+            note: dto.Notes,
+            initialBookingStatus: BookingStatus.CONFIRMED,
+            initialPaymentStatus: BookingPaymentStatus.PAID,
+            initialSlotStatus: BookingSlotStatus.BOOKED,
+            expireAt: null,
+            createSuccessPayment: true,
+            cancellationToken: cancellationToken);
+
+        _logger.LogInformation(
+            "[EXTERNAL_BOOKING] Created. OwnerId={OwnerId}, BookingId={BookingId}, CourtId={CourtId}, Source={Source}, Date={Date}, Start={Start}, End={End}",
+            ownerId, result.Id, dto.CourtId, dto.BookingSource, dto.BookingDate, dto.StartTime, dto.EndTime);
+
+        return result;
+    }
+
+    public async Task<BookingResponseDto> UpdateExternalBookingAsync(
+        Guid id,
+        UpdateExternalBookingDto dto,
+        CancellationToken cancellationToken = default)
+    {
+        var ownerId = GetCurrentUserIdOrThrow();
+        ValidateGuid(id, "BookingId");
+
+        var booking = await _bookingRepository.GetByIdAndOwnerIdAsync(id, ownerId, cancellationToken);
+        if (booking is null)
+            throw new AppException(
+                ErrorCodes.BookingNotFound,
+                "Không tìm thấy booking thuộc sân của bạn.",
+                StatusCodes.Status404NotFound);
+
+        if (booking.BookingSource == BookingSource.MATCHOP)
+            throw new AppException(
+                ErrorCodes.ValidationError,
+                "Chỉ có thể cập nhật lịch ngoài hệ thống.",
+                StatusCodes.Status400BadRequest);
+
+        if (booking.Status is BookingStatus.CANCELLED_BY_USER
+            or BookingStatus.CANCELLED_BY_OWNER
+            or BookingStatus.CANCELLED_BY_ADMIN
+            or BookingStatus.EXPIRED
+            or BookingStatus.COMPLETED)
+            throw new AppException(
+                ErrorCodes.ValidationError,
+                "Booking này không thể chỉnh sửa ở trạng thái hiện tại.",
+                StatusCodes.Status400BadRequest);
+
+        if (dto.BookingSource == BookingSource.MATCHOP)
+            throw new AppException(
+                ErrorCodes.ValidationError,
+                "Nguồn booking không hợp lệ.",
+                StatusCodes.Status400BadRequest);
+
+        var newDate = dto.BookingDate ?? booking.BookingDate;
+        var newStart = dto.StartTime ?? booking.StartTime;
+        var newEnd = dto.EndTime ?? booking.EndTime;
+
+        if (newStart >= newEnd)
+            throw new AppException(
+                ErrorCodes.ValidationError,
+                "StartTime phải nhỏ hơn EndTime.",
+                StatusCodes.Status400BadRequest);
+
+        var court = booking.Court;
+        ValidateBookingTime(newDate, newStart, newEnd);
+        EnsureCourtCanBeBooked(court);
+
+        if (newStart < court.Venue.OpeningTime || newEnd > court.Venue.ClosingTime)
+            throw new AppException(
+                ErrorCodes.OutsideOpeningHours,
+                $"Thời gian đặt phải trong giờ mở cửa " +
+                $"({court.Venue.OpeningTime:HH:mm} - {court.Venue.ClosingTime:HH:mm}).");
+
+        var timeChanged = newDate != booking.BookingDate ||
+                          newStart != booking.StartTime ||
+                          newEnd != booking.EndTime;
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            if (timeChanged)
+            {
+                var slotStartTimes = GenerateSlotStartTimes(newStart, newEnd);
+                var hasConflict = await _bookingSlotRepository.HasConflictAsync(
+                    court.Id, newDate, slotStartTimes, excludeBookingId: booking.Id, cancellationToken);
+
+                if (hasConflict)
+                    throw new AppException(
+                        ErrorCodes.SlotAlreadyBooked,
+                        "Khung giờ này đã được đặt hoặc bị khóa. Vui lòng chọn khung giờ khác.",
+                        StatusCodes.Status409Conflict);
+
+                foreach (var slot in booking.BookingSlots.Where(s =>
+                    s.Status == BookingSlotStatus.HOLDING ||
+                    s.Status == BookingSlotStatus.BOOKED))
+                {
+                    slot.Status = BookingSlotStatus.CANCELLED;
+                    slot.UpdatedAt = DateTime.UtcNow;
+                }
+
+                var now = DateTime.UtcNow;
+                var newSlots = slotStartTimes.Select(start => new BookingSlot
+                {
+                    Id = Guid.NewGuid(),
+                    BookingId = booking.Id,
+                    CourtId = court.Id,
+                    SlotDate = newDate,
+                    SlotStartTime = start,
+                    SlotEndTime = start.AddMinutes(_slotMinutes),
+                    Status = BookingSlotStatus.BOOKED,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                }).ToList();
+
+                await _bookingRepository.AddSlotsAsync(newSlots, cancellationToken);
+
+                booking.BookingDate = newDate;
+                booking.StartTime = newStart;
+                booking.EndTime = newEnd;
+
+                var priceRules = await _priceRuleRepository.GetPublicCourtPriceRulesAsync(court.Id, cancellationToken);
+                var isWeekend = newDate.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+                booking.TotalPrice = CalculateTotalPrice(priceRules, newStart, newEnd, isWeekend);
+            }
+
+            if (dto.BookingSource.HasValue)
+                booking.BookingSource = dto.BookingSource.Value;
+
+            if (dto.CustomerName is not null)
+                booking.CustomerName = NormalizeOptionalText(dto.CustomerName);
+
+            if (dto.CustomerPhone is not null)
+                booking.CustomerPhone = NormalizeOptionalText(dto.CustomerPhone);
+
+            if (dto.Notes is not null)
+                booking.Note = NormalizeOptionalText(dto.Notes);
+
+            booking.UpdatedAt = DateTime.UtcNow;
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "[EXTERNAL_BOOKING] Updated. OwnerId={OwnerId}, BookingId={BookingId}, TimeChanged={TimeChanged}",
+                ownerId, booking.Id, timeChanged);
+
+            var updated = await _bookingRepository.GetByIdAsync(booking.Id, cancellationToken);
+            return MapToResponse(updated!);
+        }
+        catch (DbUpdateException ex)
+            when (ex.InnerException?.Message
+                .Contains("ux_booking_slots_active", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw new AppException(
+                ErrorCodes.SlotAlreadyBooked,
+                "Khung giờ này vừa được đặt bởi người khác. Vui lòng chọn khung giờ khác.",
+                StatusCodes.Status409Conflict);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task<OwnerCourtCalendarResponseDto> GetOwnerCourtCalendarAsync(
+        Guid courtId,
+        DateOnly date,
+        CancellationToken cancellationToken = default)
+    {
+        var ownerId = GetCurrentUserIdOrThrow();
+        ValidateGuid(courtId, "CourtId");
+
+        var court = await _courtRepository.GetOwnerCourtByIdAsync(courtId, ownerId, cancellationToken);
+        if (court is null)
+            throw new AppException(
+                ErrorCodes.CourtNotFound,
+                "Không tìm thấy sân của bạn.",
+                StatusCodes.Status404NotFound);
+
+        var bookings = await _bookingRepository.GetCalendarBookingsByCourtAndDateAsync(
+            courtId, date, cancellationToken);
+
+        var blocks = await _context.CourtBlocks
+            .AsNoTracking()
+            .Where(b =>
+                b.CourtId == courtId &&
+                b.BlockDate == date &&
+                b.Status == CourtBlockStatus.ACTIVE)
+            .OrderBy(b => b.StartTime)
+            .ToListAsync(cancellationToken);
+
+        var entries = new List<CourtCalendarEntryDto>();
+
+        foreach (var booking in bookings)
+        {
+            entries.Add(new CourtCalendarEntryDto
+            {
+                BookingId = booking.Id,
+                EntryType = "BOOKING",
+                StartTime = booking.StartTime.ToString("HH:mm"),
+                EndTime = booking.EndTime.ToString("HH:mm"),
+                Status = booking.Status.ToString(),
+                BookingSource = booking.BookingSource.ToString(),
+                CustomerName = booking.CustomerName,
+                Note = booking.Note
+            });
+        }
+
+        foreach (var block in blocks)
+        {
+            entries.Add(new CourtCalendarEntryDto
+            {
+                BlockId = block.Id,
+                EntryType = "BLOCK",
+                StartTime = block.StartTime.ToString("HH:mm"),
+                EndTime = block.EndTime.ToString("HH:mm"),
+                Status = "BLOCKED",
+                BookingSource = null,
+                CustomerName = null,
+                Note = block.Reason
+            });
+        }
+
+        entries = entries
+            .OrderBy(e => e.StartTime)
+            .ToList();
+
+        return new OwnerCourtCalendarResponseDto
+        {
+            CourtId = court.Id,
+            CourtName = court.Name,
+            VenueName = court.Venue.Name,
+            Date = date.ToString("yyyy-MM-dd"),
+            OpeningTime = court.Venue.OpeningTime.ToString("HH:mm"),
+            ClosingTime = court.Venue.ClosingTime.ToString("HH:mm"),
+            Entries = entries
+        };
     }
 
     public async Task<BookingResponseDto> CancelOwnerBookingAsync(Guid id, CancelBookingDto dto, CancellationToken cancellationToken = default)
@@ -381,6 +654,13 @@ public class BookingService : IBookingService
             CancelBooking(booking, BookingStatus.CANCELLED_BY_OWNER, dto.Reason);
             await _bookingRepository.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
+
+            if (booking.BookingSource != BookingSource.MATCHOP)
+            {
+                _logger.LogInformation(
+                    "[EXTERNAL_BOOKING] Cancelled. OwnerId={OwnerId}, BookingId={BookingId}, CourtId={CourtId}, Source={Source}",
+                    ownerId, booking.Id, booking.CourtId, booking.BookingSource);
+            }
 
             var updated = await _bookingRepository.GetByIdAsync(booking.Id, cancellationToken);
             return MapToResponse(updated!);
@@ -598,6 +878,7 @@ public class BookingService : IBookingService
         Guid? userId,
         Guid? ownerId,
         BookingType bookingType,
+        BookingSource bookingSource,
         string? customerName,
         string? customerPhone,
         string? note,
@@ -627,7 +908,7 @@ public class BookingService : IBookingService
         {
             // Kiểm tra conflict trong transaction
             var hasConflict = await _bookingSlotRepository.HasConflictAsync(
-                court.Id, bookingDate, slotStartTimes, cancellationToken);
+                court.Id, bookingDate, slotStartTimes, cancellationToken: cancellationToken);
 
             if (hasConflict)
             {
@@ -658,6 +939,7 @@ public class BookingService : IBookingService
                 Status        = initialBookingStatus,
                 PaymentStatus = initialPaymentStatus,
                 BookingType   = bookingType,
+                BookingSource = bookingSource,
                 CustomerName  = NormalizeOptionalText(customerName),
                 CustomerPhone = NormalizeOptionalText(customerPhone),
                 Note          = NormalizeOptionalText(note),
@@ -780,11 +1062,10 @@ public class BookingService : IBookingService
                 ErrorCodes.BookingDurationTooLong,
                 $"Thời lượng đặt sân tối đa là {_maxBookingHours} giờ.");
 
-        var now = DateTime.UtcNow;
-        var today = DateOnly.FromDateTime(now);
+        var today = VenueTimeHelper.GetToday();
 
         if (bookingDate < today ||
-            (bookingDate == today && startTime <= TimeOnly.FromDateTime(now)))
+            (bookingDate == today && startTime <= VenueTimeHelper.GetCurrentTime()))
             throw new AppException(
                 ErrorCodes.BookingInPast,
                 "Không thể đặt khung giờ đã qua.");
@@ -899,8 +1180,8 @@ public class BookingService : IBookingService
                 "Booking này không thể hủy ở trạng thái hiện tại.",
                 StatusCodes.Status400BadRequest);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var nowTime = TimeOnly.FromDateTime(DateTime.UtcNow);
+        var today = VenueTimeHelper.GetToday();
+        var nowTime = VenueTimeHelper.GetCurrentTime();
 
         if (booking.BookingDate < today ||
             (booking.BookingDate == today && booking.StartTime <= nowTime))
@@ -975,8 +1256,9 @@ public class BookingService : IBookingService
         VenueName     = b.Court?.Venue?.Name ?? b.Venue?.Name ?? string.Empty,
         VenueAddress  = b.Court?.Venue?.Address ?? b.Venue?.Address ?? string.Empty,
         SportName     = b.Court?.Sport?.Name ?? b.Sport?.Name ?? string.Empty,
-        CustomerName  = b.CustomerName,
-        CustomerPhone = b.CustomerPhone,
+        CustomerName  = b.CustomerName ?? b.User?.FullName,
+        CustomerPhone = b.CustomerPhone ?? b.User?.PhoneNumber,
+        UserEmail     = b.User?.Email,
         BookingDate   = b.BookingDate.ToString("yyyy-MM-dd"),
         StartTime     = b.StartTime.ToString("HH:mm"),
         EndTime       = b.EndTime.ToString("HH:mm"),
@@ -984,6 +1266,7 @@ public class BookingService : IBookingService
         Status        = b.Status.ToString(),
         PaymentStatus = b.PaymentStatus.ToString(),
         BookingType   = b.BookingType.ToString(),
+        BookingSource = b.BookingSource.ToString(),
         Note          = b.Note,
         ExpireAt      = b.ExpireAt,
         CreatedAt     = b.CreatedAt,

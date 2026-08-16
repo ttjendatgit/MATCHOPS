@@ -66,6 +66,27 @@ public class ProductionReadinessTests
     }
 
     [Fact]
+    public void External_booking_validator_rejects_matchop_source_and_invalid_phone()
+    {
+        var validator = new CreateExternalBookingDtoValidator();
+
+        var result = validator.Validate(new CreateExternalBookingDto
+        {
+            CourtId = Guid.NewGuid(),
+            BookingDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            StartTime = new TimeOnly(10, 0),
+            EndTime = new TimeOnly(11, 0),
+            BookingSource = BookingSource.MATCHOP,
+            CustomerName = "Nguyễn Văn A",
+            CustomerPhone = "abc"
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.PropertyName == "BookingSource");
+        Assert.Contains(result.Errors, error => error.PropertyName == "CustomerPhone");
+    }
+
+    [Fact]
     public void Price_rule_validator_rejects_invalid_price_and_time_range()
     {
         var validator = new CreatePriceRuleDtoValidator();

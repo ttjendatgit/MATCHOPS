@@ -19,6 +19,8 @@ namespace MATCHOP.API.Repositories
             return await _context.MatchPosts
                 .Include(p => p.Creator)
                 .Include(p => p.Sport)
+                .Include(p => p.Venue)
+                .Include(p => p.Court)
                 .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         }
 
@@ -27,6 +29,8 @@ namespace MATCHOP.API.Repositories
             var query = _context.MatchPosts
                 .Include(p => p.Creator)
                 .Include(p => p.Sport)
+                .Include(p => p.Venue)
+                .Include(p => p.Court)
                 .AsQueryable();
 
             query = ApplyFilter(query, filter);
@@ -79,6 +83,8 @@ namespace MATCHOP.API.Repositories
             var query = _context.MatchPosts
                 .Include(p => p.Creator)
                 .Include(p => p.Sport)
+                .Include(p => p.Venue)
+                .Include(p => p.Court)
                 .AsQueryable();
 
             // Apply sport filter

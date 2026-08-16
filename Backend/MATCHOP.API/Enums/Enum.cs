@@ -77,6 +77,16 @@ public enum BookingType
     ADMIN = 3
 }
 
+public enum BookingSource
+{
+    MATCHOP = 1,
+    ZALO = 2,
+    FACEBOOK = 3,
+    PHONE = 4,
+    DIRECT = 5,
+    OTHER = 6
+}
+
 public enum BookingSlotStatus
 {
     HOLDING = 1,

@@ -107,6 +107,48 @@ public class BookingsController : ControllerBase
             ApiResponse<BookingResponseDto>.Ok(result, "Tạo booking offline thành công."));
     }
 
+    /// <summary>POST /api/owner/bookings/external — OWNER tạo lịch ngoài hệ thống</summary>
+    [HttpPost("api/owner/bookings/external")]
+    [Authorize(Roles = "OWNER")]
+    public async Task<IActionResult> CreateExternalBooking(
+        [FromBody] CreateExternalBookingDto dto,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _bookingService.CreateExternalBookingAsync(dto, cancellationToken);
+        return StatusCode(
+            StatusCodes.Status201Created,
+            ApiResponse<BookingResponseDto>.Ok(
+                result,
+                "Đã thêm lịch thành công. Khung giờ này hiện không thể được đặt bởi người dùng MATCHOP."));
+    }
+
+    /// <summary>PATCH /api/owner/bookings/{id}/external — OWNER cập nhật lịch ngoài hệ thống</summary>
+    [HttpPatch("api/owner/bookings/{id:guid}/external")]
+    [Authorize(Roles = "OWNER")]
+    public async Task<IActionResult> UpdateExternalBooking(
+        Guid id,
+        [FromBody] UpdateExternalBookingDto dto,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _bookingService.UpdateExternalBookingAsync(id, dto, cancellationToken);
+        return Ok(ApiResponse<BookingResponseDto>.Ok(result, "Cập nhật lịch ngoài hệ thống thành công."));
+    }
+
+    /// <summary>GET /api/owner/courts/{courtId}/calendar — OWNER xem lịch thống nhất</summary>
+    [HttpGet("api/owner/courts/{courtId:guid}/calendar")]
+    [Authorize(Roles = "OWNER")]
+    public async Task<IActionResult> GetOwnerCourtCalendar(
+        Guid courtId,
+        [FromQuery] DateOnly date,
+        CancellationToken cancellationToken = default)
+    {
+        if (date == default)
+            date = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        var result = await _bookingService.GetOwnerCourtCalendarAsync(courtId, date, cancellationToken);
+        return Ok(ApiResponse<OwnerCourtCalendarResponseDto>.Ok(result));
+    }
+
     /// <summary>PATCH /api/owner/bookings/{id}/cancel — OWNER hủy booking</summary>
     [HttpPatch("api/owner/bookings/{id:guid}/cancel")]
     [Authorize(Roles = "OWNER")]

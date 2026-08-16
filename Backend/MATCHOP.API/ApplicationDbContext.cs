@@ -380,6 +380,10 @@ public class ApplicationDbContext : DbContext
             e.Property(x => x.BookingType)
              .HasConversion<int>();
 
+            e.Property(x => x.BookingSource)
+             .HasConversion<int>()
+             .HasDefaultValue(BookingSource.MATCHOP);
+
             e.Property(x => x.CustomerName)
              .HasMaxLength(200);
 
@@ -1055,9 +1059,12 @@ public class ApplicationDbContext : DbContext
             e.Property(x => x.City).IsRequired().HasMaxLength(100);
             e.Property(x => x.District).IsRequired().HasMaxLength(100);
             e.Property(x => x.Note).HasMaxLength(1000);
+            e.Property(x => x.ExternalVenueName).HasMaxLength(200);
 
             e.HasOne(x => x.Creator).WithMany(u => u.MatchPosts).HasForeignKey(x => x.CreatorId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Sport).WithMany().HasForeignKey(x => x.SportId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Venue).WithMany().HasForeignKey(x => x.VenueId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Court).WithMany().HasForeignKey(x => x.CourtId).OnDelete(DeleteBehavior.SetNull);
 
             e.HasIndex(x => x.CreatorId).HasDatabaseName("ix_match_posts_creator");
             e.HasIndex(x => x.SportId).HasDatabaseName("ix_match_posts_sport");
@@ -1123,6 +1130,7 @@ public class ApplicationDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
             e.Property(x => x.Title).IsRequired().HasMaxLength(200);
+            e.Property(x => x.MetadataJson).HasColumnType("jsonb");
             e.Property(x => x.CreatedAt).HasDefaultValueSql("NOW()");
             e.Property(x => x.UpdatedAt).HasDefaultValueSql("NOW()");
 
